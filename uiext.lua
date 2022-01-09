@@ -73,18 +73,106 @@ function uiext:CornerOffset(x, y)
     self:SetPoint(from, parent, to, offset[1]*x, offset[2]*y)
 end
 
+-- function uiext:SetHide(bool)
+--     if bool then self:Hide() else self:Show() end
+-- end
 
-function uiext:Texture(name)
-    self[name] = self[name] or self:CreateTexture(nil)
-    return method_chain_wrapper(self[name])
+-- function uiext:SetShow(bool)
+--     if bool then self:Show() else self:Hide() end
+-- end
+
+function uiext:Points(points)
+    self:ClearAllPoints()
+    for k, v in pairs(points) do
+        self:SetPoint(k, unpack(v))
+    end
 end
 
 
-function uiext:Script(scripts)
-    self.lqt_scripts = self.lqt_scripts or {}
-    for k, new in pairs(scripts) do
-        if not self.lqt_scripts[k] then
-            self.lqt_scripts[k] = new
+uiext.SetPoints = uiext.Points
+
+
+function uiext:LEFT(x, y)
+    return { assert(self), 'LEFT', x, y }
+end
+
+function uiext:TOPLEFT(x, y)
+    return { assert(self), 'TOPLEFT', x, y }
+end
+
+function uiext:BOTTOMLEFT(x, y)
+    return { assert(self), 'BOTTOMLEFT', x, y }
+end
+
+function uiext:RIGHT(x, y)
+    return { assert(self), 'RIGHT', x, y }
+end
+
+function uiext:TOPRIGHT(x, y)
+    return { assert(self), 'TOPRIGHT', x, y }
+end
+
+function uiext:BOTTOMRIGHT(x, y)
+    return { assert(self), 'BOTTOMRIGHT', x, y }
+end
+
+function uiext:TOP(x, y)
+    return { assert(self), 'TOP', x, y }
+end
+
+function uiext:BOTTOM(x, y)
+    return { assert(self), 'BOTTOM', x, y }
+end
+
+function uiext:CENTER(x, y)
+    return { assert(self), 'CENTER', x, y }
+end
+
+
+
+function uiext:SetLEFT(other)
+    self:SetPoint('LEFT', unpack(other))
+end
+
+function uiext:SetTOPLEFT(other)
+    self:SetPoint('TOPLEFT', unpack(other))
+end
+
+function uiext:SetBOTTOMLEFT(other)
+    self:SetPoint('BOTTOMLEFT', unpack(other))
+end
+
+function uiext:SetRIGHT(other)
+    self:SetPoint('RIGHT', unpack(other))
+end
+
+function uiext:SetTOPRIGHT(other)
+    self:SetPoint('TOPRIGHT', unpack(other))
+end
+
+function uiext:SetBOTTOMRIGHT(other)
+    self:SetPoint('BOTTOMRIGHT', unpack(other))
+end
+
+function uiext:SetTOP(other)
+    self:SetPoint('TOP', unpack(other))
+end
+
+function uiext:SetBOTTOM(other)
+    self:SetPoint('BOTTOM', unpack(other))
+end
+
+function uiext:SetCENTER(other)
+    self:SetPoint('CENTER', unpack(other))
+end
+
+
+
+function uiext:Override(overrides)
+    self.lqt_overrides = self.lqt_overrides or {}
+    for k, new in pairs(overrides) do
+        if not self.lqt_overrides[k] then
+            self.lqt_overrides[k] = new
             local old = self:GetScript(k) or function() end
             self:SetScript(k, function(self, ...)
                 new(self, old, ...)
@@ -94,15 +182,61 @@ function uiext:Script(scripts)
 end
 
 
+function uiext:Script(scripts)
+    for k, fn in pairs(scripts) do
+        self:SetScript(k, fn)
+    end
+end
+
+
 function uiext:Hook(hooks)
-    self.lqt_hooks = self.lqt_hooks or {}
-    for k, new in pairs(hooks) do
-        if not self.lqt_hooks[k] then
-            self.lqt_hooks[k] = new
-            self:HookScript(k, function(...)
-                new(...)
-            end)
+    for k, fn in pairs(hooks) do
+        self:HookScript(k, fn)
+    end
+end
+
+
+function uiext:Event(handlers)
+    if not self.OnEventHandler then
+        self.OnEventHandler = function(self, event, ...)
+            local handler = self[event]
+            if handler then
+                handler(self, ...)
+            end
         end
+        self:SetScript('OnEvent', self.OnEventHandler)
+    end
+    for k, handler in pairs(handlers) do
+        if not self[k] then
+            self:RegisterEvent(k)
+        end
+        self[k] = handler
+    end
+end
+
+
+function uiext:EventHook(handlers)
+    if not self.OnEventHookHandler then
+        self.OnEventHookHandler = function(self, event, ...)
+            local handler = self[event]
+            if handler then
+                handler(self, ...)
+            end
+        end
+        self:SetScript('OnEvent', self.OnEventHookHandler)
+    end
+    for k, handler in pairs(handlers) do
+        if not self[k] then
+            self:RegisterEvent(k)
+        end
+        self[k] = handler
+    end
+end
+
+
+function uiext:Data(data)
+    for k, v in pairs(data) do
+        self[k] = v
     end
 end
 
@@ -131,13 +265,28 @@ for _, v in pairs({
     CreateFrame('ScrollFrame'),
     CreateFrame('Button'),
     CreateFrame('Slider'),
+    CreateFrame('StatusBar'),
     CreateFrame('CheckButton'),
-    CreateFrame('EditBox')
+    CreateFrame('EditBox'),
+    CreateFrame('Cooldown'),
+    CreateFrame('SimpleHTML'),
+    CreateFrame('Frame'):CreateTexture(),
+    CreateFrame('Frame'):CreateFontString(),
+    CreateFrame('Frame'):CreateMaskTexture()
 }) do
     v:Hide()
     local meta = getmetatable(v)
-    print(meta, v:GetObjectType())
     for k_ext, v_ext in pairs(uiext) do
         meta.__index[k_ext] = v_ext
+    end
+end
+
+for _, v in pairs {
+    Minimap,
+    GameTooltip
+} do
+    local mt = getmetatable(v)
+    for k_ext, v_ext in pairs(uiext) do
+        mt.__index[k_ext] = v_ext
     end
 end

@@ -1,0 +1,1 @@
+CompactRaidFrameManager.containerResizeFrame:SetFrameStrata('HIGH')

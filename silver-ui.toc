@@ -1,0 +1,26 @@
+## Interface: 90100
+## Title: Silver UI
+## Author: weltensturm
+## OptionalDeps: 
+## SavedVariables: 
+## SavedVariablesPerCharacter: 
+## X-silver-ui: silver-ui
+
+util.lua
+lqt.lua
+lqt_style.lua
+uiext.lua
+
+editor.lua
+
+frames/questgossip.lua
+frames/bars.lua
+frames/menubar.lua
+frames/chat.lua
+frames/buffs.lua
+frames/minimap.lua
+frames/target.lua
+frames/questtracker.lua
+frames/player.lua
+frames/tooltip.lua
+frames/raidframe.lua

@@ -74,7 +74,7 @@ local method_chain_wrapper_meta = {
     __index = function(self, i)
         local obj = self[1]
         local fn = obj[i]
-        assert(fn, obj:GetObjectType() .. ' has no method ' .. i)
+        assert(fn)
         return function(self, ...)
             fn(obj, ...)
             return self
@@ -115,4 +115,5 @@ function print_table(t_o)
     for _, v in pairs(t) do
         print(v)
     end
+
 end

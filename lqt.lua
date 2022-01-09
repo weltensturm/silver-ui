@@ -126,50 +126,75 @@ local function children(obj)
 end
 
 
-local function parent_anchor_value(t, obj, positions)
-    if positions[obj] then
-        return positions[obj]
+local function parent_anchor_value(t, obj, anchoridx)
+    if anchoridx[obj] then
+        return anchoridx[obj]
     end
     local from, toF, to, x, y = obj:GetPoint()
     if not t[toF] then
-        local pos = 10001
-        positions[obj] = pos
-        return pos
+        anchoridx[obj] = { 0, obj:GetTop() or 0 }
+        return anchoridx[obj]
     end
-    local pos = parent_anchor_value(t, toF, positions)
-    if to == 'RIGHT' or to == 'TOPRIGHT' then
-        pos = pos + 1
-    elseif to == 'LEFT' or to == 'TOPLEFT' then
-        pos = pos - 1
-    elseif to == 'BOTTOMLEFT' then
-        pos = pos + (10000 - 1)
-    elseif to == 'BOTTOMRIGHT' then
-        pos = pos + (10000 + 1)
-    end
-    positions[obj] = pos
-    return pos
+    local i = parent_anchor_value(t, toF, anchoridx)[1]+1
+    anchoridx[obj] = { i, obj:GetTop() or 0 }
+    return anchoridx[obj]
 end
 
 
 local function order_keys_by_anchors(parent, t)
     local result = {}
-    local positions = {}
+    local anchoridx = {}
     for obj, _ in pairs(t) do
-        if not positions[obj] then
-            parent_anchor_value(t, obj, positions)
+        if not anchoridx[obj] then
+            parent_anchor_value(t, obj, anchoridx)
         end
         table.insert(result, obj)
     end
-    table.sort(result, function(a, b) return positions[a] < positions[b] end)
+    table.sort(result, function(a, b)
+        return anchoridx[a][1] < anchoridx[b][1]
+            or anchoridx[a][1] == anchoridx[b][1]
+                and anchoridx[a][2] > anchoridx[b][2]
+    end)
     return result
 end
 
 
-local function query_proxy(table)
+local function apply_style(obj, style)
+    for k, v in pairs(style) do
+        if type(k) == 'number' then
+            for _, child in pairs(obj) do
+                v.apply(child)
+            end
+        else
+            if k:sub(1,1) == '.' then
+                assert(type(v) == 'table')
+                for _, child in pairs(obj) do
+                    child(k)(v)
+                end
+            else
+                if type(v) == 'table' then
+                    obj['Set'..k](obj, unpack(v))
+                else
+                    obj['Set'..k](obj, v)
+                end
+            end
+        end
+    end
+    return obj
+end
+
+
+local lqt_result_meta = {}
+
+
+local function lqt_result(table)
     local k, v = nil, nil
     local and_then = nil
     local meta = {
-        __call = function(self)
+        __call = function(self, style)
+            if style then
+                return apply_style(self, style)
+            end
             k, v = next(self, k)
             if k ~= nil then
                 return v
@@ -182,15 +207,19 @@ local function query_proxy(table)
             end
         end,
         __index = function(self, i)
-            for _, entry in pairs(self) do
-                local name = entry:GetName()
-                assert(entry[i], entry:GetObjectType() .. (name and (' ' .. name) or '') .. ' has no function named ' .. i)
-            end
             return function(self, ...)
-                for _, entry in pairs(self) do
-                    entry[i](entry, ...)
+                if self ~= table then
+                    return lqt_result_meta[i](table, self, ...)
+                else
+                    for _, entry in pairs(self) do
+                        local name = entry:GetName()
+                        assert(entry[i], entry:GetObjectType() .. (name and (' ' .. name) or '') .. ' has no function named ' .. i)
+                    end
+                    for _, entry in pairs(self) do
+                        entry[i](entry, ...)
+                    end
+                    return self
                 end
-                return self
             end
         end,
         __concat = function(self, right)
@@ -209,39 +238,105 @@ local function query_proxy(table)
 end
 
 
-local function query(obj, pattern, found)
-    local found = found or {}
-    local shallow = strsub(pattern, 1, 1) == '.'
-    if shallow then
-        pattern = strsub(pattern, 2)
-    end
-
-    local selector, remainder = split_at_find(pattern, '[%.%s]')
-    remainder = strtrim(remainder)
-
-    local attrs = {}
-    for k, v in pairs(obj) do
-        attrs[v] = k
-    end
-    for child in children(obj) do
-        if matches(child, selector, attrs[child]) then
-            -- print("FOUND", obj:GetName(), selector, '=', child:GetObjectType(), child:GetName())
-            if remainder == '' then
-                found[child] = true
-            else
-                query(child, remainder, found)
-            end
-        end
-        if not shallow then
-            query(child, pattern, found)
+function lqt_result_meta:filter(fn)
+    local filtered = {}
+    for _, v in pairs(self) do
+        if fn(v) then
+            table.insert(filtered, v)
         end
     end
-
-    return query_proxy(order_keys_by_anchors(obj, found))
+    return lqt_result(filtered)
 end
 
 
-for v in values({ UIParent, GossipGreetingScrollFrame, QuestProgressItem1, QuestRewardScrollFrameScrollBar, ActionButton1 }) do
+local function handle_constructor(obj, selector, constructor)
+    local constructor, inherits = split_at_find(constructor, '/')
+    if #inherits == 0 then
+        inherits = nil
+    end
+    if not obj[selector] then
+        if obj['Create' .. constructor] then
+            obj[selector] = obj['Create' .. constructor](obj, nil, 'ARTWORK', inherits)
+        else
+            obj[selector] = CreateFrame(constructor, nil, obj, inherits)
+        end
+    end
+    return lqt_result({ obj[selector] })
+end
+
+
+local function query(obj, pattern, constructor, found)
+    if type(pattern) == 'table' then
+        return apply_style(lqt_result({ obj }), pattern)
+    end
+    local found = found or {}
+    if pattern:sub(1, 1) == '.' then
+        pattern = strsub(pattern, 2)
+
+        local selector, remainder = split_at_find(pattern, '[%.%s]')
+        remainder = strtrim(remainder)
+
+        if tonumber(selector) ~= nil then
+            selector = tonumber(selector)
+        end
+
+        if #remainder == 0 then
+            if constructor then
+                if not obj[selector] then
+                    obj[selector] = constructor(obj)
+                end
+                return lqt_result { obj[selector] }
+            else
+                local selector, constructor = split_at_find(selector, '=')
+                constructor = strtrim(constructor:sub(2))
+                if #constructor > 0 then
+                    return handle_constructor(obj, selector, constructor)
+                end
+            end
+        end
+
+        local attrs = {}
+        for k, v in pairs(obj) do
+            attrs[v] = k
+        end
+        for child in children(obj) do
+            if matches(child, selector, attrs[child]) then
+                -- print("FOUND", obj:GetName(), selector, '=', child:GetObjectType(), child:GetName())
+                if remainder == '' then
+                    found[child] = true
+                else
+                    query(child, remainder, constructor, found)
+                end
+            end
+        end
+
+        return lqt_result(order_keys_by_anchors(obj, found))
+    else
+        local selector, remainder = split_at_find(pattern, '[%.%s]')
+        remainder = strtrim(remainder)
+        if #remainder > 0 then
+            return _G[selector](remainder, constructor)
+        else
+            return lqt_result({ _G[selector] })
+        end
+    end
+end
+
+
+for v in values({
+    UIParent,
+    GossipGreetingScrollFrame,
+    QuestProgressItem1,
+    QuestRewardScrollFrameScrollBar,
+    ActionButton1,
+    Minimap,
+    PlayerFrameHealthBar,
+    CreateFrame('Cooldown'),
+    GameTooltip,
+    CreateFrame('SimpleHTML'),
+    CreateFrame('Frame'):CreateTexture(),
+}) do
     getmetatable(v).__call = query
+    getmetatable(v).__index.has_lqt = true
 end
 
