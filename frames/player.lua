@@ -112,6 +112,14 @@ local function update()
                 :Points { BOTTOM = ComboPointPlayerFrame:BOTTOM(0, -6) }
         },
 
+        Style'.MageArcaneChargesFrame'
+            :Points { BOTTOM = PlayerFrame:TOP(0, -10) }
+            :FrameStrata 'BACKGROUND'
+        {
+            Style'.Background'
+                :Points { BOTTOM = MageArcaneChargesFrame:BOTTOM(0, 10) }
+        },
+
         Style'.PlayerFrameAlternateManaBar'
             :StatusBarTexture 'Interface/Destiny/EndscreenBG'
             :Points { BOTTOM = PlayerFrame:TOP(0, 2) }
@@ -133,6 +141,9 @@ local function update()
                 :Points { BOTTOMLEFT = PlayerFrameAlternateManaBar:BOTTOMRIGHT(-5.1, 0) }
         },
         
+        Style'.TotemFrame'
+            :Points { TOP = PlayerFrame:BOTTOM(0, 8) },
+
         Style'.healthbar'
             -- :StatusBarTexture 'Interface/RAIDFRAME/Raid-Bar-Hp-Fill'
             -- :StatusBarTexture 'Interface/Destiny/EndscreenBG'
@@ -161,8 +172,8 @@ local function update()
         Style'.manabar'
             -- :SetStatusBarTexture 'Interface/RAIDFRAME/Raid-Bar-Hp-Fill'
             -- :SetStatusBarTexture 'Interface/AddOns/ElvUI/Media/Textures/Melli'
-            :Points { TOPLEFT = PlayerFrame:TOPLEFT(0, 0),
-                      BOTTOMRIGHT = PlayerFrame:TOPRIGHT(0, -15) }
+            :Points { TOPLEFT = PlayerFrame:TOPLEFT(0, -1),
+                      BOTTOMRIGHT = PlayerFrame:TOPRIGHT(0, -13) }
             :FrameStrata 'LOW'
         {
             Texture'.Bg'
@@ -202,29 +213,32 @@ local function update()
     PlayerLevelText:Hide()
     PlayerName:Hide()
 
+    local _, sparkTo, _, _, _ = CastingBarFrame.Spark:GetPoint()
+
     Style(CastingBarFrame)
         :Points {
             TOPLEFT = PlayerFrame.manabar:TOPLEFT(),
             BOTTOMRIGHT = PlayerFrame.manabar:BOTTOMRIGHT(0, -5)
         }
     {
-        Style'.Text':Points { CENTER = CastingBarFrame:CENTER(0, 3) },
+        Style'.Text':Points { CENTER = CastingBarFrame:CENTER(0, -6) },
         Style'.Border':Hide()
     }
 
     CastingBarFrame.ignoreFramePositionManager = true
     for tex in CastingBarFrame'.Texture' do
-        if tex ~= CastingBarFrame.Spark then
+        if tex ~= CastingBarFrame.Spark and tex ~= CastingBarFrame.Spark2 then
             tex:SetTexture('')
         end
+        if tex:GetNumPoints() == 4 then -- channel bar
+            Style(CastingBarFrame){
+                Texture('.Spark2')
+                    :SetTexture 'Interface/CastingBar/UI-CastingBar-Spark'
+                    :Points { CENTER = tex:RIGHT() }
+                    :BlendMode 'ADD'
+            }
+        end
     end
-
-    -- PlayerFrameManaBar:SetFrameStrata('MEDIUM')
-
-    -- ComboPointPlayerFrame.SetPoint = function(...) assert(false, tostring(...)) end
-    -- ComboPointPlayerFrame:ClearAllPoints()
-    -- ComboPointPlayerFrame:SetPoint('TOPRIGHT', PlayerFrame, 'BOTTOMRIGHT')
-
     -- PlayerFrameHealthBar:SetStatusBarTexture('Interface/CHARACTERFRAME/BarFill')
 end
 
@@ -237,7 +251,7 @@ addon:RegisterEvent('UNIT_EXITED_VEHICLE')
 addon:RegisterEvent('UNIT_DISPLAYPOWER')
 -- addon:RegisterEvent('UPDATE_ALL_UI_WIDGETS')
 
-addon:Hook {
+addon:Hooks {
     OnEvent = function(e)
         if e == 'UNIT_DISPLAYPOWER' then
 

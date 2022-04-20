@@ -255,14 +255,14 @@ addon:Event {
 }
 
 
-MultiBarBottomRight:Hook {
+MultiBarBottomRight:Hooks {
     OnShow = update,
     OnHide = update
 }
 
 
 
-MultiBarBottomLeft:Hook {
+MultiBarBottomLeft:Hooks {
     OnShow = update,
     OnHide = update
 }

@@ -29,25 +29,32 @@ local function inline_list_layout(selection, filter, margin)
     local after = nil
     for element in selection do
         if element:IsVisible() then
-            local ignore = not matches(element, filter)
-            if ignore then
-                if previous_match and not after then
+            if not matches(element, filter) then
+                if previous_match then
+                    element:SetPoint('TOPLEFT', previous_match, 'BOTTOMLEFT', 0, -margin.inner)
+                    previous_match = nil
+                    before = nil
+                    after = nil
+                elseif previous_match and not after then
                     after = element 
                 end
-                if not after then
-                    before = element
-                end
+                -- if not after then
+                --     before = element
+                -- end
             else
+                if not before then
+                    before = select(2, element:GetPoint())
+                end
                 -- print(element:GetName(), '->', (previous_match or before):GetName())
                 element:SetPoint('TOPLEFT', previous_match or before, 'BOTTOMLEFT', 0, -margin.inner)
                 previous_match = element
             end
         end
     end
-    if after then
-        -- print('AFTER', after:GetName(), '->', previous_match:GetName())
-        after:SetPoint('TOPLEFT', previous_match, 'BOTTOMLEFT', 0, -margin.after)
-    end
+    -- if after then
+    --     -- print('AFTER', after:GetName(), '->', previous_match:GetName())
+    --     after:SetPoint('TOPLEFT', previous_match, 'BOTTOMLEFT', 0, -margin.after)
+    -- end
 end
 
 
@@ -97,6 +104,15 @@ addon:HookScript("OnEvent", function(self, event)
         local height = 0
 
         window'.Button':CornerOffset(5, 5)
+
+        window'.NPCFriendshipStatusBar'
+            :SetFrameStrata 'LOW'
+            :Points { TOPLEFT = GossipFrame:TOPLEFT(60, 13) }
+        {
+            Style'.icon':Hide(),
+            Style'.BarCircle':Hide(),
+            Style'.BarRingBackground':Hide()
+        }
 
         local conversationBtnHeight = {}
         for frame in window'.Frame'.filter(byVisible) do
@@ -202,7 +218,7 @@ addon:HookScript("OnEvent", function(self, event)
 
             }
 
-            window:Script {
+            window:Scripts {
                 OnMouseWheel = function(self, delta)
                     if delta > 0 then
                         window'.ItemTextPrevPageButton':Click()
@@ -299,6 +315,7 @@ addon:HookScript("OnEvent", function(self, event)
                 for rewards in content'.QuestInfoRewardsFrame'.filter(byVisible) do
 
                     local has_quest_buttons = false
+                    local previous = nil
 
                     for button in rewards'.Button' do
                         content'QuestInfoItemHighlight'
@@ -309,37 +326,34 @@ addon:HookScript("OnEvent", function(self, event)
                             
                             button:SetSize(200, 20)
                             button {
-                                ['.Texture'] = {
-                                    Size = { 20, 20 },
-                                    Point = { 'TOPLEFT', button, 'TOPLEFT', 0, 0 },
-                                },
+                                Style'.Texture'
+                                    :Size(20, 20)
+                                    :Point('TOPLEFT', button, 'TOPLEFT', 0, 0),
 
-                                ['.FontString'] = {
-                                    Point =  { 'TOPLEFT', button, 'TOPLEFT', 27, 0 },
-                                    Size =  { 180, 20 },
-                                    TextColor =  { 0.1, 0, 0, 1 },
-                                    ShadowOffset =  { 0, 0 },
-                                },
+                                Style'.FontString'
+                                    :Point('TOPLEFT', button, 'TOPLEFT', 27, 0)
+                                    :Size(180, 20)
+                                    :TextColor(0.1, 0, 0, 1)
+                                    :ShadowOffset(0, 0),
 
-                                ['.NameFrame'] = {
-                                    Texture = { 'Interface/Buttons/UI-Listbox-Highlight2' },
-                                    DrawLayer = { 'BACKGROUND', -7 },
-                                    BlendMode = { 'ADD' },
-                                    VertexColor = { 1,1,1,0.2 },
-                                    Points = {{ TOPLEFT = button:TOPLEFT(0, -2),
-                                                RIGHT = container:RIGHT(-20, 0) }},
-                                    Height = 16,
-                                    Alpha = container == QuestRewardScrollFrame and 0.2 or 0,
-                                },
+                                Style'.NameFrame'
+                                    :Texture 'Interface/Buttons/UI-Listbox-Highlight2'
+                                    :DrawLayer('BACKGROUND', -7 )
+                                    :BlendMode 'ADD'
+                                    :VertexColor(1,1,1,0.2)
+                                    :Points { TOPLEFT = button:TOPLEFT(0, -2),
+                                              RIGHT = container:RIGHT(-20, 0) }
+                                    :Height(16)
+                                    :Alpha(container == QuestRewardScrollFrame and 0.2 or 0),
                                 
-                                ['.Count'] = {
-                                    TextColor = { 1, 1, 1 },
-                                    Points = {{ 
-                                        TOPLEFT = button.Icon:TOPLEFT(),
-                                        BOTTOMRIGHT = button.Icon:BOTTOMRIGHT()
-                                    }}
-                                }
+                                Style'.Count'
+                                    :TextColor(1, 1, 1)
+                                    :JustifyH 'LEFT'
+                                    :TextScale(0.85)
+                                    :Points { TOPLEFT = button.Icon:TOPLEFT(0,-5),
+                                              BOTTOMRIGHT = button.Icon:BOTTOMRIGHT(10,-5) }
                             }
+
                             override(button){
                                 OnClick = function(f, ...) f(...)
                                     if QuestFrameRewardPanel:IsShown() then

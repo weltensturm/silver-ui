@@ -20,7 +20,7 @@ center:Points {
     BOTTOMRIGHT = GameTooltip:BOTTOMRIGHT()
 }
 
-GameTooltip:Hook {
+GameTooltip:Hooks {
     OnShow = function()
 
     end

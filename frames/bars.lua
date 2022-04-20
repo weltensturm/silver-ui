@@ -47,7 +47,7 @@ local function style_bars()
     local ActionBar = Frame
         :Size(bar_width, bar_width/12)
         :FrameStrata 'LOW'
-        :Hook {
+        :Hooks {
             OnUpdate = function(self, dt)
                 if self.AnimProgress ~= self.AnimTarget then
                     local sign = self.AnimProgress >= self.AnimTarget and -1 or 1
@@ -98,7 +98,7 @@ local function style_bars()
         end,
     }
 
-    addon:Hook {
+    addon:Hooks {
         OnUpdate = function(self, dt)
             for _, bar in pairs(bars) do
                 for _, btn in ipairs(bar.ArtFrame.Buttons) do
@@ -163,7 +163,7 @@ local function style_bars()
 
     for barn, bar in pairs(bars) do
         
-        bar:Hook(hidehooks)
+        bar:Hooks(hidehooks)
 
         bar {
             Frame'.ArtFrame'
@@ -200,7 +200,7 @@ local function style_bars()
 
         range_apply(barn .. 'Button', 1, 12, function(i, name, btn, prevname, prev)
             
-            btn:Hook(hidehooks)
+            btn:Hooks(hidehooks)
 
             btn {
                 Points = {prev and { BOTTOMLEFT = bar:BOTTOMLEFT(outer+(i-1)*(btn_width+inner), outer) }
@@ -219,7 +219,9 @@ local function style_bars()
 
                 Style'.icon':TexCoord(0.1, 0.9, 0.1, 0.9),
 
-                Style'.HotKey':Font('Fonts/ARIALN.TTF', 14, 'OUTLINE')
+                Style'.HotKey':Font('Fonts/ARIALN.TTF', 14, 'OUTLINE'),
+
+                Style(name .. 'FloatingBG'):Texture ''
             }
 
             bar.ArtFrame {
@@ -276,7 +278,7 @@ end
 style_bars()
 
 -- for _, bar in pairs({ MultiBarBottomLeft, MultiBarBottomRight }) do
---     bar:Hook {
+--     bar:Hooks {
 --         OnShow = style_bars,
 --         OnHide = style_bars
 --     }

@@ -182,17 +182,58 @@ function uiext:Override(overrides)
 end
 
 
-function uiext:Script(scripts)
+function uiext:Scripts(scripts)
     for k, fn in pairs(scripts) do
         self:SetScript(k, fn)
     end
 end
 
 
-function uiext:Hook(hooks)
-    for k, fn in pairs(hooks) do
-        self:HookScript(k, fn)
+local chain_functions = function(t)
+    local fn = nil
+    for _, f in pairs(t) do
+        local fn_old = fn
+        if fn then
+            fn = function(...)
+                fn_old(...)
+                f(...)
+            end
+        else
+            fn = f
+        end
     end
+    return fn
+end
+
+
+function uiext:Hooks(hooks, context)
+    self.lqtHooks = self.lqtHooks or {}
+    self.lqtHookLibrary = self.lqtHookLibrary or {}
+    self.lqtHookLibrary[context or '_'] = hooks
+    for k, f in pairs(hooks) do
+        if not self.lqtHooks[k] then
+            local hooks = self.lqtHooks
+            self:HookScript(k, function(self, ...)
+                hooks[k](self, ...)
+            end)
+        end
+
+        local build = {}
+        for context, t in pairs(self.lqtHookLibrary) do
+            if t[k] then
+                table.insert(build, t[k])
+            end
+        end
+        self.lqtHooks[k] = chain_functions(build)
+    end
+end
+
+
+function uiext:UnhookAll()
+    for k, f in pairs(self.lqtHooks) do
+        self.lqtHooks[k] = function() end
+    end
+    self.lqtHookLibrary = {}
 end
 
 

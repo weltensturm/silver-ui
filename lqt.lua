@@ -130,13 +130,17 @@ local function parent_anchor_value(t, obj, anchoridx)
     if anchoridx[obj] then
         return anchoridx[obj]
     end
-    local from, toF, to, x, y = obj:GetPoint()
-    if not t[toF] then
-        anchoridx[obj] = { 0, obj:GetTop() or 0 }
-        return anchoridx[obj]
+    if not pcall(function()
+        local from, toF, to, x, y = obj:GetPoint()
+        if not t[toF] then
+            anchoridx[obj] = { 0, obj:GetTop() or 0 }
+            return
+        end
+        local i = parent_anchor_value(t, toF, anchoridx)[1]+1
+        anchoridx[obj] = { i, obj:GetTop() or 0 }
+    end) then
+        anchoridx[obj] = { 0, 100000 }
     end
-    local i = parent_anchor_value(t, toF, anchoridx)[1]+1
-    anchoridx[obj] = { i, obj:GetTop() or 0 }
     return anchoridx[obj]
 end
 

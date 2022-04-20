@@ -17,5 +17,6 @@ addon:Event {
             Style'.nameBackground':Texture ''
         }
         
+        TargetFrame.nameBackground:SetColorTexture(0.2,0.2,0.2,1)
     end
 }

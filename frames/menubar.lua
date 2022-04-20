@@ -28,7 +28,7 @@ local TopMenu = Frame
     :TOPLEFT(UIParent:TOPLEFT())
     :TOPRIGHT(UIParent:TOPRIGHT())
     :Height(24)
-    :Hook(alpha_listeners)
+    :Hooks(alpha_listeners)
     :FrameStrata 'MEDIUM'
 {
     Texture'.Bg'
@@ -54,7 +54,7 @@ local TopMenu = Frame
     .new()
 
 
-addon:Hook {
+addon:Hooks {
     OnUpdate = function(self, dt)
         if alpha ~= alphaTarget then
             local sign = alpha >= alphaTarget and -1 or 1
@@ -75,7 +75,7 @@ Style(QuestLogMicroButton)
     :HighlightTexture 'Interface/QUESTFRAME/AutoQuest'
     :PushedTexture 'Interface/QUESTFRAME/AutoQuest'
     :Parent(TopMenu)
-    :Hook(alpha_listeners)
+    :Hooks(alpha_listeners)
 {
     Style'.Texture'
         :ClearAllPoints()
@@ -102,8 +102,8 @@ MenuButton = Style
     :ClearAllPoints()
     :Size(SPACING, ICON_SIZE)
     :Parent(TopMenu)
-    :Hook(alpha_listeners)
-    :Hook {
+    :Hooks(alpha_listeners)
+    :Hooks {
         OnEnter = function(self)
             self.Hover.Bg:Show()
         end,
@@ -244,7 +244,7 @@ MenuButton = Style
 local Dropdown = Frame'.Dropdown'
     :Height(40)
     :Hide()
-    :Hook {
+    :Hooks {
         OnShow = function(self)
             local parent = self:GetParent()
             self:Points {
@@ -268,7 +268,7 @@ local Dropdown = Frame'.Dropdown'
 
 local DropdownBtn = Frame
     :Height(ICON_SIZE)
-    :Hook {
+    :Hooks {
         OnEnter = function(self)
             self:GetParent():Show()
             self.Hover:Show()
@@ -286,7 +286,7 @@ local DropdownBtn = Frame
             self.DisplayText:SetText(text)
         end,
         SetOnClick = function(self, click)
-            self:Hook { OnMouseUp = click }
+            self:Hooks { OnMouseUp = click }
         end
     }
 {
@@ -312,7 +312,7 @@ local DropdownBtn = Frame
 
 local DropdownSeparator = Frame
     :Height(3)
-    :Hook {
+    :Hooks {
         OnEnter = function(self)
             self:GetParent():Show()
             alphaTarget = 1
@@ -353,7 +353,7 @@ MenuButton(CharacterMicroButton)
     :Points {
         TOPLEFT = QuestLogMicroButton:TOPRIGHT(10, 0)
     }
-    :Hook {
+    :Hooks {
         OnEnter = function(self)
             self.Dropdown:Show()
         end,

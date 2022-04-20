@@ -5,7 +5,7 @@ local Style, Frame, Button, Texture, FontString = lqt.Style, lqt.Frame, lqt.Butt
 local Q = ns.util.method_chain_wrapper
 
 
-local frame = nil
+local editorWindow = nil
 
 
 local function GetUIParentChildren()
@@ -20,11 +20,6 @@ local function GetUIParentChildren()
     end
 
     return found
-end
-
-
-local function load_children(parent)
-
 end
 
 
@@ -53,8 +48,8 @@ local function ToParent(self)
 end
 
 
-local GTButton = Button
-    :Hook {
+local Btn = Button
+    :Hooks {
         OnEnter = function(self)
             self.hoverBg:Show()
         end,
@@ -72,7 +67,10 @@ local GTButton = Button
         :SetFont('Fonts/FRIZQT__.ttf', 12)
         { ToParent },
     Texture'.hoverBg'
-        :ColorTexture(0.3, 0.3, 0.3)
+        -- :ColorTexture(0.3, 0.3, 0.3)
+        :Texture 'Interface/BUTTONS/UI-Listbox-Highlight2'
+        :BlendMode 'ADD'
+        :VertexColor(1,1,1,0.2)
         :Hide()
         { ToParent },
     Style:SetSize(20, 20)
@@ -130,31 +128,26 @@ local function spawn()
 
     local btnPool = {}
 
-    local Btn = Button {
-        FontString'.Text'
-            :TextColor(1, 1, 1)
-            :Font('Fonts/FRIZQT__.ttf', 12)
-            :ClearAllPoints()
-            :Point('LEFT', btn, 'LEFT', 10, 0)
-    }
-
     local create_btn = function()
         local btn = nil
         if #btnPool > 0 then
             btn = btnPool[#btnPool]
             table.remove(btnPool, #btnPool)
+            btn:UnhookAll()
+            Btn(btn)
         else
-            btn = CreateFrame('Button', nil, UIParent, "UIPanelButtonTemplate")
+            btn = Btn.new() -- CreateFrame('Button', nil, UIParent, "UIPanelButtonTemplate")
         end
-        local text = btn:GetFontString()
-        text:SetTextColor(1, 1, 1)
-        text:SetFont('Fonts/FRIZQT__.ttf', 12)
-        text:ClearAllPoints()
-        text:SetPoint('LEFT', btn, 'LEFT', 10, 0)
+        btn.Text:SetTextColor(1, 1, 1)
+        btn.Text:SetFont('Fonts/FRIZQT__.ttf', 12)
+        btn.Text:ClearAllPoints()
+        btn.Text:SetPoint('LEFT', btn, 'LEFT', 10, 0)
         return Q(btn)
     end
 
-    frame = Frame
+    local hoverFrame = nil
+
+    editorWindow = Frame
         :SetWidth(1000)
         :SetHeight(600)
         :EnableMouse(true)
@@ -170,58 +163,76 @@ local function spawn()
                 self:SetRIGHT(self:GetParent():RIGHT(-3, 0))
             end
         },
-        GTButton'.closeBtn'
+        Btn'.closeBtn'
             :SetText('X')
-            :Hook { OnClick = function(self) frame:Hide() end }
-            { function(self) self:SetPoint('TOPRIGHT', self:GetParent(), 'TOPRIGHT', -6, -6) end }
+            :Scripts { OnClick = function(self) editorWindow:Hide() end }
+            { function(self) self:SetPoint('TOPRIGHT', self:GetParent(), 'TOPRIGHT', -6, -6) end },
+            
+        Btn'.pickFrameBtn'
+            :Text('>')
+            :Width(30)
+            :Scripts {
+                OnClick = function(self, button)
+                    if button == 'LeftButton' then
+                        hoverFrame:start()
+                    end
+                end
+            }
+            .init(function(self)
+                self:Points { TOPLEFT=self:GetParent():TOPLEFT(3.9, -5) }
+            end)
     }
         .new('BackdropTemplate')
 
     local set_frame_stack = nil
 
-    local hoverFrame = Frame
+    hoverFrame = Frame
         :SetFrameStrata('TOOLTIP')
-        :Hook {
-            OnMouseDown = function(self, button)
-                if button == 'LeftButton' then
-                    self:stop(self.lastStack, self.smallest)
-                end
-            end,
-            OnUpdate = function(self, time)
-                if self.pick then
-                    local stack = C_System.GetFrameStack()
-                    if stack ~= self.lastStack then
-                        self.lastStack = stack
-                        local smallest = UIParent
-                        for k, v in pairs(stack) do
-                            if v ~= self.tex then
-                                local w, h = v:GetSize()
-                                local w_c, h_c = smallest:GetSize()
-                                if w*h < w_c*h_c then
-                                    smallest = v
-                                end
-                            end
-                        end
-                        self.smallest = smallest
-                        self.tex:SetAllPoints(smallest)
-                    end
-                end
-            end
-        }
         .data {
             start = function(self)
                 self.pick = true
                 self:SetAllPoints(UIPanel)
                 self:EnableMouse(true)
                 self:Show()
-                frame:Hide()
+                editorWindow:Hide()
+                self:Scripts {
+                    OnMouseDown = function(self, button)
+                        if button == 'LeftButton' then
+                            self:stop(self.lastStack, self.smallest)
+                        end
+                    end,
+                    OnUpdate = function(self, time)
+                        if self.pick then
+                            local stack = C_System.GetFrameStack()
+                            if stack ~= self.lastStack then
+                                self.lastStack = stack
+                                local smallest = UIParent
+                                for k, v in pairs(stack) do
+                                    if v ~= self.tex then
+                                        local w, h = v:GetSize()
+                                        local w_c, h_c = smallest:GetSize()
+                                        if w*h < w_c*h_c then
+                                            smallest = v
+                                        end
+                                    end
+                                end
+                                self.smallest = smallest
+                                self.tex:SetAllPoints(smallest)
+                            end
+                        end
+                    end
+                }
             end,
             stop = function(self, stack, smallest)
+                self:Scripts {
+                    OnMouseDown = nil,
+                    OnUpdate = nil
+                }
                 self.pick = false
                 self.tex:SetAllPoints(self)
                 self:EnableMouse(false)
                 self:Hide()
-                frame:Show()
+                editorWindow:Show()
                 set_frame_stack(stack, smallest)
             end
         }
@@ -235,13 +246,13 @@ local function spawn()
 
     local editorShadow = nil
 
-    local editor = Q(CreateFrame('EditBox', nil, frame))
-        :SetPoint('TOPLEFT', frame, 'TOPLEFT', 10, -31)
-        :SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -330, 15)
+    local editor = Q(CreateFrame('EditBox', nil, editorWindow))
+        :SetPoint('TOPLEFT', editorWindow, 'TOPLEFT', 10, -31)
+        :SetPoint('BOTTOMRIGHT', editorWindow, 'BOTTOMRIGHT', -330, 15)
         :SetFont('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11)
         -- :SetShadowOffset(0.01, 0.01)
         -- :SetShadowColor(0.9,0.9,0.9)
-        :Script {
+        :Scripts {
             OnEnterPressed = function(self)
                 if not self.CTRL then
                     self:Insert('\n')
@@ -302,7 +313,7 @@ local function spawn()
                     self.CTRL = false
                 elseif key == 'ESCAPE' then
                     self.CTRL = false
-                    frame:Hide()
+                    editorWindow:Hide()
                 end
             end,
             OnTextChanged = function(self, text)
@@ -317,7 +328,7 @@ local function spawn()
         :SetMultiLine(true)
         [1]
     
-    editorShadow = Q(CreateFrame('EditBox', nil, frame))
+    editorShadow = Q(CreateFrame('EditBox', nil, editorWindow))
         :SetAllPoints(editor)
         :SetFont('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11)
         :SetJustifyH("LEFT")
@@ -326,30 +337,14 @@ local function spawn()
         :SetTextColor(0.7, 0.7, 0.7)
         :Disable()
 
-    local pickButton = Q(CreateFrame('Button', nil, frame, 'UIPanelButtonTemplate'))
-        :SetPoint('TOPLEFT', frame, 'TOPLEFT', 3.9, -5)
-        :SetText('>')
-        :SetWidth(30)
-        :Script {
-            OnMouseDown = function(self, button)
-                if button == 'LeftButton' then
-                    hoverFrame:start()
-                end
-            end
-        }
-        [1]
-    pickButton.Left:SetTexture('')
-    pickButton.Middle:SetTexture('')
-    pickButton.Right:SetTexture('')
-
     local scrollSpeed = 0
-    local sf = CreateFrame("ScrollFrame", nil, frame)
+    local sf = CreateFrame("ScrollFrame", nil, editorWindow)
     sf:SetPoint('TOPLEFT', editor, 'TOPRIGHT', 5, 0)
-    sf:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -10, 10)
+    sf:SetPoint('BOTTOMRIGHT', editorWindow, 'BOTTOMRIGHT', -10, 10)
 
-    local scroll = CreateFrame('Frame', nil, frame)
+    local scroll = CreateFrame('Frame', nil, editorWindow)
     
-	sf:Script {
+	sf:Scripts {
         OnSizeChanged = function(self)
             scroll:SetWidth(self:GetWidth())
             scroll:SetHeight(self:GetHeight())
@@ -358,7 +353,7 @@ local function spawn()
             scrollSpeed = scrollSpeed - delta
         end
     }
-    sf:Hook {
+    sf:Scripts {
         OnUpdate = function(self, time)
             if scrollSpeed ~= 0 then
                 local current = self:GetVerticalScroll()
@@ -388,7 +383,7 @@ local function spawn()
     
     scroll.children = {}
 
-    frame.buttons = {}
+    editorWindow.buttons = {}
 
     set_frame_stack = function(_, smallest)
 
@@ -402,12 +397,12 @@ local function spawn()
             table.remove(scroll.children, i)
         end
 
-        for i = #frame.buttons, 1, -1 do
-            frame.buttons[i]:Hide()
-            frame.buttons[i]:ClearAllPoints()
-            frame.buttons[i]:SetParent(UIParent)
-            table.insert(btnPool, frame.buttons[i])
-            table.remove(frame.buttons, i)
+        for i = #editorWindow.buttons, 1, -1 do
+            editorWindow.buttons[i]:Hide()
+            editorWindow.buttons[i]:ClearAllPoints()
+            editorWindow.buttons[i]:SetParent(UIParent)
+            table.insert(btnPool, editorWindow.buttons[i])
+            table.remove(editorWindow.buttons, i)
         end
 
         assert(#scroll.children == 0)
@@ -426,20 +421,20 @@ local function spawn()
             local c = parents[i][1]
 
             local btn = create_btn()
-                :SetParent(frame)
+                :SetParent(editorWindow)
                 :SetHeight(15)
                 :SetText(parents[i][2])
                 :Show()
-                :Script {
-                    OnEnter = function()
+                :Hooks {
+                    OnEnter = function(self)
                         if c:GetTop() and c ~= hoverFrame and c ~= hoverFrame.tex and c ~= UIParent then
                             hoverFrame:SetAllPoints(c)
                             hoverFrame:Show()
                         end
                     end,
 
-                    OnLeave = function()
-                        hoverFrame:SetAllPoints(frame)
+                    OnLeave = function(self)
+                        hoverFrame:SetAllPoints(editorWindow)
                         hoverFrame:Hide()
                     end,
 
@@ -462,26 +457,14 @@ local function spawn()
                              or {'BOTTOMLEFT', sf, 'TOPLEFT', 0, 7}
                 ))
             
-            local text = btn[1]:GetFontString()
+            local text = btn[1].Text
             text:SetFont('Fonts/ARIALN.TTF', 12)
             if lastBtn then
                 text:SetTextColor(0.7, 0.7, 0.7)
             end
             btn:SetWidth(text:GetWidth() + 20)
-            
-            btn[1].Left:SetTexture('')
-            btn[1].Middle:SetTexture('')
-            btn[1].Right:SetTexture('')
 
-            -- if not lastBtn then
-            --     pickButton.Left:SetTexture('')
-            --     pickButton.Middle:SetTexture('')
-            --     pickButton.Right:SetTexture('')
-            --     pickButton:ClearAllPoints()
-            --     pickButton:SetPoint('LEFT', btn[1], 'RIGHT', -5, 0)
-            -- end
-
-            table.insert(frame.buttons, btn[1])
+            table.insert(editorWindow.buttons, btn[1])
 
             lastBtn = btn[1]
 
@@ -498,16 +481,18 @@ local function spawn()
                 :SetHeight(20)
                 :SetWidth(sf:GetWidth() - 8)
                 :Show()
-                :Script {
-                    OnEnter = function()
-                        if is_gui and c.GetTop and c:GetTop() and c ~= hoverFrame and c ~= hoverFrame.tex then
-                            hoverFrame:SetAllPoints(c)
-                            hoverFrame:Show()
-                        end
+                :Hooks {
+                    OnEnter = function(self)
+                        pcall(function()
+                            if is_gui and c.GetTop and c:GetTop() and c ~= hoverFrame and c ~= hoverFrame.tex then
+                                hoverFrame:SetAllPoints(c)
+                                hoverFrame:Show()
+                            end
+                        end)
                     end,
 
-                    OnLeave = function()
-                        hoverFrame:SetAllPoints(frame)
+                    OnLeave = function(self)
+                        hoverFrame:SetAllPoints(editorWindow)
                         hoverFrame:Hide()
                     end,
 
@@ -528,7 +513,7 @@ local function spawn()
                     OnMouseUp = function() end
                 }
 
-            local text = btn[1]:GetFontString()
+            local text = btn[1].Text
             text:ClearAllPoints()
             text:SetPoint('LEFT', btn[1], 'LEFT', 0, 0)
             text:SetFont('Fonts/ARIALN.TTF', 12)
@@ -551,22 +536,18 @@ local function spawn()
             lastText = btn[1]
 
             table.insert(scroll.children, btn[1])
-
-            btn[1].Left:SetTexture('')
-            btn[1].Middle:SetTexture('')
-            btn[1].Right:SetTexture('')
         end
     end
 
     set_frame_stack(nil, UIParent)
 
-    frame'.Bg=Texture'
+    editorWindow'.Bg=Texture'
         :SetColorTexture(0.05,0.05,0.05,1)
-        :SetPoint('TOPLEFT', frame, 'TOPLEFT', 4, -4)
-        :SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -4, 4)
+        :SetPoint('TOPLEFT', editorWindow, 'TOPLEFT', 4, -4)
+        :SetPoint('BOTTOMRIGHT', editorWindow, 'BOTTOMRIGHT', -4, 4)
         :SetDrawLayer('BACKGROUND', -7)
 
-    frame:SetBackdrop({
+    editorWindow:SetBackdrop({
         -- bgFile = "Interface/ACHIEVEMENTFRAME/UI-GuildAchievement-Parchment",
         -- bgFile = 'Interface/HELPFRAME/DarkSandstone-Tile',
         edgeFile = "Interface/FriendsFrame/UI-Toast-Border",
@@ -575,7 +556,7 @@ local function spawn()
         tileSize = 300,
         insets = { left = 4, right = 4, top = 4, bottom = 4 }
     })
-    frame:Show()
+    editorWindow:Show()
 
 end
 
@@ -609,7 +590,7 @@ sorted_children = function(obj)
         table.insert(t, {
             nil,
             SORT_ATTR ..
-            '|cffaaaaabtexture |cffffffff' .. obj:GetTexture()
+            '|cffaaaaabtexture |cffffffff' .. (obj:GetTexture() or 'none')
         })
     end
 
@@ -626,15 +607,17 @@ sorted_children = function(obj)
     }
 
     for i = 1, obj:GetNumPoints() do
-        local point, relativeTo, relativePoint, x, y = obj:GetPoint(i)
-        table.insert(t, {
-            relativeTo,
-            SORT_ATTR ..
-            '|cffaaaaac' .. point_names[point] ..
-            ' |cffffffff' .. (relativeTo and relativeTo:GetObjectType() or '') .. ' ' ..
-            (relativeTo and relativeTo:GetName() or '') .. '.' ..
-            point_names[relativePoint] .. '(' .. format_float(x) .. ', ' .. format_float(y) .. ')'
-        })
+        pcall(function()
+            local point, relativeTo, relativePoint, x, y = obj:GetPoint(i)
+            table.insert(t, {
+                relativeTo,
+                SORT_ATTR ..
+                '|cffaaaaac' .. point_names[point] ..
+                ' |cffffffff' .. (relativeTo and relativeTo:GetObjectType() or '') .. ' ' ..
+                (relativeTo and relativeTo:GetName() or '') .. '.' ..
+                point_names[relativePoint] .. '(' .. format_float(x) .. ', ' .. format_float(y) .. ')'
+            })
+        end)
     end
 
     local parent = obj:GetParent()
@@ -644,6 +627,7 @@ sorted_children = function(obj)
         '|cffaaaaabparent |cffffffff' .. tostring(parent and (parent:GetName() or parent:GetObjectType()))
     })
 
+    local idx = 1
     local visited = {}
     for k, v in pairs(obj) do
         visited[v] = true
@@ -652,8 +636,7 @@ sorted_children = function(obj)
                 table.insert(t, {
                     v,
                     SORT_GUI ..
-                    '|cff' .. string.format('%06x', 10000 - (v:GetTop() or 9999)) ..
-                    '|cff' .. string.format('%06x', 10000 - (v:GetLeft() or 9999)) ..
+                    '|cff' .. string.format('%06x', 10000 - idx) ..
                     '|cffffaaff' .. v:GetObjectType() .. ' ' ..
                     '|cffffffff' .. k .. ' ' ..
                     '|cffaaaaaa' .. (v.GetName and (v:GetName() or '') .. ' ' or '') ..
@@ -661,6 +644,7 @@ sorted_children = function(obj)
                     -- tostring(-(v:GetTop() or 999999)) .. ' ' ..
                     -- tostring(-(v:GetLeft() or 999999))
                 })
+                idx = idx - 1
             else
                 table.insert(t, { v, SORT_DATA .. '|cffffffff' .. k .. ' = |cffffaaaatable'})
             end
@@ -682,8 +666,7 @@ sorted_children = function(obj)
                 table.insert(t, {
                     c,
                     SORT_GUI ..
-                    '|cff' .. string.format('%06x', 10000 - (c:GetTop() or 1)) ..
-                    '|cff' .. string.format('%06x', 10000 - (c:GetLeft() or 1)) ..
+                    '|cff' .. string.format('%06x', 10000 - idx) ..
                     '|cffffaaff' .. c:GetObjectType() .. ' ' ..
                     '|cffffffff ' ..
                     '|cffaaaaaa' .. (c.GetName and (c:GetName() or '') .. ' ' or '') ..
@@ -691,6 +674,7 @@ sorted_children = function(obj)
                     -- tostring(-(c:GetTop() or 999999)) .. ' ' ..
                     -- tostring(-(c:GetLeft() or 999999))
                 })
+                idx = idx - 1
             end
         end
     end
@@ -801,11 +785,11 @@ SLASH_GUITREE2 = '/gt'
 
 SlashCmdList['GUITREE'] = function(msg, editbox)
     
-    if frame then
-        if frame:IsShown() then
-            frame:Hide()
+    if editorWindow then
+        if editorWindow:IsShown() then
+            editorWindow:Hide()
         else
-            frame:Show()
+            editorWindow:Show()
         end
     else
         spawn()

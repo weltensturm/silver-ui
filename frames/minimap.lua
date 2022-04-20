@@ -46,7 +46,7 @@ local addon = CreateFrame('Frame')
 local Hide = Style:Hide()
 
 
-addon:Hook {
+addon:Hooks {
     OnUpdate = function()
         if MinimapBackdrop.TargetAlpha then
             MinimapBackdrop:SetAlpha(MinimapBackdrop.TargetAlpha)
@@ -94,23 +94,26 @@ addon:Event {
             :MaskTexture 'Interface/GUILDFRAME/GuildLogoMask_L'
             :QuestBlobRingScalar(0.8)
             :TaskBlobRingScalar(0.8)
-            :Hook {
+            :Hooks {
                 OnMouseWheel = function(self, delta)
                     self:SetZoom(math.max(self:GetZoom() + delta, 0))
                 end
             }
+            :Hooks(backdropHooks)
         {
 
+            Style'.Button':Hooks(backdropHooks),
+            
             Style'.MinimapBackdrop'
                 :SetAllPoints(Minimap)
-                :Hook(backdropHooks)
+                -- :Hooks(backdropHooks)
             {
                 Hide'.MinimapZoomIn',
                 Hide'.MinimapZoomOut',
                 Hide'.MinimapNorthTag',
                 Hide'.MiniMapWorldMapButton',
-                Style'.Button':Hook(backdropHooks),
-                Style'.*.Button':Hook(backdropHooks),
+                Style'.Button':Hooks(backdropHooks),
+                Style'.*.Button':Hooks(backdropHooks),
             },
 
             Texture'.Bg'

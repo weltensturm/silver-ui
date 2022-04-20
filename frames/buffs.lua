@@ -1,7 +1,7 @@
 local _, ns = ...
 local lqt = ns.lqt
 
-local Cooldown, Texture, MaskTexture = lqt.Cooldown, lqt.Texture, lqt.MaskTexture
+local Style, Cooldown, Texture, MaskTexture = lqt.Style, lqt.Cooldown, lqt.Texture, lqt.MaskTexture
 
 
 local addon = CreateFrame('Frame')
@@ -10,11 +10,14 @@ local addon = CreateFrame('Frame')
 BUFF_WARNING_TIME = 0
 
 
+UIParent_UpdateTopFramePositions = function() end
+
+
 addon:Event {
 
     PLAYER_ENTERING_WORLD = function()
         BuffFrame:ClearAllPoints()
-        BuffFrame:SetPoint('BOTTOMRIGHT', PlayerFrame, 'TOPRIGHT', 0, 25)
+        BuffFrame:SetPoint('TOPRIGHT', MinimapCluster, 'TOPLEFT', -10, -25)
         for _, button in pairs(BuffFrame.BuffButton or {}) do
             button:SetSize(32, 32)
 
@@ -70,7 +73,7 @@ addon:Event {
             -- button.Icon:SetMask('Interface/Masks/CircleMaskScalable')
             if not lastBtn then
                 button:ClearAllPoints()
-                button:SetPoint('BOTTOMRIGHT', BuffFrame, 'TOPRIGHT', 0, 30)
+                button:SetPoint('TOPRIGHT', BuffFrame, 'BOTTOMRIGHT', 0, -20)
             end
             button.Border:Hide()
             lastBtn = button

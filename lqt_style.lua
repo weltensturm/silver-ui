@@ -20,6 +20,7 @@ local BOUND_FRAME = 6
 
 
 local newaction = nil
+local get_context = nil
 
 
 local ops = {
@@ -29,8 +30,12 @@ local ops = {
             setter(object, unpack(args[2]))
         else
             setter = object[args[1]]
-            assert(setter, object:GetObjectType() .. ' has no function ' .. args[1])
-            object[args[1]](object, unpack(args[2]))
+            assert(setter, args[3] .. ':\n' .. object:GetObjectType() .. ' has no function ' .. args[1])
+            if args[1] == 'Hooks' then
+                setter(object, unpack(args[2]), args[3])
+            else
+                setter(object, unpack(args[2]))
+            end
         end
     end,
     [NOOP] = function() end,
@@ -132,19 +137,19 @@ end
 
 local action_chain_meta = {}
 
-function action_chain_meta:__index(index)
-    if type(index) == 'number' then
-        return rawget(self, index)
+function action_chain_meta:__index(attr)
+    if type(attr) == 'number' then
+        return rawget(self, attr)
     else
         return function(arg1, ...)
             if arg1 == self then
-                local action = newaction(self, { [ACTION]=CALLMETHOD, [ARGS]={ index, { ... }} })
+                local action = newaction(self, { [ACTION]=CALLMETHOD, [ARGS]={ attr, { ... }, get_context() } })
                 if action[BOUND_FRAME] then
                     run_single(action)
                 end
                 return action
             else
-                return style_actions[index](self, arg1, ...)
+                return style_actions[attr](self, arg1, ...)
             end
         end
     end
@@ -211,6 +216,29 @@ newaction = function(parent, new)
     }
     setmetatable(action, action_chain_meta)
     return action
+end
+
+
+-- local t = "[string \"@Interface\\AddOns\\Silver-ui\\frames/player.lua\""
+-- print(
+-- strmatch(t, ".lua"),
+-- strmatch(t, "lqt.lua"),
+-- strmatch(t, "uiext.lua"),
+-- strmatch(t, "lqt_style.lua")
+-- )
+get_context = function()
+    return strsplittable('\n', debugstack(3,0,1))[1]
+    -- local stack = strsplittable('\n', debugstack())
+    -- for i = #stack, 1, -1 do
+    --     if strmatch(stack[i], ".lua")
+    --        and not strmatch(stack[i], "lqt.lua")
+    --        and not strmatch(stack[i], "uiext.lua")
+    --        and not strmatch(stack[i], "lqt_style.lua")
+    --     then
+    --         print('C ', i, ' ', stack[i], '\nF', stack[3])
+    --         return stack[i]
+    --     end
+    -- end
 end
 
 

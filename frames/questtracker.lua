@@ -10,8 +10,8 @@ ObjectiveTrackerFrame.IsUserPlaced = function() return true end
 
 Style(ObjectiveTrackerFrame)
     -- :Points { TOPRIGHT = Minimap:BOTTOMRIGHT(-15, 0) }
-    :Points { TOPRIGHT = MinimapCluster:BOTTOMRIGHT(35, -20) }
-    :Height(600)
+    :Points { TOPRIGHT = MinimapCluster:BOTTOMRIGHT(25, -20) }
+    :Height(400)
 {
     -- Style'.BlocksFrame.QuestHeader' {
     --     Style'.Background':Texture '',
@@ -38,6 +38,9 @@ local hooks = {
 }
 
 
+local poiSetpointOverridden = {}
+
+
 local function update_size()
     Style(ObjectiveTrackerFrame)
         :Width(400)
@@ -46,9 +49,7 @@ local function update_size()
         -- Texture'.Bg'
         --     :ColorTexture(0, 0, 0, 0.3)
         --     :AllPoints(ObjectiveTrackerFrame),
-        Style'.BlocksFrame'
-            :Hook(hooks)
-        {
+        Style'.BlocksFrame' {
             --Style'.Button':Hide(),
             -- Style'.Button' {
             --     function(self)
@@ -58,17 +59,25 @@ local function update_size()
             --         }
             --     end
             -- },
-            Style'.Button':Hook(hooks),
+            Style'.ScenarioBlocksFrame'
+                :Points { TOPRIGHT = ObjectiveTrackerBlocksFrame:TOPRIGHT(0, -40) },
+            Style'.Button':Hooks(hooks),
             Style'.Frame'
                 :SetWidth(350)
-                :Hook(hooks)
+                :Hooks(hooks)
             {
-                Style'.HeaderButton':Hook(hooks),
+                Style'.HeaderButton':Hooks(hooks):Height(30),
+                Style'.Text':Width(290):SetJustifyH('RIGHT'),
                 Style'.HeaderText':SetJustifyH('RIGHT'),
-                Style'.Frame':Hook(hooks) {
+                Style'.Frame':Hooks(hooks):Width(350) {
                     Style'.Text':SetJustifyH('RIGHT'):SetWidth(OBJECTIVE_TRACKER_TEXT_WIDTH-10),
                     Style'.Dash':Hide(),
                     Style'.Check':Hide(),
+                    Style'.Bar' {
+                        function(self)
+                            self:Points { RIGHT = self:GetParent():RIGHT() }
+                        end
+                    }
                 },
                 Style:FitToChildren(),
             },
@@ -81,20 +90,21 @@ end
 addon:EventHook {
     PLAYER_ENTERING_WORLD = update_size,
     QUEST_WATCH_LIST_CHANGED = update_size,
+    QUEST_WATCH_UPDATE = update_size,
     QUEST_LOG_UPDATE = update_size,
     SUPER_TRACKING_CHANGED = update_size
 }
 
 
 Style(ObjectiveTrackerFrame.HeaderMenu) {
-    Style'.Button':Hook(hooks),
+    Style'.Button':Hooks(hooks),
     Frame'.HoverFrame'
         :FrameStrata('BACKGROUND', -1)
         :TOPLEFT(ObjectiveTrackerFrame:TOPLEFT())
         :TOPRIGHT(ObjectiveTrackerFrame:TOPRIGHT())
         :Height(42)
-        :Hook(hooks)
-        :Hook {
+        :Hooks(hooks)
+        :Hooks {
             OnMouseDown = function(self)
                 self:GetParent().MinimizeButton:Click()
             end
@@ -106,15 +116,15 @@ for frame in ObjectiveTrackerFrame.BlocksFrame'.Frame' do
     if frame.MinimizeButton and frame.Background then
         Style(frame) {
             Style'.MinimizeButton'
-                :Hook(hooks)
-                :Hook {
+                :Hooks(hooks)
+                :Hooks {
                     OnClick = update_size
                 },
             Style'.Background':Hide(),
             Frame'.HoverFrame'
                 -- :FrameStrata 'BACKGROUND'
-                :Hook(hooks)
-                :Hook {
+                :Hooks(hooks)
+                :Hooks {
                     OnMouseDown = function(self)
                         self:GetParent().MinimizeButton:Click()
                     end
@@ -132,7 +142,7 @@ addon:RegisterEvent('QUEST_WATCH_LIST_CHANGED')
 addon:RegisterEvent('SUPER_TRACKING_CHANGED')
 
 
-addon:Hook {
+addon:Hooks {
     OnEvent = function()
         for frame in ObjectiveTrackerFrame.BlocksFrame'.Frame' do
             if frame.MinimizeButton and frame.Background then

@@ -12,32 +12,36 @@ local alphaTarget = 0
 addon:Event {
     UPDATE_CHAT_WINDOWS = function()
         ChatFrame1.timeVisibleSecs = 10
+        ChatFrame2.timeVisibleSecs = 10
+        ChatFrame3.timeVisibleSecs = 10
+        ChatFrame4.timeVisibleSecs = 10
+        ChatFrame5.timeVisibleSecs = 10
+        ChatFrame6.timeVisibleSecs = 10
         -- ChatFrame1:EnableMouse(false)
+        QuickJoinToastButton:Points {
+            TOPLEFT = ChatAlertFrame:TOPLEFT()
+        }
+
+        ChatFrameChannelButton:Points {
+            BOTTOMLEFT = ChatFrameMenuButton:TOPLEFT(2, 0)
+        }
+
+        UIParent'GuildMicroButton'
+            :ClearAllPoints()
+            :SetTOPLEFT(QuickJoinToastButton:BOTTOMLEFT(1.5, 0))
+
+
+        UIParent'LFDMicroButton'
+            :ClearAllPoints()
+            :SetTOPLEFT(GuildMicroButton:BOTTOMLEFT(0, 0))
+
+
+        UIParent'EJMicroButton'
+            :ClearAllPoints()
+            :SetTOPLEFT(LFDMicroButton:BOTTOMLEFT())
+
     end,
 }
-
-
-QuickJoinToastButton:Points {
-    TOPLEFT = ChatAlertFrame:TOPLEFT()
-}
-
-ChatFrameChannelButton:Points {
-    BOTTOMLEFT = ChatFrameMenuButton:TOPLEFT(2, 0)
-}
-
-UIParent'GuildMicroButton'
-    :ClearAllPoints()
-    :SetTOPLEFT(QuickJoinToastButton:BOTTOMLEFT(1.5, 0))
-
-
-UIParent'LFDMicroButton'
-    :ClearAllPoints()
-    :SetTOPLEFT(GuildMicroButton:BOTTOMLEFT(0, 0))
-
-
-UIParent'EJMicroButton'
-    :ClearAllPoints()
-    :SetTOPLEFT(LFDMicroButton:BOTTOMLEFT())
 
 
 
@@ -62,7 +66,7 @@ local function hide_all()
 end
 
 
-addon:Hook {
+addon:Hooks {
     OnUpdate = function(self, dt)
         if alphaTarget ~= alpha then
             local sign = alpha >= alphaTarget and -1 or 1
@@ -87,22 +91,22 @@ for _, v in pairs({
     LFDMicroButton,
     EJMicroButton,
 }) do
-    v:Hook {
+    v:Hooks {
         OnEnter = show_all,
         OnLeave = hide_all
     }
 end
 
 for i = 1, 10 do
-    _G['ChatFrame'..i]:Hook {
+    _G['ChatFrame'..i]:Hooks {
         OnEnter = show_all,
         OnLeave = hide_all
     }
-    _G['ChatFrame'..i].buttonFrame:Hook {
+    _G['ChatFrame'..i].buttonFrame:Hooks {
         OnEnter = show_all,
         OnLeave = hide_all
     }
-    _G['ChatFrame'..i..'Tab']:Hook {
+    _G['ChatFrame'..i..'Tab']:Hooks {
         OnEnter = show_all,
         OnLeave = hide_all
     }
