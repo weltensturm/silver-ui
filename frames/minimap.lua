@@ -83,7 +83,9 @@ addon:Event {
         }
         TimeManagerClockButton'.Texture':Hide()
 
-        MiniMapTrackingButtonBorder:SetTexture('')
+        if MiniMapTrackingButtonBorder then
+            MiniMapTrackingButtonBorder:SetTexture('')
+        end
         MiniMapTrackingBackground:SetTexture('')
         
         MinimapCluster:SetSize(250, 250)
@@ -92,8 +94,6 @@ addon:Event {
             :Size(250, 250)
             :Points { TOPRIGHT = MinimapCluster:TOPRIGHT(-10, -20) }
             :MaskTexture 'Interface/GUILDFRAME/GuildLogoMask_L'
-            :QuestBlobRingScalar(0.8)
-            :TaskBlobRingScalar(0.8)
             :Hooks {
                 OnMouseWheel = function(self, delta)
                     self:SetZoom(math.max(self:GetZoom() + delta, 0))
@@ -101,6 +101,14 @@ addon:Event {
             }
             :Hooks(backdropHooks)
         {
+            function(self)
+                if self.SetQuestBlobRingScalar then
+                    self:SetQuestBlobRingScalar(0.8)
+                end
+                if self.SetTaskBlobRingScalar then
+                    self:SetTaskBlobRingScalar(0.8)
+                end
+            end,
 
             Style'.Button':Hooks(backdropHooks),
             
@@ -141,6 +149,8 @@ addon:Event {
             --     :Points { TOPLEFT = Minimap:TOPLEFT(-90, 90),
             --               BOTTOMRIGHT = Minimap:BOTTOMRIGHT(90, -90) },
 
+            Style'.MiniMapMailFrame':Points { BOTTOMLEFT = Minimap:TOPRIGHT(-55, -70) },
+
             Texture'.ZoneBackground'
                 :Texture 'Interface/Common/ShadowOverlay-Top'
                 :Points { TOPLEFT = Minimap:TOPLEFT(0, -20),
@@ -166,16 +176,59 @@ addon:Event {
                 :UseCircularEdge(true)
                 :Points { TOPLEFT = Minimap:TOPLEFT(-4, 4),
                           BOTTOMRIGHT = Minimap:BOTTOMRIGHT(4, -4) }
-                :Cooldown(GetTime() - UnitXP('player')*0.965, UnitXPMax('player'))
+                :Cooldown(GetTime() - UnitXP('player')/UnitXPMax('player')*0.964, 1)
                 :Rotation(math.rad(180*1.035))
                 :SwipeTexture 'Interface/GUILDFRAME/GuildLogoMask_L'
                 -- :SwipeColor(0.2, 1, 0.5, 1)
-                :SwipeColor(0.5, 0.5, 0.5, 1)
+                :SwipeColor(1, 1, 1, 1)
                 :DrawEdge(false)
                 :FrameStrata('BACKGROUND', 1)
                 :HideCountdownNumbers(true)
                 :Reverse(true)
-                :Pause(),
+                :Pause()
+                :Event {
+                    PLAYER_XP_UPDATE = function(self)
+                        self:SetCooldown(GetTime() - UnitXP('player')/UnitXPMax('player')*0.964, 1)
+                    end
+                },
+
+            Cooldown'.XPanim'
+                .init { 
+                    progress = 0,
+                    target = UnitXP('player')/UnitXPMax('player'),
+                    start = GetTime()
+                }
+                :UseCircularEdge(true)
+                :Points { TOPLEFT = Minimap:TOPLEFT(-4, 4),
+                          BOTTOMRIGHT = Minimap:BOTTOMRIGHT(4, -4) }
+                :Cooldown(GetTime(), 1)
+                :Pause()
+                :Rotation(math.rad(180*1.035))
+                :SwipeTexture 'Interface/GUILDFRAME/GuildLogoMask_L'
+                :SwipeColor(0.3, 0.3, 0.3, 1)
+                :DrawEdge(true)
+                :FrameStrata('BACKGROUND', 2)
+                :HideCountdownNumbers(true)
+                :Reverse(true)
+                :Event {
+                    PLAYER_XP_UPDATE = function(self)
+                        self.target = UnitXP('player')/UnitXPMax('player')
+                        self.start = GetTime()
+                        -- self:SetCooldown(GetTime() - UnitXP('player')/UnitXPMax('player')*0.965, 1)
+                    end,
+                    PLAYER_ENTERING_WORLD = function(self)
+                        self.progress = self.target
+                    end
+                }
+                :Hooks {
+                    OnUpdate = function(self, dt)
+                        if self.progress ~= self.target and GetTime() > self.start+3.14 then
+                            self.progress = math.min(self.progress + dt/5, self.target)
+                            self:SetCooldown(GetTime() - math.min(self.progress, 1)*0.965, 1)
+                            self:Pause()
+                        end
+                    end
+                },
 
             Frame'.Level'
                 :Points { CENTER = Minimap:BOTTOM(0, 0) }
@@ -202,10 +255,6 @@ addon:Event {
             }
         }
 
-    end,
-
-	PLAYER_XP_UPDATE = function()
-        Minimap.XPBG:SetCooldown(GetTime() - UnitXP('player'), UnitXPMax('player'))
     end
 }
 

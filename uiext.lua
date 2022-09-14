@@ -31,7 +31,7 @@ function uiext:FitToChildren()
                 end
             end
         end
-        self:SetHeight(height)
+        self:SetHeight(height + self:GetEffectiveScale())
     end
 end
 
@@ -70,7 +70,7 @@ end
 function uiext:CornerOffset(x, y)
     local from, parent, to, _, _ = self:GetPoint()
     local offset = CORNER_TO_VEC[to]
-    self:SetPoint(from, parent, to, offset[1]*x, offset[2]*y)
+    self:SetPoint(to, parent, to, offset[1]*x, offset[2]*y)
 end
 
 -- function uiext:SetHide(bool)
@@ -206,10 +206,15 @@ local chain_functions = function(t)
 end
 
 
+get_context = function()
+    return strsplittable('\n', debugstack(3,0,1))[1]
+end
+
+
 function uiext:Hooks(hooks, context)
     self.lqtHooks = self.lqtHooks or {}
     self.lqtHookLibrary = self.lqtHookLibrary or {}
-    self.lqtHookLibrary[context or '_'] = hooks
+    self.lqtHookLibrary[context or get_context()] = hooks
     for k, f in pairs(hooks) do
         if not self.lqtHooks[k] then
             local hooks = self.lqtHooks
@@ -264,7 +269,7 @@ function uiext:EventHook(handlers)
                 handler(self, ...)
             end
         end
-        self:SetScript('OnEvent', self.OnEventHookHandler)
+        self:HookScript('OnEvent', self.OnEventHookHandler)
     end
     for k, handler in pairs(handlers) do
         if not self[k] then
@@ -298,6 +303,11 @@ function uiext:Strip(...)
         self'.Frame':Strip()
         self'.Texture':SetTexture(''):SetAtlas('')
     end
+end
+
+
+function uiext:SetClass(name)
+    self.Class = name
 end
 
 

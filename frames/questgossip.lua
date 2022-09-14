@@ -2,25 +2,32 @@ local _, ns = ...
 local lqt = ns.lqt
 local matches = lqt.matches
 
-local Style = lqt.Style
+local Style, Texture = lqt.Style, lqt.Texture
 
 local WIDTH = 420
 local MIN_HEIGHT = 150
 
 
-local addon = CreateFrame("Frame", nil, UIParent)
+local Hide = Style:Hide()
 
-for _, event in pairs({
-    'GOSSIP_SHOW',
-    'QUEST_ACCEPTED',
-    'QUEST_COMPLETE',
-    'QUEST_DETAIL',
-    'QUEST_FINISHED',
-    'QUEST_GREETING',
-    'QUEST_PROGRESS',
-    'ITEM_TEXT_BEGIN',
-    'ITEM_TEXT_READY',
-}) do addon:RegisterEvent(event) end
+
+local function ToParent(from, to, x, y)
+    return function(self)
+        self:SetPoint(from, self:GetParent(), to, x, y)
+    end
+end
+
+
+local function AllParent()
+    return function(self)
+        self:SetAllPoints(self:GetParent())
+    end
+end
+
+
+local function byVisible(e)
+    return e:IsVisible()
+end
 
 
 local function inline_list_layout(selection, filter, margin)
@@ -45,9 +52,10 @@ local function inline_list_layout(selection, filter, margin)
                 if not before then
                     before = select(2, element:GetPoint())
                 end
-                -- print(element:GetName(), '->', (previous_match or before):GetName())
-                element:SetPoint('TOPLEFT', previous_match or before, 'BOTTOMLEFT', 0, -margin.inner)
-                previous_match = element
+                if previous_match or before then
+                    element:SetPoint('TOPLEFT', previous_match or before, 'BOTTOMLEFT', 0, -margin.inner)
+                    previous_match = element
+                end
             end
         end
     end
@@ -90,18 +98,107 @@ local and_then_meta = {
 setmetatable(and_then, and_then_meta)
 
 
-addon:HookScript("OnEvent", function(self, event)
+local StyleQuestInfoRewardsFrame = Style {
+    Style'.Button'
+        .filter(function(self) return not self.PortraitFrame end)
+        :Size(200, 20)
+        :Hooks {
+            OnClick = function(self)
+                if QuestFrameRewardPanel:IsShown() and not IsModifierKeyDown() then
+                    QuestFrameCompleteQuestButton:Click()
+                    QuestInfoItemHighlight:SetPoint('TOPLEFT', self, 'TOPLEFT', -10, -2.5)
+                end
+            end,
+            OnEnter = function(self)
+                if QuestFrameRewardPanel:IsShown() then
+                    Style(QuestInfoItemHighlight)
+                        :SetHeight(20)
+                        :SetPoint('TOPLEFT', self, 'TOPLEFT', -10, -2.5)
+                        :Show()
+                end
+            end,
+            OnLeave = function(...)
+                QuestInfoItemHighlight:Hide()
+            end
+        }
+    {
+        Style'.Texture':Hide(),
 
-    local byVisible = function(e) return e:IsVisible() end
+        Style'.Name' .. function(self)
+            local parent = self:GetParent()
+            self:Points { TOPLEFT = parent:TOPLEFT(0, -2),
+                          RIGHT = parent:GetParent():RIGHT(-20, 0) }
+        end,
 
-    for window in UIParent'.TalkWindow'
+        Style'.Icon'
+            :Show()
+            :Size(20, 20)
+            .. ToParent('TOPLEFT', 'TOPLEFT', 0, 0),
+
+        Style'.FontString'
+            :Size(180, 20)
+            :TextColor(0.1, 0, 0, 1)
+            :ShadowOffset(0, 0)
+            .. ToParent('TOPLEFT', 'TOPLEFT', 27, 0),
+
+        Style'.NameFrame'
+            :Show()
+            :Texture 'Interface/Buttons/UI-Listbox-Highlight2'
+            :DrawLayer('BACKGROUND', -7 )
+            :BlendMode 'ADD'
+            :VertexColor(1,1,1,0.2)
+            :Height(16)
+            ..
+                function(self)
+                    local parent = self:GetParent()
+                    local show = QuestFrameRewardPanel:IsShown() and parent:IsShown() and parent.Icon and parent:GetNumPoints() > 0
+                    self:Points { TOPLEFT = parent:TOPLEFT(0, -2),
+                                  RIGHT = parent:GetParent():RIGHT(-20, 0) }
+                    self:SetAlpha(show and 0.2 or 0)
+                end,
+        
+        Style'.Count'
+            :TextColor(1, 1, 1)
+            :JustifyH 'LEFT'
+            :TextScale(0.85)
+            ..
+                function(self)
+                    local parent = self:GetParent()
+                    self:Points { TOPLEFT = parent.Icon:TOPLEFT(0,-5),
+                                  BOTTOMRIGHT = parent.Icon:BOTTOMRIGHT(10,-5) }
+                end
+    },
+
+    function(self)
+        if QuestRewardScrollFrame:IsShown() then
+            QuestFrameCompleteQuestButton:Show()
+            for btn in self'.Button'.filter(byVisible) do
+                local show = btn.Icon and btn:GetNumPoints() > 0 -- don't ask me
+                if show then
+                    QuestFrameCompleteQuestButton:Hide()
+                end
+            end
+        end
+    end,
+
+    function(self)
+        inline_list_layout(self'.*', 'Button', { inner=5, after=10 })
+        self:FitToChildren()
+    end
+}
+
+
+local function StyleAll(self, event)
+
+    for window in UIParent'QuestFrame, GossipFrame, ItemTextFrame'
         .filter(byVisible)
         :Strip('Bg', 'Background', 'NineSlice', 'Inset', 'TopTileStreaks')
         :ClearAllPoints()
-        :SetPoint('BOTTOM', UIParent, 'BOTTOM', 0, 200)
+        :SetPoint('BOTTOM', UIParent, 'CENTER', 0, -250)
         :SetWidth(WIDTH)
     do
         local height = 0
+        local scale = window:GetEffectiveScale()
 
         window'.Button':CornerOffset(5, 5)
 
@@ -129,57 +226,46 @@ addon:HookScript("OnEvent", function(self, event)
             end
         end
 
-        for portrait in window'.Portrait'
-            :ClearAllPoints()
-            :SetPoint('LEFT', window, 'TOPLEFT', 4, -7)
-            :SetDrawLayer('ARTWORK')
-        do
-            window'.PortraitBorderTexture=Texture'
-                :SetDrawLayer('OVERLAY')
-                :SetTexture('Interface/MINIMAP/UI-MINIMAP-BORDER')
-                :SetPoint("CENTER", portrait, "CENTER", -20, -18)
-                :SetTexCoord(0, 1, 0.11, 1)
-                :SetWidth(120)
-                :SetHeight(120*0.89)
-        end
+        Style(window) {
 
-        window {
-                
-            ['.Name'] = {
-                Points = {{ TOPLEFT = window:TOPLEFT(80, -13),
-                            TOPRIGHT = window:TOPRIGHT(-10, -13) }},
-                            
-                ['.FontString'] = {
+            Style'.*FramePortrait'
+                :Points { LEFT = window:TOPLEFT(4, -7) }
+                :Size(65, 65)
+                :DrawLayer 'ARTWORK',
+
+            Texture'.PortraitBorderTexture'
+                :DrawLayer 'OVERLAY'
+                :Texture 'Interface/MINIMAP/UI-MINIMAP-BORDER'
+                :TexCoord(0, 1, 0.11, 1)
+                :Size(120, 120*0.89)
+                .init(function(self, parent) self:SetPoint("CENTER", parent'.*FramePortrait'[1], "CENTER", -20, -18) end),
+
+            Style'.*NameFrame'
+                :Points { TOPLEFT = window:TOPLEFT(80, -13),
+                          TOPRIGHT = window:TOPRIGHT(-10, -13) }
+            {
+                Style'.FontString'
                     -- AllPoints = '$parent',
-                    TextColor = { 1, 1, 1, 1 },
-                    ShadowColor = { 0, 0, 0, 1 },
-                    ShadowOffset = { 1, -1 },
-                    JustifyH = { 'LEFT' },
-                }
-
+                    :TextColor(1, 1, 1, 1)
+                    :ShadowColor(0, 0, 0, 1)
+                    :ShadowOffset(1, -1)
+                    :JustifyH 'LEFT'
+                { function(self) self:SetAllPoints(self:GetParent()) end }
             },
 
-            ['.NameBackground=Texture'] = {
-                DrawLayer = { 'ARTWORK', -1 },
-                Texture = 'Interface/Common/ShadowOverlay-Corner',
-                VertexColor = { 1, 1, 1, 0.5 },
-                Point = { "TOPLEFT", window, "TOPLEFT", 5, -4.5 },
-                Width = 410,
-                Height = 30,
-            },
+            Texture'.NameBackground'
+                :DrawLayer('ARTWORK', -1)
+                :Texture 'Interface/Common/ShadowOverlay-Corner'
+                :VertexColor(1, 1, 1, 0.5)
+                :Points { TOPLEFT = window:TOPLEFT(5, -4.5) }
+                :Size(410, 30),
 
-        }
-
-        window {
-
-            ['.NameBorder=Texture'] = {
-                DrawLayer = { 'ARTWORK', -2 },
-                Texture = 'Interface/Common/ShadowOverlay-Left',
-                VertexColor = { 1, 1, 1, 1 },
-                Point = { "TOPLEFT", window.NameBackground, "BOTTOMLEFT" },
-                Width = { 410 },
-                Height = { 1.2 },
-            }
+            Texture'.NameBorder'
+                :DrawLayer('ARTWORK', -2)
+                :Texture 'Interface/Common/ShadowOverlay-Left'
+                :VertexColor(1, 1, 1, 1)
+                :Size(410, 1.2)
+                .init(function(self, parent) self:SetPoint("TOPLEFT", parent.NameBackground, "BOTTOMLEFT") end)
 
         }
 
@@ -188,67 +274,74 @@ addon:HookScript("OnEvent", function(self, event)
 
         if window == ItemTextFrame then
 
-            window'.ItemTextFramePageBg':Hide()
-            ItemTextMaterialTopLeft:SetTexture ''
-            ItemTextMaterialTopRight:SetTexture ''
-            ItemTextMaterialBotLeft:SetTexture ''
-            ItemTextMaterialBotRight:SetTexture ''
-            
-            window {
-                
-                ['.TitleText'] = {
-                    Points = {{ TOPLEFT = window:TOPLEFT(70, -15),
-                                TOPRIGHT = window:TOPRIGHT(-10, -15) }},
-                    TextColor = { 1, 1, 1, 1 },
-                    ShadowColor = { 0, 0, 0, 1 },
-                    ShadowOffset = { 1, -1 },
-                    JustifyH = { 'LEFT' },
-                },
-
-                Style'.ItemTextPrevPageButton':Points {
-                    BOTTOMLEFT = window:BOTTOMLEFT(15, 10)
-                },
-                Style'.ItemTextNextPageButton':Points {
-                    BOTTOMRIGHT = window:BOTTOMRIGHT(-15, 10)
-                },
-
-                Style'.ItemTextCurrentPage':Points {
-                    BOTTOM = window:BOTTOM(0, 20)
-                },
-
-            }
-
-            window:Scripts {
-                OnMouseWheel = function(self, delta)
-                    if delta > 0 then
-                        window'.ItemTextPrevPageButton':Click()
-                    else
-                        window'.ItemTextNextPageButton':Click()
+            Style(window)
+                :Scripts {
+                    OnMouseWheel = function(self, delta)
+                        if delta > 0 then
+                            window'.ItemTextPrevPageButton':Click()
+                        else
+                            window'.ItemTextNextPageButton':Click()
+                        end
                     end
-                end
+                }
+            {
+                Hide'.Texture:NOATTR:NONAME',
+
+                Hide'.ItemTextFramePageBg',
+
+                Hide'.PortraitBorderTexture',
+                
+                Style'.ItemTextMaterial*':Texture '',
+
+                Style'.TitleText, .ItemTextTitleText'
+                    :Points { TOPLEFT = window:TOPLEFT(70, -15),
+                              TOPRIGHT = window:TOPRIGHT(-10, -15) }
+                    :TextColor(1, 1, 1, 1)
+                    :ShadowColor(0, 0, 0, 1)
+                    :ShadowOffset(1, -1)
+                    :JustifyH 'LEFT',
+                
+                Style'.ItemTextPrevPageButton'
+                    :Points { BOTTOMLEFT = window:BOTTOMLEFT(15, 10) },
+
+                Style'.ItemTextNextPageButton'
+                    :Points { BOTTOMRIGHT = window:BOTTOMRIGHT(-15, 10) },
+
+                Style'.ItemTextCurrentPage'
+                    :Points { BOTTOM = window:BOTTOM(0, 20) },
+                
+                Hide'.ScrollFrame.Texture'
             }
 
             height = height + 5
 
-            for container in window'.ScrollFrame'
-                :SetWidth(WIDTH)
-                :Points { TOPLEFT = ItemTextFrame:TOPLEFT(0, -50) }
+            for scrollframe in window'.ScrollFrame'
+                :SetWidth(WIDTH-30)
+                :Points { TOPLEFT = ItemTextFrame:TOPLEFT(15, -30) }
                 :SetHeight(10)
                 :EnableMouseWheel(false)
             do
-                container'.Frame':SetWidth(WIDTH-20)
-                for frame in container'.Frame.SimpleHTML':SetWidth(WIDTH-20) do
-                    for content in frame'.*' do
-                        content:SetWidth(WIDTH-40)
-                        local point, relativeTo, relativePoint, xOfs, yOfs = content:GetPoint()
-                        height = height + content:GetHeight() - yOfs
+                scrollframe'.Frame':SetWidth(WIDTH-20)
+                -- :Points { TOPLEFT = scrollframe:TOPLEFT(15, 0) }
+                for frame in scrollframe'.Frame.SimpleHTML'
+                    :SetWidth(WIDTH-20)
+                do
+                    frame'.*':SetWidth(WIDTH-40)
+                    for t in frame'.Texture' do
+                        if not t.origSetPoint then
+                            t.origSetPoint = t.SetPoint
+                            t.SetPoint = function(self, ...)
+                                print(debugstack())
+                                return self.origSetPoint(self, ...)
+                            end
+                        end
                     end
-                    frame:SetHeight(height)
-                    local point, relativeTo, relativePoint, xOfs, yOfs = frame:GetPoint()
-                    height = height - yOfs
+                    frame:FitToChildren()
+                    height = height + frame:GetHeight()
                 end
-                container:SetHeight(height)
-                container'.Slider':Hide()
+                scrollframe'.Frame':FitToChildren()
+                scrollframe:FitToChildren()
+                scrollframe'.Slider':Hide()
             end
 
             for btn in window'.Button'.filter(byVisible) do
@@ -260,9 +353,12 @@ addon:HookScript("OnEvent", function(self, event)
             
         end
 
-        window'.*.ScrollFrame':Strip('Top', 'Middle', 'Bottom') {
-            Width = WIDTH-10,
-            Points = {{ TOPLEFT = window:TOPLEFT(10, -40) }}
+        Style(window) {
+            Style'.*.ScrollFrame'
+                :Strip('Top', 'Middle', 'Bottom')
+                :Width(WIDTH-10)
+                :Points { TOPLEFT = window:TOPLEFT(10, -40) }
+            .. Hide'.Slider'
         }
 
         window'.*.ScrollFrame.Slider':Hide()
@@ -283,27 +379,26 @@ addon:HookScript("OnEvent", function(self, event)
                 :SetWidth(WIDTH-20)
             do
 
-                for item in content'.QuestProgressItem'
-                    :SetSize(200, 20)
-                do
-                    item'.ItemBackground':Hide()
-                    item {
-                        ['.Texture'] = { Size = { 20, 20 } },
-                        ['.FontString'] = {
-                            Size =  { 180, 20 },
-                            TextColor =  { 0, 0, 0, 1 },
-                            ShadowOffset =  { 0, 0 },
-                        },
-                        ['.Count'] = {
-                            TextColor = { 1, 1, 1 },
-                            Points = {{ 
-                                TOPLEFT = item.Icon:TOPLEFT(),
-                                BOTTOMRIGHT = item.Icon:BOTTOMRIGHT()
-                            }}
-                        }
+                content {
+                    Style'.QuestProgressItem#'
+                        :Size(200, 20)
+                    {
+                        Style'.QuestProgressItem#NameFrame, .QuestInfoRewardsFrameQuestInfoItem#NameFrame':Hide(),
+                        Style'.Texture':Size(20, 20),
+                        Style'.FontString'
+                            :Size(180, 20)
+                            :TextColor(0, 0, 0, 1)
+                            :ShadowOffset(0, 0),
+                        Style'.QuestProgressItem#Count'
+                            :TextColor(1, 1, 1)
+                            :JustifyH 'CENTER'
+                            { function(self)
+                                self:Points { TOPLEFT = self:GetParent().Icon:TOPLEFT(-10, -7),
+                                              BOTTOMRIGHT = self:GetParent().Icon:BOTTOMRIGHT(10, -7) }
+                            end }
                     }
-                end
-                inline_list_layout(content'.*', 'QuestProgressItem', { inner=5, after=10 })
+                }
+                inline_list_layout(content'.*', 'QuestProgressItem#', { inner=5, after=10 })
 
                 content'QuestInfoItemHighlight.Texture'
                     :SetSize(360, 15)
@@ -312,80 +407,15 @@ addon:HookScript("OnEvent", function(self, event)
                     :SetVertexColor(1, 1, 1, 0.3)
                     -- :SetTexCoord(0, 1, 0, 1)
 
-                for rewards in content'.QuestInfoRewardsFrame'.filter(byVisible) do
-
-                    local has_quest_buttons = false
-                    local previous = nil
-
-                    for button in rewards'.Button' do
-                        content'QuestInfoItemHighlight'
-                            :SetPoint('TOPLEFT', button, 'TOPLEFT', -10, -2.5)
-
-                        if button:IsShown() and button.Icon and not button.PortraitFrame then
-                            has_quest_buttons = true
-                            
-                            button:SetSize(200, 20)
-                            button {
-                                Style'.Texture'
-                                    :Size(20, 20)
-                                    :Point('TOPLEFT', button, 'TOPLEFT', 0, 0),
-
-                                Style'.FontString'
-                                    :Point('TOPLEFT', button, 'TOPLEFT', 27, 0)
-                                    :Size(180, 20)
-                                    :TextColor(0.1, 0, 0, 1)
-                                    :ShadowOffset(0, 0),
-
-                                Style'.NameFrame'
-                                    :Texture 'Interface/Buttons/UI-Listbox-Highlight2'
-                                    :DrawLayer('BACKGROUND', -7 )
-                                    :BlendMode 'ADD'
-                                    :VertexColor(1,1,1,0.2)
-                                    :Points { TOPLEFT = button:TOPLEFT(0, -2),
-                                              RIGHT = container:RIGHT(-20, 0) }
-                                    :Height(16)
-                                    :Alpha(container == QuestRewardScrollFrame and 0.2 or 0),
-                                
-                                Style'.Count'
-                                    :TextColor(1, 1, 1)
-                                    :JustifyH 'LEFT'
-                                    :TextScale(0.85)
-                                    :Points { TOPLEFT = button.Icon:TOPLEFT(0,-5),
-                                              BOTTOMRIGHT = button.Icon:BOTTOMRIGHT(10,-5) }
-                            }
-
-                            override(button){
-                                OnClick = function(f, ...) f(...)
-                                    if QuestFrameRewardPanel:IsShown() then
-                                        QuestFrameCompleteQuestButton:Click()
-                                        content'QuestInfoItemHighlight'
-                                            :SetPoint('TOPLEFT', button, 'TOPLEFT', -10, -2.5)
-                                    end
-                                end,
-                                OnEnter = function(f, ...) f(...)
-                                    if QuestFrameRewardPanel:IsShown() then
-                                        content'QuestInfoItemHighlight'
-                                            :SetHeight(20)
-                                            :SetPoint('TOPLEFT', button, 'TOPLEFT', -10, -2.5)
-                                            :Show()
-                                    end
-                                end,
-                                OnLeave = function(f, ...) f(...)
-                                    content'QuestInfoItemHighlight':Hide()
-                                end
-                            }
-                            QuestFrameCompleteQuestButton:Hide()
-
-                        end
-                    end
-                    if container == QuestRewardScrollFrame and not has_quest_buttons then
-                        QuestFrameCompleteQuestButton:Show()
-                    end
-                    
-                    inline_list_layout(rewards'.*', 'Button', { inner=5, after=10 })
-
-                    rewards:FitToChildren()
-                end
+                Style(content) {
+                    Style'.QuestInfoRewardsFrame'
+                        :Hooks {
+                            OnShow = function(self)
+                                StyleQuestInfoRewardsFrame(self)
+                            end
+                        }
+                    .. StyleQuestInfoRewardsFrame
+                }
 
                 for subchild in content'.*'.filter(byVisible) do
                     local point, relativeTo, relativePoint, xOfs, yOfs = subchild:GetPoint()
@@ -413,12 +443,13 @@ addon:HookScript("OnEvent", function(self, event)
 
         window:SetHeight(math.max(MIN_HEIGHT, height+70))
 
-        window'.BackgroundOverlay=Texture' {
-            -- ColorTexture = { 1, 0.7, 0.5, 0.4 },
-            ColorTexture = { 1, 0.8, 0.55, 0.6 },
-            Points = {{ TOPLEFT = window:TOPLEFT(5, -5),
-                        BOTTOMRIGHT = window:BOTTOMRIGHT(-5, 5) }},
-            DrawLayer = { 'BORDER', -7 },
+        Style(window) {
+            Texture'.BackgroundOverlay'
+                -- ColorTexture = { 1, 0.7, 0.5, 0.4 },
+                :ColorTexture(1, 0.8, 0.55, 0.6)
+                :Points { TOPLEFT = window:TOPLEFT(5, -5),
+                          BOTTOMRIGHT = window:BOTTOMRIGHT(-5, 5) }
+                :DrawLayer('BORDER', -7)
         }
 
         if not window.SetBackdrop then
@@ -440,7 +471,7 @@ addon:HookScript("OnEvent", function(self, event)
             edgeFile = "Interface/FriendsFrame/UI-Toast-Border",
             edgeSize = 12,
             tile = true,
-            tileSize = math.max(355, height+40),
+            tileSize = math.max(WIDTH*scale, height*scale),
             -- insets = { left = 8, right = 8, top = 5, bottom = 8 }
             insets = { left = 4, right = 4, top = 4, bottom = 4 }
         })
@@ -448,5 +479,42 @@ addon:HookScript("OnEvent", function(self, event)
     
     end
 
-end)
+end
 
+
+local addon = CreateFrame("Frame", nil, UIParent)
+
+for _, event in pairs({
+    'GOSSIP_SHOW',
+    'GOSSIP_CLOSED',
+    'QUEST_ACCEPTED',
+    'QUEST_COMPLETE',
+    'QUEST_DETAIL',
+    'QUEST_FINISHED',
+    'QUEST_GREETING',
+    'QUEST_PROGRESS',
+    'ITEM_TEXT_BEGIN',
+    'ITEM_TEXT_READY',
+}) do addon:RegisterEvent(event) end
+
+
+
+
+
+local doUpdate = true
+
+addon:HookScript("OnEvent", function() doUpdate = true end)
+
+UIParent {
+    Style'QuestFrame, GossipFrame, ItemTextFrame'
+        :Hooks { OnShow = function() doUpdate = true end }
+}
+
+addon:Scripts {
+    OnUpdate = function()
+        if doUpdate then
+            StyleAll()
+            doUpdate = false
+        end
+    end
+}

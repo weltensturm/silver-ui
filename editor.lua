@@ -76,22 +76,50 @@ local Btn = Button
     Style:SetSize(20, 20)
 }
 
+local NOOP = function() end
 
 local gui_types = {
-    { 'Frame', CreateFrame('Frame') },
-    { 'ScrollFrame', CreateFrame('ScrollFrame') },
-    { 'Button', CreateFrame('Button') },
-    { 'Slider', CreateFrame('Slider') },
-    { 'CheckButton', CreateFrame('CheckButton') },
-    { 'EditBox', CreateFrame('EditBox') }
+    { 'UIObject', setmetatable({}, { __index = { GetName = NOOP, GetObjectType = NOOP, IsObjectType = NOOP, } }) },
+    { 'ParentedObject', setmetatable({}, { __index = { GetDebugName = NOOP, GetParent = NOOP, IsForbidden = NOOP, SetForbidden = NOOP, } }) },
+    { 'ScriptObject', setmetatable({}, { __index = { GetScript = NOOP, SetScript = NOOP, HookScript = NOOP, HasScript = NOOP, } }) },
+    { 'Region', setmetatable({}, { __index = { GetSourceLocation = NOOP, SetParent = NOOP, IsDragging = NOOP, IsMouseOver = NOOP,
+                                               IsObjectLoaded = NOOP, IsProtected = NOOP, CanChangeProtectedState = NOOP, GetPoint = NOOP,
+                                               SetPoint = NOOP, SetAllPoints = NOOP, ClearAllPoints = NOOP, GetNumPoints = NOOP,
+                                               IsAnchoringRestricted = NOOP, GetPointByName = NOOP, ClearPointByName = NOOP,
+                                               AdjustPointsOffset = NOOP, ClearPointsOffset = NOOP, GetLeft = NOOP, GetRight = NOOP,
+                                               GetTop = NOOP, GetBottom = NOOP, GetCenter = NOOP, GetRect = NOOP, GetScaledRect = NOOP,
+                                               IsRectValid = NOOP, GetWidth = NOOP, SetWidth = NOOP, GetHeight = NOOP, SetHeight = NOOP,
+                                               GetSize = NOOP, SetSize = NOOP, GetScale = NOOP, SetScale = NOOP, GetEffectiveScale = NOOP,
+                                               SetIgnoreParentScale = NOOP, IsIgnoringParentScale = NOOP, Show = NOOP, Hide = NOOP,
+                                               SetShown = NOOP, IsShown = NOOP, IsVisible = NOOP, GetAlpha = NOOP, SetAlpha = NOOP,
+                                               SetIgnoreParentAlpha = NOOP, IsIgnoringParentAlpha = NOOP, CreateAnimationGroup = NOOP,
+                                               GetAnimationGroups = NOOP, StopAnimating = NOOP, } }) },
+    { 'LayeredRegion', setmetatable({}, { __index = { GetDrawLayer = NOOP, SetDrawLayer = NOOP, SetVertexColor = NOOP, } }) },
+    { 'FontInstance', setmetatable({}, { __index = { GetFont = NOOP, GetFontObject = NOOP, SetFont = NOOP, SetFontObject = NOOP,
+                                                     GetIndentedWordWrap = NOOP, GetJustifyH = NOOP, GetJustifyV = NOOP,
+                                                     GetSpacing = NOOP, SetIndentedWordWrap = NOOP, SetJustifyH = NOOP,
+                                                     SetJustifyV = NOOP, SetSpacing = NOOP, GetShadowColor = NOOP,
+                                                     GetShadowOffset = NOOP, GetTextColor = NOOP, SetShadowColor = NOOP,
+                                                     SetShadowOffset = NOOP, SetTextColor = NOOP, } }) },
 }
-
-for _, v in pairs(gui_types) do
-    v[2]:Hide()
-end
 
 
 do
+    local gui_types_creatable = {
+        { 'FontString', UIParent:CreateFontString() },
+        { 'Frame', CreateFrame('Frame') },
+        { 'ScrollFrame', CreateFrame('ScrollFrame') },
+        { 'Button', CreateFrame('Button') },
+        { 'Slider', CreateFrame('Slider') },
+        { 'CheckButton', CreateFrame('CheckButton') },
+        { 'EditBox', CreateFrame('EditBox') }
+    }
+
+    for _, v in ipairs(gui_types_creatable) do
+        v[2]:Hide()
+        table.insert(gui_types, v)
+    end
+
     local uiext_t = {}
     setmetatable(uiext_t, { __index=ns.uiext })
     table.insert(gui_types, 1, { 'UIEXT', uiext_t })
@@ -257,8 +285,8 @@ local function spawn()
                 if not self.CTRL then
                     self:Insert('\n')
                 else
-                    local func = assert(loadstring(self:GetText()))
-                    local result = { func() }
+                    local func = assert(loadstring('return function(lqt, inspect) ' .. self:GetText() .. ' end', "silver editor"))
+                    local result = { func()(lqt, function(frame) set_frame_stack(_, frame) end) }
                     if #result > 0 then
                         print(unpack(result))
                     end
@@ -473,7 +501,7 @@ local function spawn()
         for _, obj in pairs(sorted_children(smallest)) do
             local name = obj[2]
             local c = obj[1]
-            local is_gui = type(c) == 'table' and c.GetObjectType and c:GetObjectType()
+            local is_gui = type(c) == 'table' and c.GetObjectType and c:GetObjectType() and c.GetNumPoints
 
             local btn = create_btn()
                 :SetParent(scroll)
@@ -541,11 +569,13 @@ local function spawn()
 
     set_frame_stack(nil, UIParent)
 
-    editorWindow'.Bg=Texture'
-        :SetColorTexture(0.05,0.05,0.05,1)
-        :SetPoint('TOPLEFT', editorWindow, 'TOPLEFT', 4, -4)
-        :SetPoint('BOTTOMRIGHT', editorWindow, 'BOTTOMRIGHT', -4, 4)
-        :SetDrawLayer('BACKGROUND', -7)
+    Style(editorWindow) {
+        Texture'.Bg'
+            :ColorTexture(0.05,0.05,0.05,1)
+            :Point('TOPLEFT', editorWindow, 'TOPLEFT', 4, -4)
+            :Point('BOTTOMRIGHT', editorWindow, 'BOTTOMRIGHT', -4, 4)
+            :DrawLayer('BACKGROUND', -7)
+    }
 
     editorWindow:SetBackdrop({
         -- bgFile = "Interface/ACHIEVEMENTFRAME/UI-GuildAchievement-Parchment",
@@ -757,6 +787,8 @@ sorted_children = function(obj)
                                 '|cffaaaaaa = ' ..
                                 attribute_str_values(obj, k)
                             })
+                        elseif k:find('^Set') and (info[3]['Get'..k:sub(4)] or info[3]['Is'..k:sub(4)]) then
+                            -- let Get and Is handle it
                         else
                             fn_visited[k] = true
                             table.insert(t, { v,

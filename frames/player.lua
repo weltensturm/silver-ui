@@ -3,18 +3,6 @@ local lqt = ns.lqt
 
 local Style, Frame, Texture = lqt.Style, lqt.Frame, lqt.Texture
 
--- 3x [ADDON_ACTION_BLOCKED] AddOn 'custom-gossip' tried to call the protected function 'Boss1TargetFrame:SetPoint()'.
---     [string "@!BugGrabber\BugGrabber.lua"]:519: in function <!BugGrabber\BugGrabber.lua:519>
---     [string "=[C]"]: in function `SetPoint'
---     [string "@FrameXML\UIParent.lua"]:3425: in function `UIParentManageFramePositions'
---     [string "@FrameXML\UIParent.lua"]:2680: in function <FrameXML\UIParent.lua:2667>
---     [string "=[C]"]: in function `SetAttribute'
---     [string "@FrameXML\UIParent.lua"]:3476: in function `UIParent_ManageFramePositions'
---     [string "@FrameXML\MainMenuBar.lua"]:60: in function `SetPositionForStatusBars'
---     [string "@FrameXML\MainMenuBar.lua"]:109: in function <FrameXML\MainMenuBar.lua:65>
-    
---     Locals:
---     Skipped (In Encounter)
 
 PlayerFrameTexture:SetTexture('')
 PlayerPortrait:Hide()
@@ -50,7 +38,7 @@ local HideTexture = Style:Texture ''
 
 
 Style(PlayerFrame)
-    :Points { BOTTOM = ActionBarMiddle:TOP(0, 1.5) }
+    :Points { BOTTOM = UIParent:BOTTOM(0, 64) }
     :Size(300, 42)
     :FrameStrata 'MEDIUM'
     :HitRectInsets(0, 0, 0, 0)
@@ -87,11 +75,11 @@ local function update()
                 :RIGHT(PlayerFrame:BOTTOMRIGHT(0, 1)),
             
             EndCap'.Left'
-                :BOTTOMRIGHT(PlayerFrame:BOTTOMLEFT(30, -1)),
+                :BOTTOMRIGHT(PlayerFrame:BOTTOMLEFT(30.5, -1)),
 
             EndCap'.Right'
                 :TexCoord(1, 0, 0, 1)
-                :BOTTOMLEFT(PlayerFrame:BOTTOMRIGHT(-30, -1))
+                :BOTTOMLEFT(PlayerFrame:BOTTOMRIGHT(-30.5, -1))
         },
 
         Style'.classPowerBar'
@@ -109,7 +97,7 @@ local function update()
             Style'.Background'
                 :Desaturated(true)
                 :TexCoord(0, 1, 1, 0)
-                :Points { BOTTOM = ComboPointPlayerFrame:BOTTOM(0, -6) }
+                :Points { BOTTOM = (ComboPointPlayerFrame or UIParent):BOTTOM(0, -6) }
         },
 
         Style'.MageArcaneChargesFrame'
@@ -117,8 +105,12 @@ local function update()
             :FrameStrata 'BACKGROUND'
         {
             Style'.Background'
-                :Points { BOTTOM = MageArcaneChargesFrame:BOTTOM(0, 10) }
+                :Points { BOTTOM = (MageArcaneChargesFrame or UIParent):BOTTOM(0, 10) }
         },
+
+        Style'.RuneFrame'
+            :Points { BOTTOM = PlayerFrame:TOP(0, 2) }
+            :FrameStrata 'BACKGROUND',
 
         Style'.PlayerFrameAlternateManaBar'
             :StatusBarTexture 'Interface/Destiny/EndscreenBG'
@@ -127,18 +119,18 @@ local function update()
             Style'.DefaultBorder'
                 :TexCoord(0.125, 0.59375, 0, 1)
                 :VertexColor(0.5, 0.5, 0.5)
-                :Points { BOTTOMLEFT = PlayerFrameAlternateManaBar:BOTTOMLEFT(5.1, 0),
-                            BOTTOMRIGHT = PlayerFrameAlternateManaBar:BOTTOMRIGHT(-5.1, 0) },
+                :Points { BOTTOMLEFT = (PlayerFrameAlternateManaBar or UIParent):BOTTOMLEFT(5.1, 0),
+                          BOTTOMRIGHT = (PlayerFrameAlternateManaBar or UIParent):BOTTOMRIGHT(-5.1, 0) },
             
             Style'.DefaultBorderLeft'
                 :TexCoord(0, 0.125, 0, 1)
                 :VertexColor(0.5, 0.5, 0.5)
-                :Points { BOTTOMRIGHT = PlayerFrameAlternateManaBar:BOTTOMLEFT(5.1, 0) },
+                :Points { BOTTOMRIGHT = (PlayerFrameAlternateManaBar or UIParent):BOTTOMLEFT(5.1, 0) },
 
             Style'.DefaultBorderRight'
                 :TexCoord(0.59375, 0.71875, 0, 1)
                 :VertexColor(0.5, 0.5, 0.5)
-                :Points { BOTTOMLEFT = PlayerFrameAlternateManaBar:BOTTOMRIGHT(-5.1, 0) }
+                :Points { BOTTOMLEFT = (PlayerFrameAlternateManaBar or UIParent):BOTTOMRIGHT(-5.1, 0) }
         },
         
         Style'.TotemFrame'
@@ -152,11 +144,12 @@ local function update()
             -- :StatusBarTexture 'Interface/Artifact/_Artifacts-DependencyBar-Fill'
             -- :StatusBarTexture 'Interface/BUTTONS/GreyscaleRamp64'
             :Points { TOPLEFT = PlayerFrame:TOPLEFT(0, -17),
-                    BOTTOMRIGHT = PlayerFrame:BOTTOMRIGHT(0, 3) }
+                      BOTTOMRIGHT = PlayerFrame:BOTTOMRIGHT(0, 3) }
             :FrameStrata 'LOW'
         {
             Texture'.Bg'
-                :Texture 'Interface/LoadScreens/LoadScreen-Gradient'
+                :Texture 'Interface/RAIDFRAME/Raid-Bar-Hp-Fill'
+                -- :Texture 'Interface/LoadScreens/LoadScreen-Gradient'
                 :VertexColor(0.1, 0.1, 0.1)
                 :AllPoints(PlayerFrame.healthbar)
                 :DrawLayer 'BACKGROUND'
@@ -172,13 +165,15 @@ local function update()
         Style'.manabar'
             -- :SetStatusBarTexture 'Interface/RAIDFRAME/Raid-Bar-Hp-Fill'
             -- :SetStatusBarTexture 'Interface/AddOns/ElvUI/Media/Textures/Melli'
+            -- :StatusBarTexture 'Interface/Destiny/EndscreenBG'
             :Points { TOPLEFT = PlayerFrame:TOPLEFT(0, -1),
                       BOTTOMRIGHT = PlayerFrame:TOPRIGHT(0, -13) }
             :FrameStrata 'LOW'
         {
             Texture'.Bg'
                 --Texture = 'Interface/RAIDFRAME/UI-RaidFrame-GroupBg', true, true,
-                :Texture 'Interface/LoadScreens/LoadScreen-Gradient'
+                --:Texture 'Interface/LoadScreens/LoadScreen-Gradient'
+                :Texture 'Interface/RAIDFRAME/Raid-Bar-Hp-Fill'
                 -- Texture = { 'Interface/ACHIEVEMENTFRAME/UI-GuildAchievement-Parchment-Horizontal-Desaturated', true, true },
                 :VertexColor(0.1, 0.1, 0.1)
                 :AllPoints(PlayerFrame.manabar)
@@ -188,17 +183,62 @@ local function update()
                 -- :HorizTile(true) 
         },
 
+        Frame'.Gcd'
+            :Points { TOPLEFT = PlayerFrame:TOPLEFT(0, -1),
+                      BOTTOMLEFT = PlayerFrame:TOPLEFT(0, -13) }
+            :Scripts {
+                OnUpdate = function(self)
+                    local gcdStart, gcdDuration = GetSpellCooldown(61304)
+                    local gcdNow = gcdStart + gcdDuration - GetTime()
+                    local endCast = select(5, UnitCastingInfo('player')) or select(5, UnitChannelInfo('player'))
+                    if gcdNow > 0 and (not endCast or endCast/1000 < gcdStart + gcdDuration) then
+                        local parent = self:GetParent()
+                        self:SetWidth((1 - gcdNow/gcdDuration)*parent:GetWidth())
+                    else
+                        self:SetWidth(0)
+                        self:Hide()
+                    end
+                end
+            }
+            :Event {
+                UNIT_SPELLCAST_SENT = function(self, ...)
+                    local gcdStart, gcdDuration = GetSpellCooldown(61304)
+                    if gcdStart + gcdDuration > GetTime() then
+                        local endCast = select(5, UnitCastingInfo('player')) or select(5, UnitChannelInfo('player'))
+                        if not endCast or endCast/1000 < gcdStart + gcdDuration then
+                            self:Show()
+                        end
+                    end
+                end
+            }
+        {
+            Texture'.GcdSpark'
+                -- :Texture 'Interface/CastingBar/UI-CastingBar-Spark'
+                :Texture 'Interface/UNITPOWERBARALT/Generic1Target_Horizontal_Spark'
+                :Width(20)
+                :BlendMode 'ADD'
+                .init(function(self, parent)
+                    self:Points {
+                        TOP = parent:TOPRIGHT(0, 5),
+                        BOTTOM = parent:BOTTOMRIGHT(0, -5)
+                    }
+                end)
+        }
     }
 
     local PlayerInfo = PlayerName:GetParent()
     PlayerInfo:SetFrameStrata('HIGH', 1)
 
     PlayerPrestigePortrait:Points { RIGHT = PlayerInfo:LEFT() }
+    PlayerPVPIcon:Points { RIGHT = PlayerInfo:LEFT() }
 
     PlayerFrameGroupIndicator:Points {
-        BOTTOMLEFT = PlayerFrame:TOPLEFT()
+        BOTTOMRIGHT = PlayerFrame:TOPRIGHT()
     }
-    PlayerFrameRoleIcon:Hide()
+    if PlayerFrameRoleIcon then
+        PlayerFrameRoleIcon:Points { BOTTOMLEFT = PlayerFrame:TOPLEFT(50, -3) }
+    end
+    PlayerLeaderIcon:Points { BOTTOMLEFT = PlayerFrame:TOPLEFT(30, -3) }
 
     PlayerHitIndicator:Points { CENTER=PlayerFrame.healthbar:CENTER() }
     
@@ -222,7 +262,7 @@ local function update()
         }
     {
         Style'.Text':Points { CENTER = CastingBarFrame:CENTER(0, -6) },
-        Style'.Border':Hide()
+        Style'.Border':Hide(),
     }
 
     CastingBarFrame.ignoreFramePositionManager = true
@@ -242,47 +282,36 @@ local function update()
     -- PlayerFrameHealthBar:SetStatusBarTexture('Interface/CHARACTERFRAME/BarFill')
 end
 
-local addon = CreateFrame('Frame')
+Frame
+    :RegisterEvent('PLAYER_ENTERING_WORLD')
+--  :RegisterEvent('UPDATE_VEHICLE_ACTIONBAR')
+    :RegisterEvent('UNIT_EXITED_VEHICLE')
+    :RegisterEvent('UNIT_DISPLAYPOWER')
+--  :RegisterEvent('UPDATE_ALL_UI_WIDGETS')
+    :Hooks {
+        OnEvent = function(e)
+            if e == 'UNIT_DISPLAYPOWER' then
 
+                Style(PlayerFrame){
+                    Style'.ComboPointPlayerFrame'
+                        :Points { BOTTOM = PlayerFrame:TOP(0, 5) }
+                        :FrameStrata 'BACKGROUND'
+                    {
+                        Style'.Background'
+                            :Desaturated(true)
+                            :TexCoord(0, 1, 1, 0)
+                            :Points { BOTTOM = (ComboPointPlayerFrame or UIParent):BOTTOM(0, -6) }
+                    }
+                }
 
-addon:RegisterEvent('PLAYER_ENTERING_WORLD')
-addon:RegisterEvent('UPDATE_VEHICLE_ACTIONBAR')
-addon:RegisterEvent('UNIT_EXITED_VEHICLE')
-addon:RegisterEvent('UNIT_DISPLAYPOWER')
--- addon:RegisterEvent('UPDATE_ALL_UI_WIDGETS')
+            else
 
-addon:Hooks {
-    OnEvent = function(e)
-        if e == 'UNIT_DISPLAYPOWER' then
+                update()
 
-            PlayerFrame'.ComboPointPlayerFrame' {
-                Points = {{ BOTTOM = PlayerFrame:TOP(0, 5) }},
-                FrameStrata = 'BACKGROUND',
-                ['.Background'] = {
-                    Desaturated = true,
-                    TexCoord = { 0, 1, 1, 0 },
-                    Points = {{ BOTTOM = ComboPointPlayerFrame:BOTTOM(0, -6) }}
-                },
-            }
-
-        else
-
-            update()
-
+            end
         end
-    end
-}
+    }
+    .new()
+
 
 UPDATE_PLAYER_FRAME = update
-
-
--- 3x [ADDON_ACTION_BLOCKED] AddOn 'custom-gossip' tried to call the protected function 'PlayerFrame:ClearAllPoints()'.
---     [string "@!BugGrabber\BugGrabber.lua"]:519: in function <!BugGrabber\BugGrabber.lua:519>
---     [string "=[C]"]: in function `ClearAllPoints'
---     [string "@custom-gossip\uiext.lua"]:85: in function `direct'
---     [string "@custom-gossip\lqt_style.lua"]:43: in function `?'
---     [string "@custom-gossip\lqt_style.lua"]:59: in function <custom-gossip\lqt_style.lua:58>
---     [string "@custom-gossip\lqt_style.lua"]:92: in function `Points'
---     [string "@custom-gossip\frames/player.lua"]:43: in function <custom-gossip\frames/player.lua:34>
---     [string "@custom-gossip\frames/player.lua"]:242: in function <custom-gossip\frames/player.lua:227>
---     [string "@custom-gossip\uiext.lua"]:158: in function <custom-gossip\uiext.lua:157>

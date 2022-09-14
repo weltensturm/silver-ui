@@ -8,72 +8,6 @@ local values = ns.util.values
 local split_at_find = ns.util.split_at_find
 
 
-local CLASSES = {
-
-    TalkWindow = {
-        QuestFrame,
-        GossipFrame,
-        ItemTextFrame,
-    },
-
-    Name = {
-        GossipNpcNameFrame,
-        QuestNpcNameFrame,
-    },
-
-    Portrait = {
-        QuestFramePortrait,
-        GossipFramePortrait,
-    },
-
-    ScrollContent = {
-        QuestFrameDetailPanel,
-        QuestFrameGreetingPanel,
-        QuestFrameProgressPanel,
-        QuestFrameRewardPanel,
-    },
-
-    QuestProgressItem = {
-        QuestProgressItem1,
-        QuestProgressItem2,
-        QuestProgressItem3,
-        QuestProgressItem4,
-        QuestProgressItem5,
-        QuestProgressItem6,
-    },
-
-    QuestRewardItem = {
-        QuestInfoRewardsFrameQuestInfoItem1,
-        QuestInfoRewardsFrameQuestInfoItem2,
-        QuestInfoRewardsFrameQuestInfoItem3,
-    },
-
-    ItemBackground = {
-        QuestProgressItem1NameFrame,
-        QuestProgressItem2NameFrame,
-        QuestProgressItem3NameFrame,
-        QuestProgressItem4NameFrame,
-        QuestProgressItem5NameFrame,
-        QuestProgressItem6NameFrame,
-
-        QuestInfoRewardsFrameQuestInfoItem1NameFrame,
-        QuestInfoRewardsFrameQuestInfoItem2NameFrame,
-        QuestInfoRewardsFrameQuestInfoItem3NameFrame,
-
-    },
-
-    Count = {
-        QuestProgressItem1Count,
-        QuestProgressItem2Count,
-        QuestProgressItem3Count,
-        QuestProgressItem4Count,
-        QuestProgressItem5Count,
-        QuestProgressItem6Count
-    }
-
-}
-
-
 local function merge(...)
     local result = {}
     for _, t in pairs({...}) do
@@ -94,12 +28,24 @@ end
 
 
 local function matches(obj, selector, attr_name)
-    return
-        selector == '*' or
-        selector == attr_name or
-        selector == obj:GetObjectType() or
-        selector == obj:GetName() or
-        has_value(CLASSES[selector] or {}, obj)
+    if selector == '*' then
+        return true
+    elseif selector:find(':') then
+        local found = true
+        for part in selector:gmatch('%s*([^:]+)') do
+            found = found and matches(obj, part, attr_name)
+        end
+        return found
+    else
+        selector = '^' .. selector:gsub("%*", ".*"):gsub("#", "%%d+") .. '$'
+        local name = obj:GetName()
+        return
+                selector == '^NOATTR$' and (not attr_name or #attr_name == 0) or
+                selector == '^NONAME$' and not name or
+                attr_name and string.match(attr_name, selector) or
+                              string.match(obj:GetObjectType(), selector) or
+                     name and string.match(name, selector)
+    end
 end
 lqt.matches = matches
 
@@ -133,13 +79,13 @@ local function parent_anchor_value(t, obj, anchoridx)
     if not pcall(function()
         local from, toF, to, x, y = obj:GetPoint()
         if not t[toF] then
-            anchoridx[obj] = { 0, obj:GetTop() or 0 }
+            anchoridx[obj] = { 0, obj:GetTop() or 0, obj:GetLeft() or 0 }
             return
         end
         local i = parent_anchor_value(t, toF, anchoridx)[1]+1
-        anchoridx[obj] = { i, obj:GetTop() or 0 }
+        anchoridx[obj] = { i, obj:GetTop() or 0, obj:GetLeft() or 0 }
     end) then
-        anchoridx[obj] = { 0, 100000 }
+        anchoridx[obj] = { 0, 100000, 100000 }
     end
     return anchoridx[obj]
 end
@@ -158,6 +104,9 @@ local function order_keys_by_anchors(parent, t)
         return anchoridx[a][1] < anchoridx[b][1]
             or anchoridx[a][1] == anchoridx[b][1]
                 and anchoridx[a][2] > anchoridx[b][2]
+            or anchoridx[a][1] == anchoridx[b][1]
+                and anchoridx[a][2] == anchoridx[b][2]
+                and anchoridx[a][3] < anchoridx[b][3]
     end)
     return result
 end
@@ -253,28 +202,17 @@ function lqt_result_meta:filter(fn)
 end
 
 
-local function handle_constructor(obj, selector, constructor)
-    local constructor, inherits = split_at_find(constructor, '/')
-    if #inherits == 0 then
-        inherits = nil
-    end
-    if not obj[selector] then
-        if obj['Create' .. constructor] then
-            obj[selector] = obj['Create' .. constructor](obj, nil, 'ARTWORK', inherits)
-        else
-            obj[selector] = CreateFrame(constructor, nil, obj, inherits)
-        end
-    end
-    return lqt_result({ obj[selector] })
-end
-
-
 local function query(obj, pattern, constructor, found)
     if type(pattern) == 'table' then
         return apply_style(lqt_result({ obj }), pattern)
     end
+    local root = not found
     local found = found or {}
-    if pattern:sub(1, 1) == '.' then
+    if pattern:find(',') then
+        for part in pattern:gmatch('%s*([^,]+)') do
+            query(obj, part, constructor, found)
+        end
+    elseif pattern:sub(1, 1) == '.' then
         pattern = strsub(pattern, 2)
 
         local selector, remainder = split_at_find(pattern, '[%.%s]')
@@ -290,12 +228,6 @@ local function query(obj, pattern, constructor, found)
                     obj[selector] = constructor(obj)
                 end
                 return lqt_result { obj[selector] }
-            else
-                local selector, constructor = split_at_find(selector, '=')
-                constructor = strtrim(constructor:sub(2))
-                if #constructor > 0 then
-                    return handle_constructor(obj, selector, constructor)
-                end
             end
         end
 
@@ -313,16 +245,18 @@ local function query(obj, pattern, constructor, found)
                 end
             end
         end
-
-        return lqt_result(order_keys_by_anchors(obj, found))
     else
         local selector, remainder = split_at_find(pattern, '[%.%s]')
         remainder = strtrim(remainder)
         if #remainder > 0 then
-            return _G[selector](remainder, constructor)
-        else
-            return lqt_result({ _G[selector] })
+            query(_G[selector], remainder, constructor, found)
+            -- return _G[selector](remainder, constructor)
+        elseif _G[selector] then
+            found[_G[selector]] = true
         end
+    end
+    if root then
+        return lqt_result(order_keys_by_anchors(obj, found))
     end
 end
 

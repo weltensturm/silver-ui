@@ -21,6 +21,8 @@ frames/buffs.lua
 frames/minimap.lua
 frames/target.lua
 frames/questtracker.lua
+frames/questtracker_wotlk.lua
 frames/player.lua
 frames/tooltip.lua
 frames/raidframe.lua
+# frames/nameplates.lua
