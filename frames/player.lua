@@ -6,14 +6,15 @@ SilverUI.RegisterScript(
     'Player Frame',
 [[
 
-local PARENT, Style, Frame, Texture, MaskTexture, AnimationGroup, Animation = LQT.PARENT, LQT.Style, LQT.Frame, LQT.Texture, LQT.MaskTexture, LQT.AnimationGroup, LQT.Animation
+local     PARENT,     Style,     Frame,     Texture,     MaskTexture,     AnimationGroup,     Animation
+    = LQT.PARENT, LQT.Style, LQT.Frame, LQT.Texture, LQT.MaskTexture, LQT.AnimationGroup, LQT.Animation
 
 
 local StylePlayerFrame = Style
-    :Size(300, 300/4)    
+    :Size(300, 300/4)
 {
     Frame'.SilverUI'
-        :AllPoints(PlayerFrame)
+        :AllPoints(PlayerFrame)   
         :FrameLevel(10)
     {
         Texture'.BarOverlay'
@@ -93,11 +94,9 @@ local StylePlayerFrame = Style
 
     Style'.PlayerFrameBottomManagedFramesContainer'
         :Points { TOP = PlayerFrame:BOTTOM(0, 22) }
-        -- :Size(100, 35/160*100)
     {
         Style'.*'
             :Scale(0.7)
-            -- :Size(100, 35/160*100)
     },
 
     Frame'.Gcd'
@@ -145,21 +144,36 @@ local StylePlayerFrame = Style
 }
 
 
+local function update()
+    StylePlayerFrame(PlayerFrame)
+end
+
+-- hooksecurefunc('PlayerFrame_ToVehicleArt', update)
+hooksecurefunc('PlayerFrame_ToPlayerArt', update)
+hooksecurefunc('PlayerFrame_UpdateArt', update)
+hooksecurefunc('PlayerFrame_UpdateStatus', update)
+hooksecurefunc('PlayerFrame_UpdateRolesAssigned', update)
+
+update()
+
+
+-- Cast Bar
+
 local Hide = Style:Hide()
 
 
-local StyleCastBar = Style
-    -- :SetUserPlaced(true)
+local StyleCastBar = Style -- need to wait until PLAYER_ENTERING_WORLD, otherwise edit mode breaks
     .filter(function(self)
         return self.attachedToPlayerFrame and not self.Selection:IsShown()
     end)
     :FrameLevel(11)
-    :Points { TOPLEFT = PlayerFrame:TOPLEFT(25, -35),
-                BOTTOMRIGHT = PlayerFrame:BOTTOMRIGHT(-25, 35) }
+    :Points { TOPLEFT = PlayerFrame:TOPLEFT(26, -35),
+              BOTTOMRIGHT = PlayerFrame:BOTTOMRIGHT(-26, 35) }
 {
     Hide'.Icon',
     Hide'.Border',
     Hide'.Background',
+    Hide'.EnergyGlow':Texture '',
     Style'.Text'
         :Scale(0.8)
         :Points { TOP = PARENT:TOP() },
@@ -175,43 +189,31 @@ local StyleCastBar = Style
         end
     }
 }
+    .reapply('UNIT_SPELLCAST_START', function(self, unit) return unit == 'player' end)
+    .reapply('UNIT_SPELLCAST_CHANNEL_START', function(self, unit) return unit == 'player' end)
 
 
 Frame
     :Events {
-        UNIT_SPELLCAST_CHANNEL_START = function(self, unit)
-            if unit == 'player' then
-                print('StyleCastBar')
-                StyleCastBar(PlayerCastingBarFrame)
-            end
-        end,
-        UNIT_SPELLCAST_START = function(self, unit)
-            if unit == 'player' then
-                print('StyleCastBar')
-                StyleCastBar(PlayerCastingBarFrame)
-            end
+        PLAYER_ENTERING_WORLD = function()
+            StyleCastBar(PlayerCastingBarFrame)
         end
     }
     .new()
 
 
-local function update()
-    StylePlayerFrame(PlayerFrame)
-end
-
-hooksecurefunc('PlayerFrame_ToVehicleArt', update)
-hooksecurefunc('PlayerFrame_ToPlayerArt', update)
-hooksecurefunc('PlayerFrame_UpdateArt', update)
-hooksecurefunc('PlayerFrame_UpdateStatus', update)
-hooksecurefunc('PlayerFrame_UpdateRolesAssigned', update)
-
-update()
-
 hooksecurefunc(EditModeManagerFrame, 'EnterEditMode', function()
     PlayerCastingBarFrame:ResetToDefaultPosition()
     EditModeManagerFrame:SetHasActiveChanges(false);
 end)
-    
+
+
+-- XP/rep bars
+
+hooksecurefunc(StatusTrackingBarManager, 'UpdateBarsShown', function()
+    StatusTrackingBarManager:Hide()
+end)
+
 
 ]]
 )
