@@ -1,14 +1,16 @@
-local _, ns = ...
-local lqt = ns.lqt
+local _, namespace = ...
+local LQT = namespace.LQT
 
+local query, FrameProxyMt, ApplyFrameProxy = LQT.query, LQT.FrameProxyMt, LQT.ApplyFrameProxy
 
 
 local CALLMETHOD = 1
-local NOOP = 2
-local TABLE = 3
-local FN = 4
-local SETDATA = 5
-local INIT = 6
+local CALLMETHOD_FRAMEPROXY_ARGS = 2
+local NOOP = 3
+local TABLE = 4
+local FN = 5
+local SETDATA = 6
+local INIT = 7
 
 
 local PARENT = 1
@@ -24,21 +26,74 @@ local newaction = nil
 local get_context = nil
 
 
+local function isWithContext(name, set)
+    name = set and name or 'Set' .. name
+    return
+        name == 'SetHooks'
+        or name == 'SetEvents'
+        or name == 'SetEventHooks'
+end
+
+local function hasFrameProxy(...)
+    for i=1, select('#', ...) do
+        if getmetatable(select(i, ...)) == FrameProxyMt then
+            return true
+        end
+    end
+end
+
+local function checkChildName(name)
+    assert(name:sub(1, 1) == '.', 'Invalid child name ' .. name)
+    name = name:sub(2)
+    for part in name:gmatch('[^\.^,^:^#]+') do
+        assert(name == part, 'Invalid child name' .. name)
+    end
+    return name
+end
+
+
 local ops = {
     [CALLMETHOD] = function(object, args)
         local setter = object['Set'..args[1]]
         if setter then
-            setter(object, unpack(args[2]))
-        else
-            setter = object[args[1]]
-            if not setter then
-                print_table(object)
-            end
-            assert(setter, args[3] .. ':\n' .. object:GetObjectType() .. ' has no function ' .. args[1])
-            if args[1] == 'Hooks' then
+            if isWithContext(args[1], false) then
                 setter(object, unpack(args[2]), args[3])
             else
                 setter(object, unpack(args[2]))
+            end
+        else
+            setter = object[args[1]]
+            assert(setter, args[3] .. ':\n' .. object:GetObjectType() .. ' has no function ' .. args[1])
+            if isWithContext(args[1], true) then
+                setter(object, unpack(args[2]), args[3])
+            else
+                setter(object, unpack(args[2]))
+            end
+        end
+    end,
+    [CALLMETHOD_FRAMEPROXY_ARGS] = function(object, args)
+        local newargs = {}
+        for k, v in pairs(args[2]) do
+            if getmetatable(v) == FrameProxyMt then
+                newargs[k] = ApplyFrameProxy(object, v)
+            else
+                newargs[k] = v
+            end
+        end
+        local setter = object['Set'..args[1]]
+        if setter then
+            if isWithContext(args[1], false) then
+                setter(object, unpack(newargs), args[3])
+            else
+                setter(object, unpack(newargs))
+            end
+        else
+            setter = object[args[1]]
+            assert(setter, args[3] .. ':\n' .. object:GetObjectType() .. ' has no function ' .. args[1])
+            if isWithContext(args[1], true) then
+                setter(object, unpack(newargs), args[3])
+            else
+                setter(object, unpack(newargs))
             end
         end
     end,
@@ -103,18 +158,16 @@ function StyleActions:apply(frame, parent_from_new)
         end
         return self
     elseif name and construct then
-        local constructed = {}
-        local constructor = function(parent)
-            local obj = construct(parent)
-            constructed[obj] = parent
-            return obj
+        name = checkChildName(name)
+        local constructed = nil
+        if not frame[name] then
+            frame[name] = construct(frame)
+            constructed = frame
         end
-        for result in frame(name, constructor) do
-            run_all(self, result, constructed[result])
-        end
+        run_all(self, frame[name], constructed)
         return self
     elseif name then
-        for result in frame(name) do
+        for result in query(frame, name) do
             if not filter or filter(result) then
                 run_all(self, result)
             end
@@ -145,7 +198,11 @@ function StyleActions:init(arg)
 end
 
 function StyleActions:data(data)
-    return newaction(self, { [ACTION]=SETDATA, [ARGS]=data })
+    local action = newaction(self, { [ACTION]=SETDATA, [ARGS]=data })
+    if action[BOUND_FRAME] then
+        run_single(action)
+    end
+    return action
 end
 
 function StyleActions:new(...)
@@ -158,6 +215,16 @@ function StyleActions:filter(fn)
     return newaction(self, { [FILTER]=fn })
 end
 
+function StyleActions:reapply(arg1, arg2, arg3)
+    local context = get_context()
+    local action = newaction(self, { [ACTION]=CALLMETHOD, [ARGS]={ 'RegisterReapply', { self, arg1, arg2, arg3, context }, context } })
+    if action[BOUND_FRAME] then
+        run_single(action)
+    end
+    return action
+end
+
+
 
 local StyleChainMeta = {}
 
@@ -167,7 +234,12 @@ function StyleChainMeta:__index(attr)
     else
         return function(arg1, ...)
             if arg1 == self then -- called with :
-                local action = newaction(self, { [ACTION]=CALLMETHOD, [ARGS]={ attr, { ... }, get_context() } })
+                local action
+                if hasFrameProxy(...) then
+                    action = newaction(self, { [ACTION]=CALLMETHOD_FRAMEPROXY_ARGS, [ARGS]={ attr, { ... }, get_context() } })
+                else
+                    action = newaction(self, { [ACTION]=CALLMETHOD, [ARGS]={ attr, { ... }, get_context() } })
+                end
                 if action[BOUND_FRAME] then
                     run_single(action)
                 end
@@ -216,37 +288,50 @@ function StyleChainMeta:__concat(arg)
 end
 
 
-function StyleChainMeta:__tostring()
-    local name = self[NAME]
-    local construct = self[CONSTRUCTOR]
-    local frame = self[BOUND_FRAME]
+local function StyleToString(style, level, notHead)
+    level = level or 1
+    local name = style[NAME]
+    local construct = style[CONSTRUCTOR]
+    local frame = style[BOUND_FRAME]
 
-    local text = 'style'
-        .. (name and (' '..name) or '')
-        .. (construct and ' C' or '')
-        .. (frame and ' B ' .. frame:GetObjectType() .. ' ' .. frame:GetName() or '')
-        .. '\n'
-
-    local current = self
-
-    local actions = {}
-    while current do
-        table.insert(actions, current)
-        current = current[PARENT]
+    local text = ''
+    if not notHead then
+        text =
+            string.rep('    ', level-1)
+            .. 'style'
+            .. (name and (' '..name) or '')
+            .. (construct and ' C' or '')
+            .. (frame and ' Bound: ' .. frame:GetObjectType() .. ' ' .. frame:GetName() or '')
+            .. '\n'
+    end
+    if style[PARENT] then
+        text = text .. StyleToString(style[PARENT], level, true) or ''
     end
 
-    for i=#actions, 1, -1 do
-        current = actions[i]
-        if current[ACTION] ~= NOOP then
-            text = text .. '    '
-                .. (current[ACTION] == CALLMETHOD and ':' or
-                    current[ACTION] == TABLE and 'TABLE ' or
-                    current[ACTION] == FN and 'FN ' or '? ')
-                .. (#current[ARGS] > 0 and tostring(unpack(current[ARGS])) or '') .. ' '
-                .. '\n'
+    if style[ACTION] == TABLE then
+        for _, style in ipairs(style[ARGS]) do
+            if type(style) == 'table' then
+                text = text .. StyleToString(style, level+1, false)
+            else
+                text = text .. string.rep('    ', level+1) .. 'function\n'
+            end
+        end
+    else
+        if style[ACTION] ~= NOOP then
+            text = text
+                .. string.rep('    ', level)
+                .. (style[ACTION] == CALLMETHOD and ':' or
+                    style[ACTION] == FN and 'FN ' or
+                    style[ACTION] == NOOP and 'NOOP' or '? ')
+                .. (#style[ARGS] > 0 and tostring(unpack(style[ARGS])) or '') .. '\n'
         end
     end
     return text
+end
+
+
+function StyleChainMeta:__tostring()
+    return StyleToString(self)
 end
 
 
@@ -272,31 +357,56 @@ get_context = function()
 end
 
 
-lqt.Style = newaction(nil, {})
+LQT.Style = newaction(nil, {})
 
 
-lqt.Frame = lqt.Style
+LQT.Frame = LQT.Style
     .constructor(function(obj, ...) return CreateFrame('Frame', nil, obj, ...) end)
 
 
-lqt.Button = lqt.Style
+LQT.Button = LQT.Style
     .constructor(function(obj, ...) return CreateFrame('Button', nil, obj, ...) end)
 
 
-lqt.Cooldown = lqt.Style
+LQT.ItemButton = LQT.Style
+    .constructor(function(obj, ...) return CreateFrame('ItemButton', nil, obj, ...) end)
+
+
+LQT.Cooldown = LQT.Style
     .constructor(function(obj, ...) return CreateFrame('Cooldown', nil, obj, ...) end)
 
 
-lqt.Texture = lqt.Style
+LQT.Texture = LQT.Style
     .constructor(function(obj, ...) return obj:CreateTexture(...) end)
 
 
-lqt.FontString = lqt.Style
+LQT.FontString = LQT.Style
     .constructor(function(obj, ...) return obj:CreateFontString(...) end)
 
 
-lqt.MaskTexture = lqt.Style
+LQT.MaskTexture = LQT.Style
     .constructor(function(obj, ...) return obj:CreateMaskTexture(...) end)
 
 
+LQT.EditBox = LQT.Style
+    .constructor(function(obj, ...) return CreateFrame('EditBox', nil, obj, ...) end)
+
+
+LQT.ScrollFrame = LQT.Style
+    .constructor(function(obj, ...) return CreateFrame('ScrollFrame', nil, obj, ...) end)
+
+
+LQT.AnimationGroup = LQT.Style
+    .constructor(function(obj, ...) return obj:CreateAnimationGroup(...) end)
+
+
+LQT.Animation = {
+    Alpha           = LQT.Style.constructor(function(obj, ...) return obj:CreateAnimation('Alpha', ...) end),
+    Rotation        = LQT.Style.constructor(function(obj, ...) return obj:CreateAnimation('Rotation', ...) end),
+    Scale           = LQT.Style.constructor(function(obj, ...) return obj:CreateAnimation('Scale', ...) end),
+    LineScale       = LQT.Style.constructor(function(obj, ...) return obj:CreateAnimation('LineScale', ...) end),
+    LineTranslation = LQT.Style.constructor(function(obj, ...) return obj:CreateAnimation('LineTranslation', ...) end),
+    FlipBook        = LQT.Style.constructor(function(obj, ...) return obj:CreateAnimation('FlipBook', ...) end),
+    Path            = LQT.Style.constructor(function(obj, ...) return obj:CreateAnimation('Path', ...) end),
+}
 

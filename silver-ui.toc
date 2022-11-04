@@ -1,20 +1,30 @@
-## Interface: 90100
+## Interface: 100002
 ## Title: Silver UI
 ## Author: weltensturm
 ## OptionalDeps: 
-## SavedVariables: 
-## SavedVariablesPerCharacter: 
+## SavedVariables: SilverUISavedVariablesAccount
+## SavedVariablesPerCharacter: SilverUISavedVariablesCharacter
 ## X-silver-ui: silver-ui
 
+#-# libraries
+indent.lua
+
+#-# base
+settings.lua
 util.lua
-lqt.lua
-lqt_style.lua
-uiext.lua
+lqt/__init__.lua
+lqt/frameproxy.lua
+lqt/query.lua
+lqt/style.lua
+lqt/frame_extensions.lua
+lqt/__finalize__.lua
 
 editor.lua
 
+#-# skins
 frames/questgossip.lua
 frames/bars.lua
+frames/bars_wotlk.lua
 frames/menubar.lua
 frames/chat.lua
 frames/buffs.lua
@@ -23,6 +33,8 @@ frames/target.lua
 frames/questtracker.lua
 frames/questtracker_wotlk.lua
 frames/player.lua
+frames/player_wotlk.lua
 frames/tooltip.lua
 frames/raidframe.lua
+frames/bigbag.lua
 # frames/nameplates.lua

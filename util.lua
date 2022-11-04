@@ -4,6 +4,9 @@ ns.util = {}
 local util = ns.util
 
 
+SilverUI.util = util
+
+
 function util.partial_function(main_func, carry)
     return function(arg)
         if type(arg) == "function" then
@@ -67,6 +70,13 @@ function util.split_at_find(str, pattern, after)
         return strsub(str, 1, i+after-1), strsub(str, i+after)
     end
     return str, ''
+end
+
+
+function util.rtrim(s)
+    local n = #s
+    while n > 0 and s:find("^%s", n) do n = n - 1 end
+    return s:sub(1, n)
 end
 
 

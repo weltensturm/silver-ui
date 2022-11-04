@@ -1,7 +1,5 @@
-local _, ns = ...
-local lqt = ns.lqt
 
-local Frame, Style, Texture = lqt.Frame, lqt.Style, lqt.Texture
+local Frame, Style, Texture = LQT.Frame, LQT.Style, LQT.Texture
 
 
 local function WithUnitFrame(fn)
@@ -28,8 +26,7 @@ Frame -- Enable all plates in combat
 Frame -- Dynamic health bar size
     .data {
         initPlate = WithUnitFrame(function(self, unit, uf)
-            uf.healthBar:Points { CENTER = uf:CENTER() }
-            uf.name:SetShadowColor(0, 0, 0, 0)
+            uf.name:SetShadowColor(0, 0, 0, 0.5)
             uf.classificationIndicator:SetVertexColor(0,0,0,0)
             self:adjustHealthbar(unit)
         end),
@@ -42,12 +39,13 @@ Frame -- Dynamic health bar size
             end
             local x =  healthMax / UnitHealthMax("player") / diminish / 2
             local scale = max(0.02, (1.0 - 1 / (x + 1)) * 4)
-            
+            print(scale)
+            uf.healthBar:Points { CENTER = uf:CENTER() }
             uf.healthBar:SetWidth(4+80/2*scale)
             -- Plater.SetNameplateSize (unitFrame, 4+settings.Width/2*scale, 4+settings.Height/8*sqrt(scale))
         end)
     }
-    :EventHook {
+    :EventHooks {
         NAME_PLATE_UNIT_ADDED = function(self, unit) self:initPlate(unit) end,
         UNIT_HEALTH = function(self, unit) self:adjustHealthbar(unit) end,
     }
@@ -57,12 +55,8 @@ Frame -- Dynamic health bar size
 Frame -- Cast bar over health bar
     .data {
         initPlate = WithUnitFrame(function(self, unit, uf)
-            uf.healthBar:Points { CENTER = uf:CENTER() }
-            uf.castBar:Points { CENTER = uf:CENTER() }
-            uf.castBar:SetSize(uf.healthBar:GetSize())
             uf.castBar.background:SetTexture('')
             uf.castBar:SetStatusBarTexture('')
-            uf.castBar.Text:Points { BOTTOM = uf.castBar:TOP() }
             if UnitCastingInfo(unit) or UnitChannelInfo(unit) then
                 self:castStart(unit)
             end
@@ -85,6 +79,11 @@ Frame -- Cast bar over health bar
             castBar.Spark:SetPoint('BOTTOM',texture,'BOTTOMRIGHT',-1,-4)
             castBar.Spark:Show()
 
+            uf.healthBar:Points { CENTER = uf:CENTER() }
+            castBar:Points { CENTER = uf:CENTER() }
+            castBar:SetSize(uf.healthBar:GetSize())
+            castBar.Text:Points { BOTTOM = castBar:TOP() }
+
             if notInterruptible then
                 castBar.Spark:SetVertexColor(1, 0, 0, 0.7) 
                 local r, g, b, a = uf.name:GetTextColor()
@@ -100,7 +99,7 @@ Frame -- Cast bar over health bar
             uf.name:SetAlpha(1)
         end)
     }
-    :EventHook {
+    :EventHooks {
         NAME_PLATE_UNIT_ADDED = function(self, unit) self:initPlate(unit) end,
         UNIT_SPELLCAST_START = function(self, unit) self:castStart(unit) end,
         UNIT_SPELLCAST_STOP = function(self, unit) self:castStop(unit) end,

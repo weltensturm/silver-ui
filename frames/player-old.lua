@@ -249,7 +249,7 @@ end
 
 local addon = CreateFrame('Frame')
 
-addon:Event {
+addon:Events {
     UNIT_DISPLAYPOWER = update,
     PLAYER_ENTERING_WORLD = update
 }

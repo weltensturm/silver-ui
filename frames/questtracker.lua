@@ -1,15 +1,14 @@
-local _, ns = ...
-local lqt = ns.lqt
-local Style, Frame, Texture, FontString = lqt.Style, lqt.Frame, lqt.Texture, lqt.FontString
+
+local Style, Frame, Texture, FontString = LQT.Style, LQT.Frame, LQT.Texture, LQT.FontString
 
 
 if WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE then return end
 
 
-ObjectiveTrackerFrame.IsUserPlaced = function() return true end
+-- ObjectiveTrackerFrame.IsUserPlaced = function() return true end
 
-OBJECTIVE_TRACKER_TEXT_WIDTH = 350
-OBJECTIVE_TRACKER_LINE_WIDTH = 380
+-- OBJECTIVE_TRACKER_TEXT_WIDTH = 350
+-- OBJECTIVE_TRACKER_LINE_WIDTH = 380
 
 
 local trackerHeaderAlpha = 0.1
@@ -50,7 +49,7 @@ local function update_size(e)
                         Style'.Bar' {
                             Style'.Label' {
                                 function(self)
-                                    self:Points { LEFT = self:GetParent():LEFT(20, 5) }
+                                    self:SetPoints { LEFT = self:GetParent():LEFT(20, 5) }
                                 end
                             }
                         }
@@ -91,9 +90,9 @@ local addon = Frame
         end
     }
     
-    :EventHook {
+    :EventHooks {
         PLAYER_ENTERING_WORLD = update_size,
-        QUEST_WATCH_LIST_CHANGED = update_size,
+        -- QUEST_WATCH_LIST_CHANGED = update_size, -- called way too often, bad performance
         QUEST_WATCH_UPDATE = update_size,
         QUEST_LOG_UPDATE = update_size,
         SUPER_TRACKING_CHANGED = update_size
@@ -115,17 +114,17 @@ local TextStyle = Style {
 
 
 SectionStyle = Style {
-    function(self)
-        if self.module then
-            self.module.fromHeaderOffsetY = 0
-            self.module.fromModuleOffsetY = 0
-        end
-    end,
+    -- function(self)
+    --     if self.module then
+    --         self.module.fromHeaderOffsetY = 0
+    --         self.module.fromModuleOffsetY = 0
+    --     end
+    -- end,
     Style'.rightButton'
         :Hooks(hooks)
         { function(self) self:Points { TOPLEFT = self:GetParent():TOPRIGHT() } end },
     TextStyle'.HeaderText',
-    TextStyle'.HeaderButton':Hooks(hooks),
+    TextStyle'.HeaderButton':FrameLevel(3):Hooks(hooks),
     TextStyle'.Text',
     Style'.Frame' {
         TextStyle'.Text',
@@ -134,11 +133,11 @@ SectionStyle = Style {
         
         Style'.Bar' {
             function(self)
-                self:Points { LEFT = self:GetParent():LEFT() }
+                self:SetPoints { LEFT = self:GetParent():LEFT() }
             end,
             Style'.Label' {
                 function(self)
-                    self:Points { TOPLEFT = self:GetParent():TOPLEFT() }
+                    self:SetPoints { TOPLEFT = self:GetParent():TOPLEFT() }
                 end
             },
             Style'.Texture':Texture ''
@@ -163,10 +162,7 @@ SectionStyle = Style {
 }
 
 
-Style(ObjectiveTrackerFrame)
-    :Points { TOPLEFT = UIParent:TOPLEFT(30, -30) }
-    :Height(400)
-{
+Style(ObjectiveTrackerFrame) {
     Style'.HeaderMenu' {
         Style'.Button':Hooks(hooks),
         Frame'.HoverFrame'

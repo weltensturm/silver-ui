@@ -15,12 +15,12 @@ for slice in GameTooltip'.NineSlice.Texture' do
     end
 end
 
-center:Points {
+center:SetPoints {
     TOPLEFT = GameTooltip:TOPLEFT(0, -2),
     BOTTOMRIGHT = GameTooltip:BOTTOMRIGHT()
 }
 
-GameTooltip:Hooks {
+GameTooltip:SetHooks {
     OnShow = function()
 
     end
@@ -33,10 +33,10 @@ GameTooltipStatusBar:SetPoints({
 GameTooltipStatusBar:SetHeight(1)
 
 
-addon:Event {
+addon:SetEvents {
     UPDATE_MOUSEOVER_UNIT = function()
         
-        center:Points {
+        center:SetPoints {
             TOPLEFT = GameTooltip:TOPLEFT(0, -2),
             BOTTOMRIGHT = GameTooltip:BOTTOMRIGHT()
         }

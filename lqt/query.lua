@@ -1,11 +1,9 @@
-local _, ns = ...
+local _, namespace = ...
+local LQT = namespace.LQT
 
-ns.lqt = {}
-local lqt = ns.lqt
-
-local keys = ns.util.keys
-local values = ns.util.values
-local split_at_find = ns.util.split_at_find
+local keys = namespace.util.keys
+local values = namespace.util.values
+local split_at_find = namespace.util.split_at_find
 
 
 local function merge(...)
@@ -43,11 +41,10 @@ local function matches(obj, selector, attr_name)
                 selector == '^NOATTR$' and (not attr_name or #attr_name == 0) or
                 selector == '^NONAME$' and not name or
                 attr_name and string.match(attr_name, selector) or
-                              string.match(obj:GetObjectType(), selector) or
-                     name and string.match(name, selector)
+                string.match(obj:GetObjectType(), selector) or
+                name and string.match(name, selector)
     end
 end
-lqt.matches = matches
 
 
 local function children(obj)
@@ -112,28 +109,14 @@ local function order_keys_by_anchors(parent, t)
 end
 
 
-local function apply_style(obj, style)
+local function apply_style(result, style)
     for k, v in pairs(style) do
-        if type(k) == 'number' then
-            for _, child in pairs(obj) do
-                v.apply(child)
-            end
-        else
-            if k:sub(1,1) == '.' then
-                assert(type(v) == 'table')
-                for _, child in pairs(obj) do
-                    child(k)(v)
-                end
-            else
-                if type(v) == 'table' then
-                    obj['Set'..k](obj, unpack(v))
-                else
-                    obj['Set'..k](obj, v)
-                end
-            end
+        assert(type(k) == 'number')
+        for _, obj in pairs(result) do
+            v.apply(obj)
         end
     end
-    return obj
+    return result
 end
 
 
@@ -261,9 +244,14 @@ local function query(obj, pattern, constructor, found)
 end
 
 
+LQT.query = query
+LQT.matches = matches
+
+
 for v in values({
     UIParent,
     GossipGreetingScrollFrame,
+    QuestDetailScrollFrame,
     QuestProgressItem1,
     QuestRewardScrollFrameScrollBar,
     ActionButton1,

@@ -1,11 +1,12 @@
-local _, ns = ...
+
+local Style = LQT.Style
 
 local addon = CreateFrame('Frame')
 
 addon:RegisterEvent'UPDATE_CHAT_WINDOWS'
 
 
-local alpha = 0.1
+local alpha = 1
 local alphaTarget = 0
 
 local function show_all()
@@ -17,8 +18,13 @@ local function hide_all()
 end
 
 
+local Hooks = Style:Hooks {
+    OnEnter = show_all,
+    OnLeave = hide_all
+}
 
-addon:Event {
+
+addon:SetEvents {
     UPDATE_CHAT_WINDOWS = function()
         ChatFrame1.timeVisibleSecs = 10
         ChatFrame2.timeVisibleSecs = 10
@@ -32,7 +38,7 @@ addon:Event {
         --     TOPLEFT = ChatAlertFrame:TOPLEFT(0, -10)
         -- }
 
-        ChatFrameChannelButton:Points {
+        ChatFrameChannelButton:SetPoints {
             BOTTOMLEFT = ChatFrameMenuButton:TOPLEFT(2, 0)
         }
 
@@ -51,18 +57,11 @@ addon:Event {
         --     :SetTOPLEFT(LFDMicroButton:BOTTOMLEFT())
 
         for i = 1, 10 do
-            _G['ChatFrame'..i]:Hooks {
-                OnEnter = show_all,
-                OnLeave = hide_all
+            Hooks(_G['ChatFrame'..i])
+            Hooks(_G['ChatFrame'..i].buttonFrame) {
+                Hooks'.Button'
             }
-            _G['ChatFrame'..i].buttonFrame:Hooks {
-                OnEnter = show_all,
-                OnLeave = hide_all
-            }
-            _G['ChatFrame'..i..'Tab']:Hooks {
-                OnEnter = show_all,
-                OnLeave = hide_all
-            }
+            Hooks(_G['ChatFrame'..i..'Tab'])
         end
     end,
 }
@@ -86,11 +85,21 @@ local buttons = {
     ChatFrame7Tab,
     ChatFrame8Tab,
     ChatFrame9Tab,
-    ChatFrame10Tab
+    ChatFrame10Tab,
+    ChatFrame1.buttonFrame,
+    ChatFrame2.buttonFrame,
+    ChatFrame3.buttonFrame,
+    ChatFrame4.buttonFrame,
+    ChatFrame5.buttonFrame,
+    ChatFrame6.buttonFrame,
+    ChatFrame7.buttonFrame,
+    ChatFrame8.buttonFrame,
+    ChatFrame9.buttonFrame,
+    ChatFrame10.buttonFrame,
 }
 
 
-addon:Hooks {
+addon:SetHooks {
     OnUpdate = function(self, dt)
         if alphaTarget ~= alpha then
             local sign = alpha >= alphaTarget and -1 or 1
@@ -115,8 +124,5 @@ for _, v in pairs({
     -- LFDMicroButton,
     -- EJMicroButton,
 }) do
-    v:Hooks {
-        OnEnter = show_all,
-        OnLeave = hide_all
-    }
+    Hooks(v)
 end
