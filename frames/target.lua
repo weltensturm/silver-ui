@@ -8,22 +8,24 @@ local addon = Frame.new()
 
 
 local StyleTargetFrameThreat = Style {
-    Style'.threatIndicator'
+    Style'.threatIndicator, .TargetFrameContainer.Flash'
         :DrawLayer 'BACKGROUND'
         :Alpha(0.1)
         :Texture 'Interface/Masks/CircleMaskScalable'
         :TexCoord(0, 1, 0, 1)
         :Points { CENTER = TargetFrame:CENTER() }
-        :Size(84, 84)
+        :Size(84, 84),
 }
 
 local StyleTargetFrameRetail = Style {
     Style'.TargetFrameContainer' {
-        Style'.Texture':Texture '':Alpha(0),
+        Style'.FrameTexture':Texture '',
+        Style'.BossPortraitFrameTexture':Texture '',
         Style'.Portrait'
             :Show()
             :DrawLayer 'ARTWORK'
-            :Points { CENTER = PARENT:CENTER() },
+            :Points { CENTER = PARENT:CENTER() }
+            :Size(64, 64),
     },
     Style'.TargetFrameContent' {
         Style'.TargetFrameContentMain' {
