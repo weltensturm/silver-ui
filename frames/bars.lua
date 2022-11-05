@@ -214,6 +214,8 @@ for barname, bar in pairs(bars) do
                 :SwipeTexture 'Interface/ContainerFrame/BagSlot2x'
                 :BlingTexture ''
                 :DrawBling(false),
+            Style'.NormalTexture'
+                :VertexColor(0.3, 0.3, 0.3, 1)
         }
 
     end)
