@@ -100,6 +100,7 @@ local StyleMinimapCluster = Style
             Hide'.MinimapNorthTag',
             Hide'.MiniMapWorldMapButton',
             Hide'.MinimapCompassTexture',
+            Hide'.MinimapBorder',
             Style'.Button':Hooks(alphaHooks),
             Style'.*.Button':Hooks(alphaHooks),
         },
@@ -127,6 +128,10 @@ local StyleMinimapCluster = Style
                 :Texture('Interface/Masks/CircleMaskScalable')
                 :DrawLayer 'BACKGROUND'
                 :VertexColor(0,0,0, 0.5)
+        },
+
+        Style'.TimeManagerClockButton' {
+            Style'.Texture':Hide()
         },
 
         Texture'.ZoneBackground'
