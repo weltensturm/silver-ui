@@ -52,6 +52,8 @@ local function InlineListLayout(selection, filter, margin)
                 if previous_match or before then
                     element:SetPoint('TOPLEFT', previous_match or before, 'BOTTOMLEFT', 0, -margin.inner)
                     previous_match = element
+                else
+                    before = element
                 end
             end
         end
@@ -68,23 +70,16 @@ local ListLayout = Style {
         local height = 0
         for element in self'.*' do
             if element:IsShown() then
-                print(element:GetObjectType(), height)
                 element:SetPoints { TOPLEFT = self:TOPLEFT(0, -5 - height) }
                 height = height + element:GetHeight()
             end
         end
-        print(height)
-        -- if after then
-        --     -- print('AFTER', after:GetName(), '->', previous_match:GetName())
-        --     after:SetPoint('TOPLEFT', previous_match, 'BOTTOMLEFT', 0, -margin.after)
-        -- end
     end
 }
 
 
 local function HideIfEmpty(self)
     if not self:GetChildren() and not self:GetRegions() then
-        print('hide', self)
         self:Hide()
     end
 end
@@ -244,21 +239,19 @@ local function StyleAll(self, event)
                 :DrawLayer 'OVERLAY'
                 :Texture 'Interface/MINIMAP/UI-MINIMAP-BORDER'
                 :TexCoord(0, 1, 0.11, 1)
-                :Points {
-                    TOPLEFT = PARENT.PortraitContainer.portrait:TOPLEFT(-49, 4),
-                    BOTTOMRIGHT = PARENT.PortraitContainer.portrait:BOTTOMRIGHT(10, -41)
-                },
-                -- function(self, parent)
-                --     local portrait = parent'.*FramePortrait, .PortraitContainer'[1]
-                --     self:SetPoints {
-                --         TOPLEFT = portrait:TOPLEFT(-40, 0),
-                --         BOTTOMRIGHT = portrait:BOTTOMRIGHT(10, -30)
-                --     }
-                -- end),
+                .. function(self)
+                    local parent = self:GetParent()
+                    local portrait = parent'.*FramePortrait, .PortraitContainer.portrait'[1]
+                    self:SetPoints {
+                        TOPLEFT = portrait:TOPLEFT(-49, 4),
+                        BOTTOMRIGHT = portrait:BOTTOMRIGHT(10, -41)
+                    }
+                end,
 
-            Style'.*NameFrame'
+            Style'.*NameFrame, .TitleContainer'
                 :Points { TOPLEFT = window:TOPLEFT(80, -13),
                           TOPRIGHT = window:TOPRIGHT(-10, -13) }
+                :Height(14)
             {
                 Style'.FontString'
                     -- AllPoints = '$parent',
@@ -283,6 +276,8 @@ local function StyleAll(self, event)
                 :Size(410, 1.2)
                 .init(function(self, parent) self:SetPoint("TOPLEFT", parent.NameBackground, "BOTTOMLEFT") end),
 
+            -- Frame'.ScrollBoxAnchor'
+            --     :Width(WIDTH-20),
             Style'.*.ScrollBar':Hide(),
             Style'.*.ScrollBox'
                 :Width(WIDTH-20)
@@ -296,33 +291,44 @@ local function StyleAll(self, event)
                     :Points { TOPLEFT = PARENT:TOPLEFT(), TOPRIGHT = PARENT:TOPRIGHT() }
                 {
                     Style'.*'
-                        :Points { TOPLEFT = PARENT:TOPLEFT(7.5, 0), TOPRIGHT = PARENT:TOPRIGHT(-7.5, 0) }
+                        :Width(WIDTH-40)
                     {
-                        Style'.FontString'
-                            :Points { TOPLEFT = PARENT:TOPLEFT(7.5, 0), TOPRIGHT = PARENT:TOPRIGHT(-7.5, 0) }
-                        {
-                            function(self) self:GetParent():SetHeight(self:GetHeight() + 5) end
-                        },
+                        Style'.FontString':Width(WIDTH-45)
+                        -- Style'.FontString'
+                        --     :Points { TOPLEFT = PARENT:TOPLEFT(7.5, 0), TOPRIGHT = PARENT:TOPRIGHT(-7.5, 0) }
+                        -- {
+                        --     function(self)
+                        --         self:SetHeight(0)
+                        --         self:SetText(self:GetText())
+                        --         self:GetParent():SetHeight(self:GetHeight() + 5)
+                        --     end
+                        -- },
                     },
+                    
                     Style'.Button' {
-                        Style'.FontString'
-                            :Points { TOPLEFT = PARENT:TOPLEFT(20, 0), TOPRIGHT = PARENT:TOPRIGHT(-7.5, 0) }
-                        {
-                            function(self) self:GetParent():SetHeight(self:GetHeight()) end
-                        },
+                        function(self)
+                            self:GetFontString():SetWidth(WIDTH-45)
+                            self:SetHeight(self:GetFontString():GetHeight() + 2)
+                        end
+                        -- Style'.FontString'
+                        --     :Points { TOPLEFT = PARENT:TOPLEFT(20, 0), TOPRIGHT = PARENT:TOPRIGHT(-7.5, 0) }
+                        -- {
+                        --     function(self) self:GetParent():SetHeight(self:GetHeight()) end
+                        -- },
                     },
                     ListLayout,
-                    Style:FitToChildren(),
+                    Style:FitToChildren(), -- Resizing applies blizzard layout
+                    ListLayout,
+                    function(self) height = height + self:GetExtentsDown()+10 end
                 },
                 Style:FitToChildren(),
                 
-                function(self) height = height + self:GetHeight()+10 end
             }
 
         }
 
         -- window'.Frame':Strip('Bg', 'SealMaterialBG', 'MaterialTopLeft', 'MaterialTopRight', 'MaterialBotLeft')
-        window'.Frame.Texture'.filter(function(t) return t ~= window.PortraitContainer.portrait end):Hide()
+        window'.Frame.Texture'.filter(function(t) return t ~= (window.PortraitContainer or {}).portrait end):Hide()
 
         if window == ItemTextFrame then
 
@@ -399,24 +405,12 @@ local function StyleAll(self, event)
             
         end
 
-        -- Style(window) {
-        --     Style'.ScrollFrame, .*.ScrollFrame'
-        --         :Strip('Top', 'Middle', 'Bottom')
-        --         :Width(WIDTH-10)
-        --         :Points { TOPLEFT = window:TOPLEFT(10, -40) }
-        --     .. Hide'.Slider'
-        -- }
-
-        -- window'.*.ScrollFrame.Slider':Hide()
-        
         for container in window'.ScrollFrame, .*.ScrollFrame'
             .filter(byVisible)
             :Strip('Top', 'Middle', 'Bottom')
             :SetWidth(WIDTH-10)
-            -- :SetHeight(1024)
             :SetPoints { TOPLEFT = window:TOPLEFT(10, -40) }
         do
-            print(container:GetName(), container:GetObjectType())
             container'.Slider.Texture':SetTexture '':SetAtlas ''
             container'.Slider.Button':SetPoints { BOTTOM = UIParent:TOP() }
 
@@ -454,13 +448,7 @@ local function StyleAll(self, event)
                     -- :SetTexCoord(0, 1, 0, 1)
 
                 Style(content) {
-                    Style'.QuestInfoRewardsFrame'
-                        :Hooks {
-                            OnShow = function(self)
-                                StyleQuestInfoRewardsFrame(self)
-                            end
-                        }
-                    .. StyleQuestInfoRewardsFrame
+                    StyleQuestInfoRewardsFrame'.QuestInfoRewardsFrame'
                 }
 
                 for subchild in content'.*'.filter(byVisible) do
@@ -471,13 +459,11 @@ local function StyleAll(self, event)
                     end
                     if subchild:GetObjectType() ~= "Frame" or subchild:GetChildren() or subchild:GetRegions() then
                         subchild:SetWidth(WIDTH-40)
-                        height = height + subchild:GetHeight() - (yOfs or 0)
                     end
                 end
-                --container:SetHeight(height+40)
-                -- content:SetHeight(height)
                 content:FitToChildren()
-                height = content:GetHeight() -- math.min(height, 400)
+                
+                height = content:GetHeight()
             end
             if container == QuestDetailScrollFrame and QuestInfoRewardsFrame:IsVisible() then
                 height = height - QuestInfoRewardsFrame:GetHeight()
