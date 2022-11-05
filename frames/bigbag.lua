@@ -219,7 +219,7 @@ local StyleItem = Style
                 --     percBrightness = 1
                 -- end
                 self.IconGlow:SetTexture 'Interface/AddOns/silver-ui/art/itemslot_glow'
-                self.IconGlow:SetVertexColor(unpack(QUALITY_COLORS[self.quality]))
+                self.IconGlow:SetVertexColor(unpack(QUALITY_COLORS[self.quality] or { 0.5, 0.5, 0.5, 1 }))
                 self.IconGlow:Show()
             else
                 self.IconGlow:Hide()
