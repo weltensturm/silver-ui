@@ -20,7 +20,7 @@ local
         LQT.FontString
 
 
-local session = nil
+local db = nil
 local FrameBigBag = nil
 SilverUIBigBag = nil
 
@@ -37,12 +37,15 @@ do
     local colorSelect = CreateFrame('ColorSelect') -- Convert RGB <-> HSV (:
     for i = 0, Enum.ItemQualityMeta.NumValues - 1 do
         local r, g, b = GetItemQualityColor(i)
+        local brightness = (0.2126*r + 0.7152*g + 0.0722*b)*1.2
         colorSelect:SetColorRGB(r, g, b)
         local h, s, v = colorSelect:GetColorHSV()
-        v = 0.8
+        v = v > 0.7 and v/brightness or 0.3
         colorSelect:SetColorHSV(h, s, v)
         r, g, b = colorSelect:GetColorRGB()
-        QUALITY_COLORS[i] = { r, g, b, 1 }
+        QUALITY_COLORS[i] = { r, g, b, 0.7 }
+
+        QUALITY_COLORS[i] = { r, g, b, 0.7 }
     end
 end
 
@@ -58,15 +61,8 @@ SilverUI.Persistent {
         y = nil
     },
     onload = function(account, character)
-        session = character
+        db = character
         SilverUIBigBag = FrameBigBag.new()
-    end
-}
-
-
-local ToParent = Style {
-    function(self)
-        self:SetAllPoints(self:GetParent())
     end
 }
 
@@ -88,14 +84,14 @@ local Btn = Button
 {
     FontString'.Text'
         :Font('Fonts/ARIALN.TTF', 12)
-        .. ToParent,
+        :AllPoints(PARENT),
     Texture'.hoverBg'
         -- :ColorTexture(0.3, 0.3, 0.3)
         :Texture 'Interface/BUTTONS/UI-Listbox-Highlight2'
         :BlendMode 'ADD'
         :VertexColor(1,1,1,0.2)
         :Hide()
-        .. ToParent,
+        :AllPoints(PARENT),
     Style:SetSize(20, 20)
 }
 
@@ -128,11 +124,11 @@ local FrameSlot = Frame
         :Texture 'Interface/ContainerFrame/UI-Bag-4x4'
         :VertexColor(0.9,0.9,0.9)
         :TexCoord(122/256, (122+40)/256, 90/256, (90+39)/256)
-        .. ToParent,
+        :AllPoints(PARENT),
     
     Frame'.BgOverlayFrame'
         -- :FrameLevel(6)
-        .. ToParent
+        :AllPoints(PARENT)
     {
         Texture'.Bg'
             -- :ColorTexture(1,1,1,0.5)
@@ -141,7 +137,7 @@ local FrameSlot = Frame
             -- :TexCoord(122/256, (122+40)/256, 90/256, (90+39)/256)
             :Texture 'Interface/AddOns/silver-ui/art/itemslot'
             :Alpha(0.7)
-            .. ToParent,
+            :AllPoints(PARENT),
     }
         
     -- MaskTexture'.Mask'
@@ -218,11 +214,14 @@ local StyleItem = Style
                 -- if self.quality == 5 or self.quality == 6 then
                 --     percBrightness = 1
                 -- end
-                self.IconGlow:SetTexture 'Interface/AddOns/silver-ui/art/itemslot_glow'
-                self.IconGlow:SetVertexColor(unpack(QUALITY_COLORS[self.quality] or { 0.5, 0.5, 0.5, 1 }))
-                self.IconGlow:Show()
+                -- print(unpack(QUALITY_COLORS[self.quality] or {}))
+                self.QualityGlow:Show()
+                self.QualityGlow:SetTexture 'Interface/AddOns/silver-ui/art/itemslot_glow'
+                local r, g, b, a = unpack(QUALITY_COLORS[self.quality] or { 0.5, 0.5, 0.5, 1 })
+                self.QualityGlow:SetVertexColor(r, g, b, a)
             else
-                self.IconGlow:Hide()
+                -- print('hide')
+                self.QualityGlow:Hide()
             end
         end
     }
@@ -231,8 +230,9 @@ local StyleItem = Style
         :Texture 'Interface/AddOns/silver-ui/art/itemslot'
         :AllPoints(PARENT),
     Style'.IconBorder':Texture '',
-    Texture'.IconGlow'
-        :AllPoints(PARENT),
+    Texture'.QualityGlow'
+        :AllPoints(PARENT)
+        :DrawLayer 'ARTWORK',
 }
 
 
@@ -271,142 +271,143 @@ FrameBigBag = Frame
     :EnableMouse(true)
     :Point('CENTER', 0, 0)
     -- :FrameLevel(2)
-    .init(function(self)
-        self.padding = 5
-        self.spacing = 4
-        self.rowRemoveButtons = {}
-        self.rowAddButtons = {}
+    .init {
+        padding = 5,
+        spacing = 4,
+        rowRemoveButtons = {},
+        rowAddButtons = {},
+        bags = {},
+        items = {},
+        slots = {},
+        sortedSlots = {},
+        rowsCreated = 0,
+        columnsCreated = 0,
 
-        self.origOpenAllBags = function() end -- OpenAllBags
-        self.origOpenBackpack = function() end -- OpenBackpack
-        self.origCloseBackpack = function() end
-        self.origOpenBag = function() end -- OpenBag
-        self.origCloseAllBags = function() end -- CloseAllBags
-        self.origToggleAllBags = function() end -- ToggleAllBags
-        self.origToggleBackpack = function() end -- ToggleBackpack
-        self.origToggleBag = ToggleBag
-        
-        self.slots = {}
-        self.sortedSlots = {}
-        self.rowsCreated = 0
-        self.columnsCreated = 0
-        
-        local letBlizzard = false
-        OpenAllBags = function(bag)
-            self:Show()
-        end
-        ToggleBackpack = function()
-            self:Toggle()
-        end
-        ToggleBag = function(bag)
-            if bag < 1 or bag > 4 then
-                self.origToggleBag(bag)
-                self.update = true
-            else
+        function(self)
+            Mixin(self, BackdropTemplateMixin)
+            self:HookScript('OnSizeChanged', self.OnBackdropSizeChanged)
+
+            self.origOpenAllBags = function() end -- OpenAllBags
+            self.origOpenBackpack = function() end -- OpenBackpack
+            self.origCloseBackpack = function() end
+            self.origOpenBag = function() end -- OpenBag
+            self.origCloseAllBags = function() end -- CloseAllBags
+            self.origToggleAllBags = function() end -- ToggleAllBags
+            self.origToggleBackpack = function() end -- ToggleBackpack
+            self.origToggleBag = ToggleBag
+            
+            local letBlizzard = false
+            OpenAllBags = function(bag)
+                self:Show()
+            end
+            ToggleBackpack = function()
                 self:Toggle()
             end
-        end
-        CloseAllBags = function(bag)
-            letBlizzard = true
-            self.origCloseAllBags(bag)
-            letBlizzard = false
-            self:Hide()
-        end
-        ToggleAllBags = function()
-            self:Toggle()
-        end
-
-        -- hooksecurefunc('UIParent_ManageFramePositions', function() self.update = true end)
-        
-        self.bags = {}
-        self.items = {}
-        for container = 0, 4 do
-            local bag = {}
-            table.insert(self.bags, bag)
-            self {
-                Frame('.Bag' .. container)
-                    :AllPoints(self)
-                    :SetID(container)
-            }
-            for slot = 1, 36 do
-                local button = _G['ContainerFrame' .. (container+1) .. 'Item' .. slot]
-                if button and not button.isExtended then
-                    button:UnregisterAllEvents()
-                    StyleItem(button)
-                    button.parent = self['Bag' .. container]
-                    button:SetID(slot)
-                    -- button:SetBagID(container) -- taint hell
-                    button.bag = container
-                    button.slot = slot
-                    table.insert(self.items, button)
-                    table.insert(bag, button)
+            ToggleBag = function(bag)
+                if bag < 1 or bag > 4 then
+                    self.origToggleBag(bag)
+                    self.update = true
+                else
+                    self:Toggle()
                 end
             end
-        end
+            CloseAllBags = function(bag)
+                letBlizzard = true
+                self.origCloseAllBags(bag)
+                letBlizzard = false
+                self:Hide()
+            end
+            ToggleAllBags = function()
+                self:Toggle()
+            end
 
-        if not self.SetBackdrop then
-            _G.Mixin(self, _G.BackdropTemplateMixin)
-            self:HookScript('OnSizeChanged', self.OnBackdropSizeChanged)
-        end
+        end,
 
-        function self:Initialize()
+        Initialize = function(self)
+            self:StealBagItemButtons()
             self:UpdateCount()
             self:CreateSlots()
             self:LoadConfig()
             self:BindUnbound()
-        end
+        end,
 
-        function self:EnsureSize()
-            while self.countMax > session.columns * session.rows do
+        StealBagItemButtons = function(self)
+            for container = 0, 4 do
+                local bag = {}
+                table.insert(self.bags, bag)
+                self {
+                    Frame('.Bag' .. container)
+                        :AllPoints(self)
+                        :SetID(container)
+                }
+                for slot = 1, 36 do
+                    local button = _G['ContainerFrame' .. (container+1) .. 'Item' .. slot]
+                    if button and not button.isExtended then
+                        button:UnregisterAllEvents()
+                        StyleItem(button)
+                        button.parent = self['Bag' .. container]
+                        button:SetID(slot)
+                        -- button:SetBagID(container) -- taint hell
+                        button.bag = container
+                        button.slot = slot
+                        table.insert(self.items, button)
+                        table.insert(bag, button)
+                    end
+                end
+            end
+        end,
+
+        EnsureSize = function(self)
+            while self.countMax > db.columns * db.rows do
                 self:AddRow()
             end
-        end
+        end,
 
-        function self:Toggle()
+        Toggle = function(self)
             if self:IsShown() then
                 self:Hide()
             else
                 self:Show()
                 self.update = true
             end
-        end
+        end,
         
-        function self:LoadConfig()
-            if session.x and session.y then
-                SilverUIBigBag:SetPoints { CENTER = UIParent:CENTER(session.x, session.y) }
+        LoadConfig = function(self)
+            if db.x and db.y then
+                SilverUIBigBag:SetPoints { CENTER = UIParent:CENTER(db.x, db.y) }
             end
             local slotsFilled = {}
-            for itemName, slotName in pairs(session.mapping) do
+            for itemName, slotName in pairs(db.mapping) do
                 if not slotsFilled[slotName] then
                     slotsFilled[slotName] = true
                     if self.slots[slotName] then
                         -- self:BindToSlot(_G[itemName], )
                         self.slots[slotName].item = _G[itemName]
                     else
-                        session.mapping[itemName] = nil
+                        db.mapping[itemName] = nil
                         for _, slot in pairs(self.slots) do
                             if not slot.item then
                                 slot.item = _G[itemName]
-                                session.mapping[itemName] = slot.name
+                                db.mapping[itemName] = slot.name
                             end
                         end
                     end
                 else
-                    session.mapping[itemName] = nil
+                    db.mapping[itemName] = nil
                 end
             end
-        end
+        end,
 
-        function self:CreateSlots()
-            local rows = session.rows
-            session.rows = 0
+        CreateSlots = function(self)
+            local rows = db.rows
+            db.rows = 0
             for row = 1, rows do
                 self:AddRow(row)
             end
             self:EnsureSize()
-        end
+        end,
 
-        function self:BindUnbound()
+        BindUnbound = function(self)
             for _, slot in pairs(self.sortedSlots) do
                 if not slot.item then
                     item = self:GetUnboundItem()
@@ -416,15 +417,15 @@ FrameBigBag = Frame
                     end
                 end
             end
-        end
+        end,
 
-        function self:SortEmpty()
+        SortEmpty = function(self)
             if not self.initialized then
                 return
             end
             for _, slot in pairs(self.sortedSlots) do
                 if slot.item and not slot.item.hasItem then
-                    session.mapping[slot.item:GetName()] = nil
+                    db.mapping[slot.item:GetName()] = nil
                     slot.item = nil
                 end
             end
@@ -435,7 +436,7 @@ FrameBigBag = Frame
                         -- for i=#bag, 1, -1 do
                         for i=1, #bag do
                             local item = bag[i]
-                            if item:IsShown() and item.isValid and not item.extendedFrame and not item.hasItem and not session.mapping[item:GetName()] then
+                            if item:IsShown() and item.isValid and not item.extendedFrame and not item.hasItem and not db.mapping[item:GetName()] then
                                 self:BindToSlot(item, slot)
                                 done = true
                                 break
@@ -448,30 +449,30 @@ FrameBigBag = Frame
                 end
             end
             self.update = true
-        end
+        end,
 
-        function self:GetUnboundItem()
+        GetUnboundItem = function(self)
             for _, item in pairs(self.items) do
-                if item.isValid and not session.mapping[item:GetName()] and not item.extendedFrame then
+                if item.isValid and not db.mapping[item:GetName()] and not item.extendedFrame then
                     return item
                 end
             end
-        end
+        end,
 
-        function self:BindToSlot(item, slot)
-            local oldSlot = session.mapping[item:GetName()]
+        BindToSlot = function(self, item, slot)
+            local oldSlot = db.mapping[item:GetName()]
             if oldSlot then
                 self.slots[oldSlot].item = nil
             end
-            local size = (self:GetWidth() - self.padding*2)/session.columns
+            local size = (self:GetWidth() - self.padding*2)/db.columns
             slot.item = item
-            session.mapping[item:GetName()] = slot.name
+            db.mapping[item:GetName()] = slot.name
             item:SetPoints { CENTER = slot:CENTER() }
             item:SetScale((size-1) / item:GetWidth())
-        end
+        end,
 
-        function self:EmptyItemToSlot(newSlot)
-            for itemName, slotName in pairs(session.mapping) do
+        EmptyItemToSlot = function(self, newSlot)
+            for itemName, slotName in pairs(db.mapping) do
                 local item = _G[itemName]
                 if item:IsShown() and item.isValid and not item.hasItem and not item.extendedFrame then
                     self.slots[slotName].item = nil
@@ -479,32 +480,32 @@ FrameBigBag = Frame
                     return
                 end
             end
-        end
+        end,
 
-        function self:RemoveRow(removeRow)
-            if self.countMax > session.columns * (session.rows-1) then
+        RemoveRow = function(self, removeRow)
+            if self.countMax > db.columns * (db.rows-1) then
                 return
             end
 
-            for row = 1, session.rows do
+            for row = 1, db.rows do
                 if row == removeRow then
-                    for column = 1, session.columns do
+                    for column = 1, db.columns do
                         local name = 'Slot' .. row .. '-' .. column
                         local slot = self.slots[name]
                         if slot.item and slot.item.hasItem then
                             return
                         end
                     end
-                    for column = 1, session.columns do
+                    for column = 1, db.columns do
                         local name = 'Slot' .. row .. '-' .. column
                         local slot = self.slots[name]
                         if slot.item then
-                            session.mapping[slot.item:GetName()] = nil
+                            db.mapping[slot.item:GetName()] = nil
                             slot.item = nil
                         end
                     end
                 elseif row > removeRow then
-                    for column = 1, session.columns do
+                    for column = 1, db.columns do
                         local slot = self.slots['Slot' .. row .. '-' .. column]
                         local slotUp = self.slots['Slot' .. row-1 .. '-' .. column]
                         if slot.item then
@@ -513,25 +514,25 @@ FrameBigBag = Frame
                     end
                 end
             end
-            session.rows = session.rows - 1
-            for row = session.rows+1, self.rowsCreated do
-                for column = 1, session.columns do
+            db.rows = db.rows - 1
+            for row = db.rows+1, self.rowsCreated do
+                for column = 1, db.columns do
                     local slot = self.slots['Slot' .. row .. '-' .. column]
                     slot:Hide()
                 end
             end
             self:UpdateSize()
             self:SortEmpty()
-        end
+        end,
 
-        function self:AddRow(where)
-            session.rows = session.rows + 1
-            if not self.slots['Slot' .. session.rows .. '-1'] then
+        AddRow = function(self, where)
+            db.rows = db.rows + 1
+            if not self.slots['Slot' .. db.rows .. '-1'] then
                 self.rowsCreated = self.rowsCreated + 1
-                local row = session.rows
-                for column = 1, session.columns do
+                local row = db.rows
+                for column = 1, db.columns do
                     local name = 'Slot' .. row .. '-' .. column
-                    local size = (self:GetWidth() - self.padding*2)/session.columns
+                    local size = (self:GetWidth() - self.padding*2)/db.columns
                     Style(self.Items) {
                         FrameSlot('.' .. name)
                             :Points {
@@ -557,14 +558,14 @@ FrameBigBag = Frame
                         .data { row = row }
                 }
             else
-                for column = 1, session.columns do
-                    local slot = self.slots['Slot' .. session.rows .. '-' .. column]
+                for column = 1, db.columns do
+                    local slot = self.slots['Slot' .. db.rows .. '-' .. column]
                     slot:Show()
                 end
             end
             if where then
-                for row = session.rows, where, -1 do
-                    for column = 1, session.columns do
+                for row = db.rows, where, -1 do
+                    for column = 1, db.columns do
                         local slot = self.slots['Slot' .. row .. '-' .. column]
                         local slotDown = self.slots['Slot' .. row+1 .. '-' .. column]
                         if slot.item then
@@ -575,14 +576,14 @@ FrameBigBag = Frame
             end
             self:UpdateSize()
             self:SortEmpty()
-        end
+        end,
 
-        function self:UpdateSize()
-            local size = (self:GetWidth() - self.padding*2)/session.columns
-            self:SetHeight(19 + size*session.rows + self.padding*2)
-        end
+        UpdateSize = function(self)
+            local size = (self:GetWidth() - self.padding*2)/db.columns
+            self:SetHeight(19 + size*db.rows + self.padding*2)
+        end,
 
-        function self:UpdateCount()
+        UpdateCount = function(self)
             local free, max = 0, 0
             for i=0, 4 do
                 free = free + GetContainerNumFreeSlots(i)
@@ -596,9 +597,8 @@ FrameBigBag = Frame
             if free == 0 then
                 self.Count:SetTextColor(1, 0.3, 0.3,1)
             end
-        end
-
-    end)
+        end,
+    }
     :Events {
         BAG_UPDATE_DELAYED = function(self)
             self:UpdateCount()
@@ -614,25 +614,14 @@ FrameBigBag = Frame
             self:Hide()
         end
     }
-    :SetBackdrop({
-        -- bgFile = "Interface/ACHIEVEMENTFRAME/UI-GuildAchievement-Parchment",
-        -- bgFile = "Interface/QuestionFrame/question-background",
-        -- bgFile = "Interface/Collections/CollectionsBackgroundTile",
-        -- bgFile = "Interface/ACHIEVEMENTFRAME/UI-Achievement-StatsBackground",
-        -- bgFile = "Interface/ACHIEVEMENTFRAME/UI-Achievement-Parchment-Horizontal-Desaturated",
-        -- bgFile = "Interface/AdventureMap/AdventureMapParchmentTile",
+    :Backdrop {
         bgFile = "Interface/FrameGeneral/UI-Background-Rock",
-        -- bgFile = "Interface/FrameGeneral/UI-Background-Marble",
-        -- edgeFile = "Interface/ACHIEVEMENTFRAME/UI-Achievement-WoodBorder",
-        -- edgeFile = "Interface/DialogFrame/UI-DialogBox-Border",
-        -- edgeFile = "Interface/GLUES/COMMON/TextPanel-Border",
         edgeFile = "Interface/FriendsFrame/UI-Toast-Border",
         edgeSize = 12,
         tile = true,
-        tileSize = math.max(200, 200),
-        -- insets = { left = 8, right = 8, top = 5, bottom = 8 }
+        tileSize = 200,
         insets = { left = 4, right = 4, top = 4, bottom = 4 }
-    })
+    }
     :Hooks {
         OnShow = function(self)
             if not self.initialized then
@@ -653,7 +642,7 @@ FrameBigBag = Frame
             if not self.update or not self.slots then return end
             self.update = false
 
-            local size = (self:GetWidth() - self.padding*2)/session.columns
+            local size = (self:GetWidth() - self.padding*2)/db.columns
 
             Style(ContainerFrame1MoneyFrame)
                 :Parent(self)
@@ -694,38 +683,30 @@ FrameBigBag = Frame
         end
     }
 {
-    Frame'.SlotManager'
-        .. ToParent,
+    Frame'.SlotManager':AllPoints(PARENT),
     
     Frame'.Items'
         :FrameStrata 'MEDIUM'
-        -- :FrameLevel(4)
-        .. ToParent,
+        :AllPoints(PARENT),
 
     Btn'.closeBtn'
         :SetText('X')
         -- :FrameLevel(6)
         :Scripts { OnClick = function(self) CloseAllBags() end }
-        .init(function(self, parent) self:SetPoint('TOPRIGHT', parent, 'TOPRIGHT', -6, -5) end),
+        :Points { TOPRIGHT = PARENT:TOPRIGHT(-6, -5) },
 
     Texture'.TitleBg'
         :Height(25)
         :ColorTexture(0.07, 0.07, 0.07, 0.5)
         :DrawLayer('BACKGROUND', 1)
-        .init(function(self, parent)
-            self:SetPoints {
-                TOPLEFT = parent:TOPLEFT(3, -3),
-                RIGHT = parent:RIGHT(-3, 0)
-            }
-        end),
+        :Points { TOPLEFT = PARENT:TOPLEFT(3, -3),
+                  RIGHT = PARENT:RIGHT(-3, 0) },
 
     Frame'.TitleMoveHandler'
         :Height(25)
         -- :FrameLevel(5)
-        .init(function(self, parent)
-            self:SetPoints { TOPLEFT = parent:TOPLEFT(3, -3),
-                             TOPRIGHT = parent:TOPRIGHT(3, -3) }
-        end)
+        :Points { TOPLEFT = PARENT:TOPLEFT(3, -3),
+                  TOPRIGHT = PARENT:TOPRIGHT(3, -3) }
         :Scripts {
             OnMouseDown = function(self, button)
                 if button == 'LeftButton' then
@@ -745,9 +726,9 @@ FrameBigBag = Frame
                 if self.dragging then
                     local x, y = GetCursorPosition()
                     local scale = self:GetEffectiveScale()
-                    session.x = x/scale - self.dragOffset[1]
-                    session.y = y/scale - self.dragOffset[2]
-                    SilverUIBigBag:SetPoints { CENTER = UIParent:CENTER(session.x, session.y) }
+                    db.x = x/scale - self.dragOffset[1]
+                    db.y = y/scale - self.dragOffset[2]
+                    SilverUIBigBag:SetPoints { CENTER = UIParent:CENTER(db.x, db.y) }
                 end
             end
         },
