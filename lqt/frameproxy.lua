@@ -27,7 +27,11 @@ FrameProxyMt = {
         end
     end,
     __index = function(self, attr)
-        if attr == '__FrameProxy_attr' or attr == '__FrameProxy_parent' or attr == '__FrameProxy_action' or attr == '__FrameProxy_args' then
+        if attr == '__FrameProxy_attr'
+            or attr == '__FrameProxy_parent'
+            or attr == '__FrameProxy_action'
+            or attr == '__FrameProxy_args'
+        then
             return rawget(self, attr)
         end
         return FrameProxy {
@@ -45,9 +49,19 @@ FrameProxyMt = {
             return parent .. '(...)'
         elseif self.__FrameProxy_action == 'callmethod' then
             return parent .. '(self, ...)'
+        elseif self.__FrameProxy_action == 'callfunc' then
+            return 'fn(' .. parent .. ', ...)'
         else
             return self.__FrameProxy_action
         end
+    end,
+    __add = function(self, num)
+        return FrameProxy {
+            __FrameProxy_parent = self,
+            __FrameProxy_action = 'callfunc',
+            __FrameProxy_args = { function(result) return result + num end },
+            __FrameProxy_context = get_context()
+        }
     end
 }
 
@@ -71,6 +85,10 @@ local function ApplyFrameProxy(frame, proxy)
     elseif proxy.__FrameProxy_action == 'callmethod' then
         assert(result ~= nil, 'Frame proxy returns nil at '..proxy.__FrameProxy_context)
         return result(this, unpack(proxy.__FrameProxy_args))
+    elseif proxy.__FrameProxy_action == 'callfunc' then
+        assert(result ~= nil, 'Frame proxy returns nil at '..proxy.__FrameProxy_context)
+        print(result)
+        return proxy.__FrameProxy_args[1](result)
     end
     return frame
 end
