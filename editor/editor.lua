@@ -1,10 +1,17 @@
-local _, ns = ...
+local ADDON, Addon = ...
 
-local Style, Frame, Button, Texture, FontString, EditBox, ScrollFrame = LQT.Style, LQT.Frame, LQT.Button, LQT.Texture, LQT.FontString, LQT.EditBox, LQT.ScrollFrame
 
-local PARENT, ApplyFrameProxy, FrameProxyMt = LQT.PARENT, LQT.ApplyFrameProxy, LQT.FrameProxyMt
+local TypeInfo, FillTypeInfo = Addon.TypeInfo, Addon.FillTypeInfo
 
--- local Q = ns.util.method_chain_wrapper
+
+local     Style,     Frame,     Button,     Texture,     FontString,     EditBox,     ScrollFrame,
+          SELF,     PARENT,     ApplyFrameProxy,     FrameProxyMt
+    = LQT.Style, LQT.Frame, LQT.Button, LQT.Texture, LQT.FontString, LQT.EditBox, LQT.ScrollFrame,
+      LQT.SELF, LQT.PARENT, LQT.ApplyFrameProxy, LQT.FrameProxyMt
+
+
+local FrameSmoothScroll, CodeEditor, BoxShadow, ContextMenu, ContextMenuButton
+    = Addon.FrameSmoothScroll, Addon.CodeEditor, Addon.BoxShadow, Addon.ContextMenu, Addon.ContextMenuButton
 
 
 local editorWindow = nil
@@ -45,32 +52,6 @@ end
 local SortedChildren = nil
 
 
-local function ToParent(tlx, tly, brx, bry)
-    if type(tlx) == 'table' then
-        return Style {
-            function(self)
-                local points = {}
-                for point, target in pairs(tlx) do
-                    if getmetatable(target) == FrameProxyMt then
-                        points[point] = ApplyFrameProxy(self, target)
-                    else
-                        points[point] = target
-                    end
-                end
-                self:SetPoints(points)
-            end
-        }
-    else
-        return Style {
-            function(self)
-                local parent = self:GetParent()
-                self:SetPoints { TOPLEFT = parent:TOPLEFT(tlx, tly), BOTTOMRIGHT = parent:BOTTOMRIGHT(brx, bry) } 
-            end
-        }
-    end
-end
-
-
 local Btn = Button
     :Hooks {
         OnEnter = function(self)
@@ -88,14 +69,14 @@ local Btn = Button
 {
     FontString'.Text'
         :SetFont('Fonts/FRIZQT__.ttf', 12)
-        .. ToParent(),
+        :AllPoints(PARENT),
     Texture'.hoverBg'
         -- :ColorTexture(0.3, 0.3, 0.3)
         :Texture 'Interface/BUTTONS/UI-Listbox-Highlight2'
         :BlendMode 'ADD'
         :VertexColor(1,1,1,0.2)
         :Hide()
-        .. ToParent(),
+        :AllPoints(PARENT),
     Style:SetSize(20, 20)
 }
 
@@ -178,202 +159,15 @@ local hoverFrame = nil
 local SetFrameStack = nil
 
 
-local BoxShadow = Frame
-    :Points { TOPLEFT = PARENT:TOPLEFT(-8, 8),
-              BOTTOMRIGHT = PARENT:BOTTOMRIGHT(8, -8) }
-{
-    Texture'.TopLeft'
-        :Texture 'Interface/AddOns/silver-ui/art/shadow'
-        :TexCoord(0, 1/4, 0, 1/4)
-        :Points { TOPLEFT = PARENT:TOPLEFT(),
-                  BOTTOMRIGHT = PARENT:GetParent():TOPLEFT() },
-    Texture'.BottomLeft'
-        :Texture 'Interface/AddOns/silver-ui/art/shadow'
-        :TexCoord(0, 1/4, 3/4, 1)
-        :Points { BOTTOMLEFT = PARENT:BOTTOMLEFT(),
-                  TOPRIGHT = PARENT:GetParent():BOTTOMLEFT() },
-    Texture'.TopRight'
-        :Texture 'Interface/AddOns/silver-ui/art/shadow'
-        :TexCoord(3/4, 1, 0, 1/4)
-        :Points { TOPRIGHT = PARENT:TOPRIGHT(),
-                  BOTTOMLEFT = PARENT:GetParent():TOPRIGHT() },
-    Texture'.BottomRight'
-        :Texture 'Interface/AddOns/silver-ui/art/shadow'
-        :TexCoord(3/4, 1, 3/4, 1)
-        :Points { BOTTOMRIGHT = PARENT:BOTTOMRIGHT(),
-                  TOPLEFT = PARENT:GetParent():BOTTOMRIGHT() },
-    Texture'.Left'
-        :Texture 'Interface/AddOns/silver-ui/art/shadow'
-        :TexCoord(0, 1/4, 1/4, 3/4)
-        :Points { LEFT = PARENT:LEFT(),
-                  TOPRIGHT = PARENT:GetParent():TOPLEFT(),
-                  BOTTOMRIGHT = PARENT:GetParent():BOTTOMLEFT() },
-    Texture'.Right'
-        :Texture 'Interface/AddOns/silver-ui/art/shadow'
-        :TexCoord(3/4, 1, 1/4, 3/4)
-        :Points { RIGHT = PARENT:RIGHT(),
-                  TOPLEFT = PARENT:GetParent():TOPRIGHT(),
-                  BOTTOMLEFT = PARENT:GetParent():BOTTOMRIGHT() },
-    Texture'.Top'
-        :Texture 'Interface/AddOns/silver-ui/art/shadow'
-        :TexCoord(1/4, 3/4, 0, 1/4)
-        :Points { TOP = PARENT:TOP(),
-                  BOTTOMLEFT = PARENT:GetParent():TOPLEFT(),
-                  BOTTOMRIGHT = PARENT:GetParent():TOPRIGHT() },
-    Texture'.Bottom'
-        :Texture 'Interface/AddOns/silver-ui/art/shadow'
-        :TexCoord(1/4, 3/4, 3/4, 1)
-        :Points { BOTTOM = PARENT:BOTTOM(),
-                  TOPLEFT = PARENT:GetParent():BOTTOMLEFT(),
-                  TOPRIGHT = PARENT:GetParent():BOTTOMRIGHT() },
-}
-
-
-local ButtonContextMenu = Btn
-    :Height(16)
-    .init {
-        function(self, parent)
-            table.insert(parent.buttons, self)
-        end,
-        SetText = function(self, text)
-            self.Text:SetText(text)
-        end,
-        SetClick = function(self, fn)
-            self.click = fn
-        end
-    }
-    :Hooks {
-        OnClick = function(self)
-            self:GetParent():Hide()
-            if self.click then
-                self.click(self:GetParent():GetParent())
-            end
-        end
-    }
-{
-    Style'.Text':JustifyH 'LEFT'
-}
-
-
-local FrameContextMenu = Frame
-    .init {
-        function(self, parent)
-            _G.Mixin(self, _G.BackdropTemplateMixin)
-            self:HookScript('OnSizeChanged', self.OnBackdropSizeChanged)
-            self:SetPoints { TOPLEFT = parent:BOTTOMLEFT() }
-            self.buttons = {}
-        end
-    }
-    :SetBackdrop {
-        -- bgFile = "Interface/ACHIEVEMENTFRAME/UI-GuildAchievement-Parchment",
-        bgFile = 'Interface/HELPFRAME/DarkSandstone-Tile',
-        edgeFile = "Interface/FriendsFrame/UI-Toast-Border",
-        edgeSize = 12,
-        tile = true,
-        tileSize = 300,
-        insets = { left = 4, right = 4, top = 4, bottom = 4 }
-    }
-    :Hide()
-    :FrameStrata 'FULLSCREEN_DIALOG'
-    :FrameLevel(5)
-    :Hooks {
-        OnShow = function(self)
-            local previous = nil
-            local width = 1
-            local height = 0
-            for _, btn in pairs(self.buttons) do
-                if previous then
-                    btn:SetPoints { TOPLEFT = previous:BOTTOMLEFT() }
-                else
-                    btn:SetPoints { TOPLEFT = self:TOPLEFT(12, -6) }
-                end
-                btn:SetWidth(9999)
-                width = math.max(width, btn.Text:GetStringWidth())
-                height = height + btn:GetHeight()
-                previous = btn
-            end
-            for _, btn in pairs(self.buttons) do
-                btn:SetWidth(width)
-            end
-            self:SetSize(width+24, height+12)
-            self.ClickBlocker:Show()
-        end,
-        OnHide = function(self)
-            self.ClickBlocker:Hide()
-        end
-    }
-{
-    Frame'.ClickBlocker'
-        .init(function(self, parent) self.menu = parent end)
-        -- :Parent(UIParent)
-        :AllPoints(UIParent)
-        :FrameStrata 'FULLSCREEN_DIALOG'
-        :FrameLevel(4)
-        :Hooks {
-            OnMouseDown = function(self)
-                self.menu:Hide()
-            end
-        }
-        :Hide()
-}
-
-
-local FrameSmoothScroll = ScrollFrame
-    .data { scrollSpeed = 0, overShoot = 50 }
-    :Scripts {
-        OnSizeChanged = function(self)
-            self.Content:SetSize(self:GetSize())
-        end,
-        OnMouseWheel = function(self, delta)
-            local current = self:GetVerticalScroll()
-            local max = self:GetVerticalScrollRange()
-            if current <= 0 and delta > 0 or current >= max-0.01+self.overShoot and delta < 0 then
-                self.scrollSpeed = self.scrollSpeed - delta*0.3
-            else
-                self.scrollSpeed = self.scrollSpeed - delta
-            end
-        end,
-        OnUpdate = function(self, dt)
-            if self.scrollSpeed ~= 0 then
-                local current = self:GetVerticalScroll()
-                local max = self:GetVerticalScrollRange()+self.overShoot
-                if current < 0 then
-                    current = current + math.min(-current, 2048*dt)
-                elseif current > max then
-                    current = current - math.min(current - max, 2048*dt)
-                end
-                self:SetVerticalScroll(current + self.scrollSpeed*dt*512)
-                if self.scrollSpeed > 0 then
-                    self.scrollSpeed = math.max(0, self.scrollSpeed - (4 + math.abs(self.scrollSpeed*5))*dt)
-                else
-                    self.scrollSpeed = math.min(0, self.scrollSpeed + (4 + math.abs(self.scrollSpeed*5))*dt)
-                end
-            end
-        end,
-        OnVerticalScroll = function(self, offset)
-            self.Content:SetHitRectInsets(0, 0, offset, (self.Content:GetHeight() - offset - self:GetHeight()))
-        end
-    }
-{
-    Frame'.Content'
-        .init(function(self, parent)
-            parent:SetScrollChild(self)
-            self.children = {}
-        end)
-        :Height(200)
-        :EnableMouse(true)
-}
-
-
 local ButtonAddonScript = Btn
     .init {
         Update = function(self)
             if self.settings.enabled then
                 self.ContextMenu.Toggle:SetText('Disable')
-                self.Disabled:Hide()
+                self.Text:SetTextColor(1, 1, 1, 1)
             else
                 self.ContextMenu.Toggle:SetText('Enable')
-                self.Disabled:Show()
+                self.Text:SetTextColor(0.5, 0.5, 0.5, 1)
             end
             if self.script.code == self.script.code_original or not self.script.code_original then
                 self.Edited:Hide()
@@ -415,6 +209,7 @@ local ButtonAddonScript = Btn
         end,
         Toggle = function(self)
             self.settings.enabled = not self.settings.enabled
+            self:Update()
             editorWindow:NotifyReloadRequired()
         end,
         Edit = function(self)
@@ -423,6 +218,9 @@ local ButtonAddonScript = Btn
         ResetScript = function(self)
             SilverUI.ResetScript(self.name, self.script)
             self:Update()
+        end,
+        Run = function(self)
+            SilverUI.ExecuteScript(self.name, self.script.name, self.script.code)
         end
     }
     :RegisterForClicks('LeftButtonUp', 'RightButtonUp')
@@ -445,21 +243,18 @@ local ButtonAddonScript = Btn
         :JustifyH 'LEFT'
         :Points { TOPLEFT = PARENT:TOPLEFT(10, 0),
                   BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-10, 0) },
-    Texture'.Disabled':Points { RIGHT = PARENT:RIGHT(-4, 0) }
-        :Texture 'Interface/BUTTONS/UI-GROUPLOOT-PASS-DOWN'
-        :Desaturated(true)
-        :Size(16, 16),
-    Texture'.Edited':Points { RIGHT = PARENT.Disabled:RIGHT(-4, 0) }
+    Texture'.Edited':Points { RIGHT = PARENT:RIGHT(-4,0) }
         :Texture 'Interface/BUTTONS/UI-GuildButton-OfficerNote-Disabled'
         :Size(16, 16),
-    FrameContextMenu'.ContextMenu' {
-        ButtonContextMenu'.Edit':Text 'Edit script':Click(function(script) script:Edit() end),
-        ButtonContextMenu'.Copy':Text 'Copy':Click(function(script) script:Copy() end),
-        ButtonContextMenu'.Toggle':Text 'Disable':Click(function(script) script:Toggle() end),
-        ButtonContextMenu'.Reset':Text 'Reset settings':Click(function(script) script:Reset() end),
-        ButtonContextMenu'.ResetScript':Text 'Reset script':Click(function(script) script:ResetScript() end),
-        ButtonContextMenu'.Delete':Text 'Delete':Click(function(script) script:Delete() end),
-        ButtonContextMenu'.Cancel':Text 'Cancel'
+    ContextMenu'.ContextMenu' {
+        ContextMenuButton'.Run':Text 'Run':Click(function(script) script:Run() end),
+        ContextMenuButton'.Edit':Text 'Edit script':Click(function(script) script:Edit() end),
+        ContextMenuButton'.Copy':Text 'Copy':Click(function(script) script:Copy() end),
+        ContextMenuButton'.Toggle':Text 'Disable':Click(function(script) script:Toggle() end),
+        ContextMenuButton'.Reset':Text 'Reset settings':Click(function(script) script:Reset() end),
+        ContextMenuButton'.ResetScript':Text 'Reset script':Click(function(script) script:ResetScript() end),
+        ContextMenuButton'.Delete':Text 'Delete':Click(function(script) script:Delete() end),
+        ContextMenuButton'.Cancel':Text 'Cancel'
     }
 }
 
@@ -549,15 +344,16 @@ local FrameAddonSection = Frame
             :Points { TOPLEFT = PARENT:TOPLEFT(10, 0),
                       BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-10, 0) },
         Texture'.Bg'
-            :Texture 'Interface/BUTTONS/GreyscaleRamp64'
+            -- :Texture 'Interface/BUTTONS/GreyscaleRamp64'
             -- :BlendMode 'ADD'
-            :VertexColor(1,1,1,0.2)
-            .. ToParent(),
+            :ColorTexture(1, 1, 1, 0.3)
+            -- :VertexColor(1,1,1,0.2)
+            :AllPoints(PARENT),
             
-        FrameContextMenu'.ContextMenu' {
-            ButtonContextMenu'.NewScript':Text 'New script':Click(function(head) head:GetParent():NewScript() end),
-            ButtonContextMenu'.Toggle':Text 'Disable':Click(function(head) head:GetParent():Toggle() end),
-            ButtonContextMenu'.Cancel':Text 'Cancel'
+        ContextMenu'.ContextMenu' {
+            ContextMenuButton'.NewScript':Text 'New script':Click(function(head) head:GetParent():NewScript() end),
+            ContextMenuButton'.Toggle':Text 'Disable':Click(function(head) head:GetParent():Toggle() end),
+            ContextMenuButton'.Cancel':Text 'Cancel'
         }
     },
 }
@@ -566,13 +362,12 @@ local FrameAddonSection = Frame
 local FrameSettings = Frame
 {
     Frame'.Sections'
+        :Points { TOPLEFT = PARENT:TOPLEFT(),
+                  BOTTOMRIGHT = PARENT:BOTTOMLEFT(200, 0) }
     {
-        -- Texture'.Bg':ColorTexture(1, 1, 1, 0.5) .. ToParent,
-        FrameSmoothScroll'.Scroller' .. ToParent()
+        FrameSmoothScroll'.Scroller':AllPoints(PARENT)
     }
         .init(function(self, parent)
-            self:SetPoints { TOPLEFT = parent:TOPLEFT(),
-                          BOTTOMRIGHT = parent:BOTTOMLEFT(200, 0) }
                         
             local previous = nil
             for name, account, character in SilverUI.Addons() do
@@ -588,15 +383,7 @@ local FrameSettings = Frame
                 content[name]:SetData(name, account, character)
                 previous = content[name]
             end
-        end),
-    -- Frame'.Options'
-    --     .init(function(self, parent)
-    --         self:SetPoints { TOPLEFT = parent.Sections:TOPRIGHT(),
-    --                       BOTTOMRIGHT = parent:BOTTOMRIGHT() }
-    --     end)
-    -- {
-    --     FrameSmoothScroll'.Scroller' .. ToParent()
-    -- },
+        end)
 }
 
 
@@ -685,6 +472,7 @@ local FrameEditor = Frame
     }
 {
     BoxShadow'.Shadow':Alpha(0.5),
+
     Texture'.TitleBg'
         :Height(24)
         :ColorTexture(0.2, 0.2, 0.2, 0.7)
@@ -772,16 +560,14 @@ local FrameEditor = Frame
     Btn'.enterPlaygroundBtn'
         :Height(24)
         :Text 'Playground'
-        :Width(100)
+        :Width(SELF.Text:GetWidth()+20)
         :FrameLevel(10)
         :Points { TOPLEFT = PARENT:TOPLEFT(15, -5) }
         :Scripts {
             OnClick = function(self) self:GetParent():EnterPlayground() end
         }
     {
-        Style'.Text'
-            :JustifyH 'LEFT'
-            :TextColor(0.7, 0.7, 0.7)
+        Style'.Text':TextColor(0.7, 0.7, 0.7)
     },
 
     Frame'.EditorHead'
@@ -822,175 +608,10 @@ local FrameEditor = Frame
         }
     },
 
-    FrameSmoothScroll'.CodeEditor'
-        :Points { TOPLEFT = PARENT.TitleBg:BOTTOMLEFT(),
-                  BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-330, 0) }
-        :Hide()
-    {
-        Style'.Content' {
+    CodeEditor'.CodeEditor',
 
-            -- EditBox'.Shadow'
-            --     :Points { TOPLEFT = PARENT:TOPLEFT(30,0), TOPRIGHT = PARENT:TOPRIGHT() }
-            --     :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11, '')
-            --     :JustifyH("LEFT")
-            --     :JustifyV("TOP")
-            --     :MultiLine(true)
-            --     :TextColor(0.7, 0.7, 0.7)
-            --     :EnableMouse(false),
-
-            Frame'.ClickBackground'
-                :AllPoints(PARENT)
-                :EnableMouse(true)
-                :Scripts {
-                    OnMouseDown = function(self)
-                        local editor = self:GetParent().Editor
-                        editor:SetFocus()
-                        editor:SetCursorPosition(#editor:OrigGetText())
-                    end
-                },
-
-            FontString'.Shadow'
-                :Points { TOPLEFT = PARENT:TOPLEFT(40,-3), TOPRIGHT = PARENT:TOPRIGHT() }
-                :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11, '')
-                :JustifyH("LEFT")
-                :JustifyV("TOP")
-                :TextColor(0.7, 0.7, 0.7),
-
-            EditBox'.Editor'
-                .init { function(self, parent) self.parent = parent end }
-                .init { Save = function() end }
-                :Points { TOPLEFT = PARENT:TOPLEFT(40,-3), TOPRIGHT = PARENT:TOPRIGHT() }
-                :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11, '')
-                :FrameLevel(5)
-                :Scripts {
-                    OnShow = function(self)
-                        self:SetFocus()
-                    end,
-                    OnEnterPressed = function(self)
-                        if not self.CTRL then
-                            self:Insert('\n')
-                        else
-                            local func = assert(loadstring('return function(inspect) ' .. self:GetText() .. '\n end', "silver editor"))
-                            local result = { func()(function(frame) SetFrameStack(_, frame) end) }
-                            if #result > 0 then
-                                print(unpack(result))
-                            end
-                        end
-                    end,
-                    OnTabPressed = function(self)
-                        if self.SHIFT then
-                            local pos = self:GetCursorPosition()
-                            local text = self:GetText()
-                            local line_start = pos
-                            local char = text:sub(pos, pos)
-
-                            while char ~= '\n' and line_start > 1 do
-                                line_start = line_start - 1
-                                char = text:sub(line_start, line_start)
-                            end
-
-                            local delete_end = line_start+1
-                            for i = 0, 3 do
-                                char = text:sub(delete_end, delete_end)
-                                if char ~= ' ' then
-                                    break
-                                else
-                                    delete_end = delete_end + 1
-                                end
-                            end
-                            self:SetText(text:sub(1, line_start) .. text:sub(delete_end))
-                        else
-                            self:Insert('    ')
-                        end
-                    end,
-                    OnKeyDown = function(self, key)
-                        if key == 'LCTRL' or key == 'RCTRL' then
-                            self.CTRL = true
-                        elseif key == 'LSHIFT' or key == 'RSHIFT' then
-                            self.SHIFT = true
-                        elseif key == 'LMETA' or key == 'RMETA' then
-                            self.CTRL = false
-                        elseif key == 'R' and self.CTRL then
-                            self.CTRL = false
-                            ReloadUI()
-                        elseif key == 'F' and self.CTRL then
-                            hoverFrame:start()
-                        end
-                    end,
-                    OnKeyUp = function(self, key)
-                        if key == 'LCTRL' or key == 'RCTRL' then
-                            self.CTRL = false
-                        elseif key == 'LSHIFT' or key == 'RSHIFT' then
-                            self.SHIFT = false
-                        elseif key == 'LMETA' or key == 'RMETA' then
-                            self.CTRL = false
-                        elseif key == 'ESCAPE' then
-                            self.CTRL = false
-                            editorWindow:Hide()
-                        end
-                    end,
-                    OnTextChanged = function(self, text)
-                        self.parent.Shadow:SetText(self:OrigGetText())
-                        self.parent.Shadow:Show()
-                        local n = self.parent.Shadow:GetNumLines()
-                        local lines = ''
-                        for i = 1, n do
-                            lines = lines .. string.rep(' ', 4 - string.len('' .. i)) .. i .. '\n'
-                        end
-                        self.parent.LineNumbers:SetText(lines)
-                        local fn, error = loadstring('return function(inspect) ' .. self:GetText() .. '\n end', "silver editor")
-                        if fn then
-                            self.parent.Error:Hide()
-                            self.parent.Red:Hide()
-                            self.Save(self:GetText())
-                        else
-                            self.parent.Error:SetText(error)
-                            self.parent.Red:Show()
-                            self.parent.Error:Show()
-                        end
-                    end,
-                    OnEditFocusLost = function(self)
-                        self.CTRL = false
-                    end
-                }
-                :JustifyH("LEFT")
-                :JustifyV("TOP")
-                :MultiLine(true)
-                .init {
-                    function(self)
-                        self.OrigGetText = self.GetText
-                        self.parent.Shadow.OrigSetText = self.parent.Shadow.SetText
-                        LqtIndentationLib.enable(self, nil, 4)
-                        -- LqtIndentationLib.enable(self.parent.Shadow, nil, 4)
-                    end
-                },
-        
-            FontString'.LineNumbers'
-                :Points { TOPRIGHT = PARENT.Editor:TOPLEFT(-4, 0) }
-                :JustifyH('LEFT')
-                :TextColor(0.7, 0.7, 0.7)
-                :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11, ''),
-
-            FontString'.Error'
-                :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11, '')
-                :JustifyH 'LEFT'
-                :Hide()
-                :Points {
-                    BOTTOMLEFT = PARENT:GetParent():GetParent():BOTTOMLEFT(2, 2),
-                    BOTTOMRIGHT = PARENT:GetParent():GetParent():BOTTOMRIGHT(-2, 2),
-                },
-
-            Texture'.Red'
-                :ColorTexture(0.3, 0, 0, 0.9)
-                :Points { TOPLEFT = PARENT.Error:TOPLEFT(-2, 2),
-                          BOTTOMRIGHT = PARENT.Error:BOTTOMRIGHT(2, -2) },
-
-        }
-    },
-
-    
     FrameSettings'.Settings'
-        :Points { TOPLEFT = PARENT:TOPLEFT(10, -31),
+        :Points { TOPLEFT = PARENT:TOPLEFT(0, -30),
                   BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-330, 15) },
 
     FrameSmoothScroll'.Inspector'
@@ -1000,13 +621,22 @@ local FrameEditor = Frame
 }
 
 
-local StyleBtn = Style
+local StyleFrameStackButton = Style
     .data {
-        frame = nil,
+        parent = nil,
+        reference = nil,
+        referenceName = nil,
         is_gui = nil,
-        SetFrame = function(self, frame)
-            self.frame = frame
-            self.is_gui = type(frame) == 'table' and frame.GetObjectType and frame:GetObjectType() and frame.GetNumPoints and frame.GetSize
+        SetReference = function(self, selected, reference, referenceName)
+            self.parent = selected
+            self.reference = reference
+            self.referenceName = referenceName
+            self.is_gui =
+                type(reference) == 'table'
+                and reference.GetObjectType
+                and reference:GetObjectType()
+                and reference.GetNumPoints
+                and reference.GetSize
         end
      }
     :Height(17.5)
@@ -1014,8 +644,8 @@ local StyleBtn = Style
     :RegisterForClicks('LeftButtonUp', 'RightButtonUp')
     :Hooks {
         OnEnter = function(self)
-            if self.is_gui and self.frame ~= hoverFrame and self.frame ~= hoverFrame.tex and self.frame ~= UIParent then
-                hoverFrame:SetAllPoints(self.frame)
+            if self.is_gui and self.reference ~= hoverFrame and self.reference ~= hoverFrame.tex and self.reference ~= UIParent then
+                hoverFrame:SetAllPoints(self.reference)
                 hoverFrame:Show()
             end
         end,
@@ -1027,15 +657,16 @@ local StyleBtn = Style
 
         OnClick = function(self, button)
             if self.is_gui and button == 'RightButton' then
-                if self.frame:IsShown() then
-                    self.frame:Hide()
+                if self.reference:IsShown() then
+                    self.reference:Hide()
                 else
-                    self.frame:Show()
+                    self.reference:Show()
                 end
             elseif self.is_gui and button == 'LeftButton' then
-                SetFrameStack(_, self.frame)
-            elseif type(self.frame) == 'table' and button == 'LeftButton' then
-                print_table(self.frame)
+                SetFrameStack(_, self.reference)
+            elseif type(self.reference) == 'table' and button == 'LeftButton' then
+                SetFrameStack(_, self.reference, self.parent, self.referenceName)
+                print_table(self.reference)
             end
         end,
 
@@ -1049,6 +680,8 @@ local StyleBtn = Style
 
 
 local function spawn()
+
+    FillTypeInfo()
 
     local btnPool = {}
 
@@ -1128,7 +761,7 @@ local function spawn()
 
     local lastSelected = nil
 
-    SetFrameStack = function(_, selected)
+    SetFrameStack = function(_, selected, parent, referenceName)
 
         if selected ~= lastSelected then
             editorWindow.Inspector:SetVerticalScroll(0)
@@ -1164,11 +797,11 @@ local function spawn()
 
         local lastBtn = nil
         for i = 1, #parents do
-            local c = parents[i][1]
+            local reference = parents[i][1]
 
             local btn = create_btn()
-            StyleBtn(btn)
-                :Frame(c)
+            StyleFrameStackButton(btn)
+                :Reference(selected, reference)
                 :Parent(editorWindow)
                 :FrameLevel(10)
                 :Text(parents[i][2])
@@ -1190,12 +823,12 @@ local function spawn()
 
         lastBtn = nil
         for _, obj in pairs(SortedChildren(selected)) do
+            local reference = obj[1]
             local name = obj[2]
-            local c = obj[1]
 
             local btn = create_btn()
-            StyleBtn(btn)
-                :Frame(c)
+            StyleFrameStackButton(btn)
+                :Reference(selected, reference)
                 :Parent(editorWindow.Inspector.Content)
                 :Text(name)
                 -- :Height(20)
@@ -1206,9 +839,9 @@ local function spawn()
                 .. function(self)
                     if not self.is_gui then
                         self:SetTextColor(0.5, 0.5, 0.5)
-                    elseif c == selected then
+                    elseif reference == selected then
                         self:SetTextColor(1, 1, 0.5)
-                    elseif c.IsShown and not c:IsShown() then
+                    elseif reference.IsShown and not reference:IsShown() then
                         self:SetTextColor(0.7, 0.7, 0.7)
                     else
                         self:SetTextColor(1, 1, 1)
@@ -1401,31 +1034,30 @@ SortedChildren = function(obj)
 
             local fn_visited = {}
 
-            for _, info in pairs(gui_types) do
-                local gui_mt = getmetatable(info[2])
+            for _, info in pairs(TypeInfo) do
                 local matching_fns = {}
                 local matching_count = 0
                 local fn_count = 0
-                for attr, value in pairs(gui_mt and gui_mt.__index or {}) do
-                    if type(value) == 'function' then
-                        fn_count = fn_count + 1
-                        if mt.__index[attr] then
-                            matching_fns[attr] = true
-                            matching_count = matching_count+1
-                        end
+                for attr, value in pairs(info[2] or {}) do
+                    fn_count = fn_count + 1
+                    if mt.__index[attr] then
+                        matching_fns[attr] = true
+                        matching_count = matching_count+1
                     end
                 end
-                if matching_count == fn_count then
+                if fn_count > 0 and matching_count == fn_count then
                     for k, v in pairs(matching_fns) do
                         fn_visited[k] = true
                     end
-                    table.insert(all_base_classes, { info[1], gui_mt.__index, matching_fns })
+                    table.insert(all_base_classes, { info[1], info[2], matching_fns })
                 end
             end
+
             local remaining_fns = {}
             local remaining_count = 0
             for k, v in pairs(mt.__index) do
                 if type(v) == 'function' and not fn_visited[k] then
+                    print('remaining', k)
                     remaining_fns[k] = true
                     remaining_count = remaining_count+1
                 end
@@ -1470,6 +1102,17 @@ SortedChildren = function(obj)
                                 '|cffaafaff' .. k:sub(3) ..
                                 '|cffaaaaaa = ' ..
                                 attribute_str_values(obj, k)
+                            })
+                        
+                        elseif k:find('^Get') or k:find('^Is') then
+                            fn_visited[k] = true
+                            table.insert(result, { v,
+                                SORT_MT ..
+                                SORT_TYPE ..
+                                SORT_FN ..
+                                ' |cffffafaa fn ' ..
+                                '|cffaaaaff' .. k ..
+                                '|cfaaaaaaa = ' .. attribute_str_values(obj, k)
                             })
                         elseif k:find('^Set') and (info[3]['Get'..k:sub(4)] or info[3]['Is'..k:sub(4)]) then
                             -- let Get and Is handle it

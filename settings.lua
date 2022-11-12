@@ -1,7 +1,4 @@
 
-SilverUI = {}
-
-
 local settingsLoaded = false
 local settings = {}
 
@@ -22,10 +19,10 @@ end
 local defaultScripts = {}
 local defaultScriptNames = {}
 
-function SilverUI.RegisterScript(addon, name, script)
+function SilverUI.RegisterScript(addon, name, settings, script)
     -- TODO: handle addon
     defaultScriptNames[name] = script
-    table.insert(defaultScripts, { name, script })
+    table.insert(defaultScripts, { name, script, settings })
 end
 
 
@@ -148,7 +145,7 @@ frame:SetScript("OnEvent", function(self, event, addon)
         character.addons['Silver UI'] = character.addons['Silver UI'] or { scripts = {}, enabled = true }
 
         for i, script in ipairs(defaultScripts) do
-            local name, code = script[1], script[2]
+            local name, code, settings = script[1], script[2], script[2]
 
             local found = false
             for _, script in pairs(account.addons['Silver UI'].scripts) do
@@ -169,9 +166,7 @@ frame:SetScript("OnEvent", function(self, event, addon)
                     }
                 )
             end
-            character.addons['Silver UI'].scripts[name] = character.addons['Silver UI'].scripts[name] or {
-                enabled = true
-            }
+            character.addons['Silver UI'].scripts[name] = character.addons['Silver UI'].scripts[name] or settings
         end
 
         for name, account, character in SilverUI.Addons() do

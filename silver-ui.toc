@@ -10,6 +10,7 @@
 indent.lua
 
 #-# base
+__init__.lua
 settings.lua
 util.lua
 lqt/__init__.lua
@@ -19,7 +20,13 @@ lqt/style.lua
 lqt/frame_extensions.lua
 lqt/__finalize__.lua
 
-editor.lua
+templates/box_shadow.lua
+templates/context_menu.lua
+templates/smoothscroll.lua
+templates/code_editor.lua
+
+editor/typeinfo.lua
+editor/editor.lua
 
 #-# skins
 frames/questgossip.lua

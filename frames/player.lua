@@ -4,6 +4,9 @@ if WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE then return end
 SilverUI.RegisterScript(
     'Silver UI',
     'Player Frame',
+    {
+        enabled = true
+    },
 [[
 
 local     PARENT,     Style,     Frame,     Texture,     MaskTexture,     AnimationGroup,     Animation
