@@ -11,20 +11,6 @@ local MIN_HEIGHT = 150
 local Hide = Style:Hide()
 
 
-local function ToParent(from, to, x, y)
-    return function(self)
-        self:SetPoint(from, self:GetParent(), to, x, y)
-    end
-end
-
-
-local function AllParent()
-    return function(self)
-        self:SetAllPoints(self:GetParent())
-    end
-end
-
-
 local function byVisible(e)
     return e:IsVisible()
 end
@@ -111,24 +97,24 @@ local StyleQuestInfoRewardsFrame = Style {
     {
         Style'.Texture':Hide(),
 
-        Style'.Name' .. function(self)
-            local parent = self:GetParent()
-            self:SetPoints { TOPLEFT = parent:TOPLEFT(0, -2),
-                          RIGHT = parent:GetParent():RIGHT(-20, 0) }
-        end,
+        Style'.Name'
+            :Points { TOPLEFT = PARENT:TOPLEFT(0, -2),
+                      RIGHT = PARENT:GetParent():RIGHT(-20, 0) },
 
         Style'.Icon'
             :Show()
             :Size(20, 20)
-            .. ToParent('TOPLEFT', 'TOPLEFT', 0, 0),
+            :Points { TOPLEFT = PARENT:TOPLEFT() },
 
         Style'.FontString'
             :Size(180, 20)
             :TextColor(0.1, 0, 0, 1)
             :ShadowOffset(0, 0)
-            .. ToParent('TOPLEFT', 'TOPLEFT', 27, 0),
+            :Points { TOPLEFT = PARENT:TOPLEFT(27, 0) },
 
         Style'.NameFrame'
+            :Points { TOPLEFT = PARENT:TOPLEFT(0, -2),
+                      RIGHT = PARENT:GetParent():RIGHT(-20, 0) }
             :Show()
             :Texture 'Interface/Buttons/UI-Listbox-Highlight2'
             :DrawLayer('BACKGROUND', -7 )
@@ -139,25 +125,19 @@ local StyleQuestInfoRewardsFrame = Style {
                 function(self)
                     local parent = self:GetParent()
                     local show = QuestFrameRewardPanel:IsShown() and parent:IsShown() and parent.Icon and parent:GetNumPoints() > 0
-                    self:SetPoints { TOPLEFT = parent:TOPLEFT(0, -2),
-                                  RIGHT = parent:GetParent():RIGHT(-20, 0) }
                     self:SetAlpha(show and 0.2 or 0)
                 end,
-        
+
         Style'.Count'
             :TextColor(1, 1, 1)
             :JustifyH 'LEFT'
             :TextScale(0.85)
-            ..
-                function(self)
-                    local parent = self:GetParent()
-                    self:SetPoints { TOPLEFT = parent.Icon:TOPLEFT(0,-5),
-                                  BOTTOMRIGHT = parent.Icon:BOTTOMRIGHT(10,-5) }
-                end
+            :Points { TOPLEFT = PARENT.Icon:TOPLEFT(0,-5),
+                      BOTTOMRIGHT = PARENT.Icon:BOTTOMRIGHT(10,-5) }
     },
 
     function(self)
-        if QuestRewardScrollFrame:IsShown() then
+        if QuestInfoRewardsFrame:IsShown() then
             QuestFrameCompleteQuestButton:Show()
             for btn in self'.Button'.filter(byVisible) do
                 local show = btn.Icon and btn:GetNumPoints() > 0 -- don't ask me
@@ -259,7 +239,7 @@ local function StyleAll(self, event)
                     :ShadowColor(0, 0, 0, 1)
                     :ShadowOffset(1, -1)
                     :JustifyH 'LEFT'
-                { function(self) self:SetAllPoints(self:GetParent()) end }
+                    :AllPoints(PARENT)
             },
 
             Texture'.NameBackground'
@@ -293,7 +273,12 @@ local function StyleAll(self, event)
                     Style'.*'
                         :Width(WIDTH-40)
                     {
-                        Style'.FontString':Width(WIDTH-45)
+                        Style'.FontString'
+                            :Width(WIDTH-45)
+                            .. function(self)
+                                local tl1, to, tl2, x, y = self:GetPoint()
+                                self:SetPoint(tl1, to, tl2, x, 0)
+                            end,
                         -- Style'.FontString'
                         --     :Points { TOPLEFT = PARENT:TOPLEFT(7.5, 0), TOPRIGHT = PARENT:TOPRIGHT(-7.5, 0) }
                         -- {
@@ -319,7 +304,7 @@ local function StyleAll(self, event)
                     ListLayout,
                     Style:FitToChildren(), -- Resizing applies blizzard layout
                     ListLayout,
-                    function(self) height = height + self:GetExtentsDown()+10 end
+                    function(self) height = height + self:GetHeight()+10 end
                 },
                 Style:FitToChildren(),
                 
@@ -450,6 +435,10 @@ local function StyleAll(self, event)
                 Style(content) {
                     StyleQuestInfoRewardsFrame'.QuestInfoRewardsFrame'
                 }
+
+                if QuestFrameRewardPanel:IsShown() and not QuestInfoRewardsFrame:IsShown() then
+                    QuestFrameCompleteQuestButton:Show()
+                end
 
                 for subchild in content'.*'.filter(byVisible) do
                     local point, relativeTo, relativePoint, xOfs, yOfs = subchild:GetPoint()
