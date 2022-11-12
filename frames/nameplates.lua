@@ -1,4 +1,13 @@
 
+
+SilverUI.RegisterScript (
+    'Silver UI',
+    'Nameplates',
+    {
+        enabled = false
+    },
+    [[
+
 local Frame, Style, Texture = LQT.Frame, LQT.Style, LQT.Texture
 
 
@@ -108,3 +117,5 @@ Frame -- Cast bar over health bar
     }
     .new()
 
+]]
+)
