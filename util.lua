@@ -1,7 +1,7 @@
-local _, ns = ...
+local ADDON, Addon = ...
 
-ns.util = {}
-local util = ns.util
+Addon.util = {}
+local util = Addon.util
 
 
 SilverUI.util = util

@@ -6,11 +6,7 @@ local     PARENT,     Style,     Frame,     Texture,     FontString,     EditBox
     = LQT.PARENT, LQT.Style, LQT.Frame, LQT.Texture, LQT.FontString, LQT.EditBox
 
 
-Addon.CodeEditor = FrameSmoothScroll
-    :Points { TOPLEFT = PARENT.TitleBg:BOTTOMLEFT(),
-              BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-330, 0) }
-    :Hide()
-{
+Addon.CodeEditor = FrameSmoothScroll {
     Style'.Content' {
 
         Frame'.ClickBackground'
@@ -53,10 +49,8 @@ Addon.CodeEditor = FrameSmoothScroll
                     if not self.CTRL then
                         self:Insert('\n')
                     else
-                        local func = assert(loadstring('return function(inspect) ' .. self:GetText() .. '\n end', "silver editor"))
-                        local result = { func()(function(frame) SetFrameStack(_, frame) end) }
-                        if #result > 0 then
-                            print(unpack(result))
+                        if self.parent:GetParent().CtrlEnter then
+                            self.parent:GetParent():CtrlEnter(self:GetText())
                         end
                     end
                 end,
@@ -125,7 +119,7 @@ Addon.CodeEditor = FrameSmoothScroll
                         lines = lines .. string.rep(' ', 4 - string.len('' .. i)) .. i .. '\n'
                     end
                     self.parent.LineNumbers:SetText(lines)
-                    local fn, error = loadstring('return function(inspect) ' .. self:GetText() .. '\n end', "silver editor")
+                    local fn, error = loadstring('return function() ' .. self:GetText() .. '\n end', "silver editor")
                     if fn then
                         self.parent.Error:Hide()
                         self.parent.Red:Hide()

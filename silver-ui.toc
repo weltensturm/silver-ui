@@ -25,6 +25,7 @@ templates/context_menu.lua
 templates/smoothscroll.lua
 templates/code_editor.lua
 
+editor/trace.lua
 editor/typeinfo.lua
 editor/editor.lua
 

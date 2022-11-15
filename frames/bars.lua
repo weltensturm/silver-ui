@@ -153,22 +153,17 @@ local bars = { Action='',
                MultiBarBottomRight='' }
 
 
+hooksecurefunc('ActionButton_UpdateCooldown', function(button)
+    button.cooldown:SetSwipeColor(1,1,1,0.5)
+end)
+
+
 for barname, bar in pairs(bars) do
 
     RangeApply(barname .. 'Button', 1, 12, function(i, name, btn, prevname, prev)
 
         Style(btn)
             :Hooks(MouseHooks)
-            {
-                function(self, parent)
-                    hooksecurefunc('ActionButton_UpdateCooldown', function(button)
-                        if self == button then
-                            button.cooldown:SetSwipeColor(1,1,1,0.5)
-                        end
-                    end)
-                    -- btn.icon:SetDesaturation(1)
-                end
-            }
             .data {
                 AnimProgress = 1,
                 AnimTarget = 0,

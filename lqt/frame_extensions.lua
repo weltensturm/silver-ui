@@ -152,7 +152,7 @@ end
 
 
 local get_context = function()
-    return strsplittable('\n', debugstack(3,0,1))[1]
+    return strsplittable('\n', debugstack(3,1,1))[1]
 end
 
 
@@ -261,15 +261,15 @@ local function prepareSecureHooks(self, name_or_frame, name)
     self.lqtSecurehooks = self.lqtSecurehooks or {}
     local frame = name and name_or_frame
     name = frame and name or name_or_frame
-    if name then
-        local frame_name = arg1:GetName()
+    if frame then
+        local frame_name = frame:GetName()
         assert(frame_name, 'Can only securehook on named frames')
         local context = frame_name .. '.' .. name
         if not self.lqtSecurehooks[context] then
             self.lqtSecurehooks[context] = {}
             hooksecurefunc(frame, name, function(...)
-                for _, fn in ipairs(self.lqtSecurehooks[context]) do
-                    fn(...)
+                for _, securehook in pairs(self.lqtSecurehooks[context]) do
+                    securehook(...)
                 end
             end)
         end
@@ -277,7 +277,7 @@ local function prepareSecureHooks(self, name_or_frame, name)
         if not self.lqtSecurehooks[name] then
             self.lqtSecurehooks[name] = {}
             hooksecurefunc(name, function(...)
-                for _, fn in ipairs(self.lqtSecurehooks[name]) do
+                for _, fn in pairs(self.lqtSecurehooks[name]) do
                     fn(...)
                 end
             end)
@@ -304,10 +304,6 @@ function FrameExtensions:RegisterReapply(style, arg1, arg2, arg3, context)
 
     local callback = function(...)
         if not filter or filter(...) then
-            -- print('reapply')
-            -- for line in tostring(style):gmatch("([^\n]*)\n?") do
-            --     print(line)
-            -- end
             style.apply(self)
         end
     end
@@ -357,11 +353,15 @@ for _, v in pairs({
     CreateFrame('EditBox'),
     CreateFrame('Cooldown'),
     CreateFrame('SimpleHTML'),
+    CreateFrame('OffScreenFrame'),
     CreateFrame('Frame'):CreateTexture(),
     CreateFrame('Frame'):CreateFontString(),
-    CreateFrame('Frame'):CreateMaskTexture()
+    CreateFrame('Frame'):CreateMaskTexture(),
+    CreateFrame('Frame'):CreateAnimationGroup()
 }) do
-    v:Hide()
+    if v.Hide then
+        v:Hide()
+    end
     local meta = getmetatable(v)
     for k_ext, v_ext in pairs(FrameExtensions) do
         meta.__index[k_ext] = v_ext

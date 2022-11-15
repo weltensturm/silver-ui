@@ -10,8 +10,8 @@ local     Style,     Frame,     Button,     Texture,     FontString,     EditBox
       LQT.SELF, LQT.PARENT, LQT.ApplyFrameProxy, LQT.FrameProxyMt
 
 
-local FrameSmoothScroll, CodeEditor, BoxShadow, ContextMenu, ContextMenuButton
-    = Addon.FrameSmoothScroll, Addon.CodeEditor, Addon.BoxShadow, Addon.ContextMenu, Addon.ContextMenuButton
+local       FrameSmoothScroll,       CodeEditor,       BoxShadow,       ContextMenu,       ContextMenuButton,       FrameTraceWindow
+    = Addon.FrameSmoothScroll, Addon.CodeEditor, Addon.BoxShadow, Addon.ContextMenu, Addon.ContextMenuButton, Addon.FrameTraceWindow
 
 
 local editorWindow = nil
@@ -390,18 +390,25 @@ local FrameSettings = Frame
 local FrameEditor = Frame
     :Width(1000)
     :Height(600)
+    :FrameStrata 'HIGH'
     :EnableMouse(true)
     :Point('CENTER', 0, 0)
     -- :ClampedToScreen(true)
+    :ResizeBounds(520, 210)
     .init {
         buttons = {},
         scriptEditing = nil,
         scriptEditingAddon = nil,
+        ShowSettings = function(self)
+            self:HideAll()
+            self.Settings:Show()
+            self.enterPlaygroundBtn:Show()
+            self.enterTraceBtn:Show()
+        end,
         EditScript = function(self, addonName, script)
+            self:HideAll()
             self.scriptEditing = script
             self.scriptEditingAddon = addonName
-            self.enterPlaygroundBtn:Hide()
-            self.Settings:Hide()
             self.EditorHead.AddonName:SetText(addonName .. '/')
             self.EditorHead.ScriptName:SetText(script.name)
             self.EditorHead.ScriptName:Show()
@@ -415,15 +422,6 @@ local FrameEditor = Frame
             self.CodeEditor.Content.Editor:SetCursorPosition(0)
             self.CodeEditor.Content.Editor:SetFocus()
             self.CodeEditor:SetVerticalScroll(0)
-        end,
-        StopEditing = function(self)
-            self.scriptEditing = nil
-            self.scriptEditingAddon = nil
-            self.EditorHead:Hide()
-            self.CodeEditor:Hide()
-            self.CodeEditor.Content.Editor:SetText('')
-            self.Settings:Show()
-            self.enterPlaygroundBtn:Show()
         end,
         RenameScript = function(self, name)
             if not self.scriptEditing then return end
@@ -445,8 +443,7 @@ local FrameEditor = Frame
 
         end,
         EnterPlayground = function(self)
-            self.enterPlaygroundBtn:Hide()
-            self.Settings:Hide()
+            self:HideAll()
             self.EditorHead.AddonName:SetText('Playground')
             self.EditorHead.ScriptName:Hide()
             self.EditorHead:Show()
@@ -458,6 +455,23 @@ local FrameEditor = Frame
             self.CodeEditor.Content.Editor:SetCursorPosition(0)
             self.CodeEditor.Content.Editor:SetFocus()
             self.CodeEditor:SetVerticalScroll(0)
+        end,
+        EnterTrace = function(self)
+            self:HideAll()
+            self.Tracer:Show()
+            self.TracerHead:Show()
+        end,
+        HideAll = function(self)
+            self.scriptEditing = nil
+            self.scriptEditingAddon = nil
+            self.EditorHead:Hide()
+            self.CodeEditor:Hide()
+            self.CodeEditor.Content.Editor:SetText('')
+            self.Tracer:Hide()
+            self.TracerHead:Hide()
+            self.Settings:Hide()
+            self.enterPlaygroundBtn:Hide()
+            self.enterTraceBtn:Hide()
         end
     }
     :Scripts {
@@ -570,6 +584,39 @@ local FrameEditor = Frame
         Style'.Text':TextColor(0.7, 0.7, 0.7)
     },
 
+    Btn'.enterTraceBtn'
+        :Height(24)
+        :Text 'Trace'
+        :Width(SELF.Text:GetWidth()+20)
+        :FrameLevel(10)
+        :Points { TOPLEFT = PARENT.enterPlaygroundBtn:TOPRIGHT(3, 0) }
+        :Scripts {
+            OnClick = function(self) self:GetParent():EnterTrace() end
+        }
+    {
+        Style'.Text':TextColor(0.7, 0.7, 0.7)
+    },
+
+    Frame'.TracerHead'
+        :Points { TOPLEFT = PARENT:TOPLEFT(3, -17),
+                TOPRIGHT = PARENT:TOPRIGHT(3, -17) }
+        :Height(25)
+        :Hide()
+    {
+        Btn'.BackButton'
+            :Points { LEFT = PARENT:TOPLEFT(5, 0) }
+            :Text '<'
+            :Hooks {
+                OnClick = function(self)
+                    editorWindow:ShowSettings()
+                end
+            },
+        FontString'.Name'
+            :Font('Fonts/FRIZQT__.ttf', 12, '')
+            :Points { LEFT = PARENT.BackButton:RIGHT(10, 0) }
+            :Text 'Trace',
+    },
+
     Frame'.EditorHead'
         :Points { TOPLEFT = PARENT:TOPLEFT(3, -17),
                   TOPRIGHT = PARENT:TOPRIGHT(3, -17) }
@@ -581,7 +628,7 @@ local FrameEditor = Frame
             :Text '<'
             :Hooks {
                 OnClick = function(self)
-                    editorWindow:StopEditing()
+                    editorWindow:ShowSettings()
                 end
             },
         FontString'.AddonName'
@@ -608,11 +655,31 @@ local FrameEditor = Frame
         }
     },
 
-    CodeEditor'.CodeEditor',
+    CodeEditor'.CodeEditor'
+        :Points { TOPLEFT = PARENT.TitleBg:BOTTOMLEFT(),
+                BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-330, 0) }
+        :Hide()
+        .data {
+            CtrlEnter = function(self, code)
+                local func = assert(loadstring('return function(inspect, trace) ' .. code .. '\n end', "silver editor"))
+                local result = { func()(
+                    function(frame) SetFrameStack(_, frame) end,
+                    function(...) editorWindow.Tracer:StartTrace(...) end
+                ) }
+                if #result > 0 then
+                    print(unpack(result))
+                end
+            end
+        },
 
     FrameSettings'.Settings'
         :Points { TOPLEFT = PARENT:TOPLEFT(0, -30),
                   BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-330, 15) },
+
+    FrameTraceWindow'.Tracer'
+        :Points { TOPLEFT = PARENT:TOPLEFT(0, -30),
+                  BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-330, 15) }
+        :Hide(),
 
     FrameSmoothScroll'.Inspector'
         :Points { TOPLEFT = PARENT.CodeEditor:TOPRIGHT(5, 0),
@@ -641,7 +708,7 @@ local StyleFrameStackButton = Style
      }
     :Height(17.5)
     :Show()
-    :RegisterForClicks('LeftButtonUp', 'RightButtonUp')
+    :RegisterForClicks('LeftButtonUp', 'RightButtonUp', 'MiddleButtonUp')
     :Hooks {
         OnEnter = function(self)
             if self.is_gui and self.reference ~= hoverFrame and self.reference ~= hoverFrame.tex and self.reference ~= UIParent then
@@ -656,17 +723,25 @@ local StyleFrameStackButton = Style
         end,
 
         OnClick = function(self, button)
+            print(self.reference, self.referenceName)
             if self.is_gui and button == 'RightButton' then
                 if self.reference:IsShown() then
                     self.reference:Hide()
                 else
                     self.reference:Show()
                 end
-            elseif self.is_gui and button == 'LeftButton' then
-                SetFrameStack(_, self.reference)
-            elseif type(self.reference) == 'table' and button == 'LeftButton' then
-                SetFrameStack(_, self.reference, self.parent, self.referenceName)
-                print_table(self.reference)
+            elseif button == 'LeftButton' then
+                if self.is_gui then
+                    SetFrameStack(_, self.reference)
+                elseif type(self.reference) == 'table' then
+                    SetFrameStack(_, self.reference, { { self.parent, self.referenceName } })
+                else
+                    if self.referenceName and self.parent[self.referenceName] then
+                        editorWindow.Tracer:StartTrace(self.parent, self.referenceName)
+                    end
+                end
+            elseif button == 'MiddleButton' then
+                editorWindow.Tracer:StartTrace(PlayerCastingBarFrame, 'SetPointBase')
             end
         end,
 
@@ -761,7 +836,7 @@ local function spawn()
 
     local lastSelected = nil
 
-    SetFrameStack = function(_, selected, parent, referenceName)
+    SetFrameStack = function(_, selected, parents)
 
         if selected ~= lastSelected then
             editorWindow.Inspector:SetVerticalScroll(0)
@@ -788,11 +863,13 @@ local function spawn()
 
         local lastBtn = nil
 
-        local parents = {}
-        local parent = selected
-        while parent do
-            table.insert(parents, { parent, get_name(parent) })
-            parent = parent:GetParent()
+        if not parents then
+            parents = {}
+            local parent = selected
+            while parent do
+                table.insert(parents, { parent, get_name(parent) })
+                parent = parent:GetParent()
+            end
         end
 
         local lastBtn = nil
@@ -807,7 +884,7 @@ local function spawn()
                 :Text(parents[i][2])
                 :Points(
                     lastBtn and { TOPRIGHT = lastBtn:TOPLEFT(10, 0) }
-                             or { BOTTOMLEFT = editorWindow.Inspector:TOPLEFT(0, 5) }
+                             or { BOTTOMLEFT = editorWindow.Inspector:TOPLEFT(0, 0) }
                 )
             
             if lastBtn then
@@ -825,10 +902,11 @@ local function spawn()
         for _, obj in pairs(SortedChildren(selected)) do
             local reference = obj[1]
             local name = obj[2]
+            local attrName = obj[3]
 
             local btn = create_btn()
             StyleFrameStackButton(btn)
-                :Reference(selected, reference)
+                :Reference(selected, reference, attrName)
                 :Parent(editorWindow.Inspector.Content)
                 :Text(name)
                 -- :Height(20)
@@ -888,18 +966,20 @@ SortedChildren = function(obj)
     local SORT_FN = '|c00000003'
     local SORT_MT = '|c00000004'
 
-    table.insert(result, {
-        nil,
-        SORT_ATTR ..
-        '|cffaaaaaatype |cffffffff' .. obj:GetObjectType() .. (obj:IsShown() and '' or '|cffaaaaaa H')
-    })
-
-    if obj:GetName() then
+    if obj.GetObjectType then
         table.insert(result, {
             nil,
             SORT_ATTR ..
-            '|cffaaaaabname |cffffffff' .. obj:GetName()
+            '|cffaaaaaatype |cffffffff' .. obj:GetObjectType() .. (obj:IsShown() and '' or '|cffaaaaaa H')
         })
+
+        if obj:GetName() then
+            table.insert(result, {
+                nil,
+                SORT_ATTR ..
+                '|cffaaaaabname |cffffffff' .. obj:GetName()
+            })
+        end
     end
 
     if obj.GetTexture then
@@ -910,38 +990,42 @@ SortedChildren = function(obj)
         })
     end
 
-    local point_names = {
-        TOPLEFT = 'TL',
-        TOP = 'T',
-        TOPRIGHT = 'TR',
-        LEFT = 'L',
-        CENTER = 'C',
-        RIGHT = 'R',
-        BOTTOMLEFT = 'BL',
-        BOTTOM = 'B',
-        BOTTOMRIGHT = 'BR'
-    }
+    if obj.GetNumPoints then
+        local point_names = {
+            TOPLEFT = 'TL',
+            TOP = 'T',
+            TOPRIGHT = 'TR',
+            LEFT = 'L',
+            CENTER = 'C',
+            RIGHT = 'R',
+            BOTTOMLEFT = 'BL',
+            BOTTOM = 'B',
+            BOTTOMRIGHT = 'BR'
+        }
 
-    for i = 1, obj:GetNumPoints() do
-        pcall(function()
-            local point, relativeTo, relativePoint, x, y = obj:GetPoint(i)
-            table.insert(result, {
-                relativeTo,
-                SORT_ATTR ..
-                '|cffaaaaac' .. point_names[point] ..
-                ' |cffffffff' .. (relativeTo and relativeTo:GetObjectType() or '') .. ' ' ..
-                (relativeTo and relativeTo:GetName() or '') .. '.' ..
-                point_names[relativePoint] .. '(' .. format_float(x) .. ', ' .. format_float(y) .. ')'
-            })
-        end)
+        for i = 1, obj:GetNumPoints() do
+            pcall(function()
+                local point, relativeTo, relativePoint, x, y = obj:GetPoint(i)
+                table.insert(result, {
+                    relativeTo,
+                    SORT_ATTR ..
+                    '|cffaaaaac' .. point_names[point] ..
+                    ' |cffffffff' .. (relativeTo and relativeTo:GetObjectType() or '') .. ' ' ..
+                    (relativeTo and relativeTo:GetName() or '') .. '.' ..
+                    point_names[relativePoint] .. '(' .. format_float(x) .. ', ' .. format_float(y) .. ')'
+                })
+            end)
+        end
     end
 
-    local parent = obj:GetParent()
-    table.insert(result, {
-        parent,
-        SORT_ATTR ..
-        '|cffaaaaabparent |cffffffff' .. tostring(parent and (parent:GetName() or parent:GetObjectType()))
-    })
+    if obj.GetParent then
+        local parent = obj:GetParent()
+        table.insert(result, {
+            parent,
+            SORT_ATTR ..
+            '|cffaaaaabparent |cffffffff' .. tostring(parent and (parent:GetName() or parent:GetObjectType()))
+        })
+    end
 
     local idx = 1
     local visited = {}
@@ -960,13 +1044,14 @@ SortedChildren = function(obj)
                         '|c00000000' -- ..
                         -- tostring(-(v:GetTop() or 999999)) .. ' ' ..
                         -- tostring(-(v:GetLeft() or 999999))
+                        , k
                     })
                     idx = idx - 1
                 else
-                    table.insert(result, { v, SORT_DATA .. '|cffffffff' .. k .. ' = |cffffaaaatable'})
+                    table.insert(result, { v, SORT_DATA .. '|cffffffff' .. k .. ' = |cffffaaaatable', k })
                 end
             elseif type(v) == 'function' then
-                table.insert(result, { v, SORT_FN .. '|cffffafaa fn |cffaaaaff' .. k })
+                table.insert(result, { v, SORT_FN .. '|cffffafaa fn |cffaaaaff' .. k, k })
             else
                 table.insert(result, {
                     v,
@@ -1057,7 +1142,6 @@ SortedChildren = function(obj)
             local remaining_count = 0
             for k, v in pairs(mt.__index) do
                 if type(v) == 'function' and not fn_visited[k] then
-                    print('remaining', k)
                     remaining_fns[k] = true
                     remaining_count = remaining_count+1
                 end
@@ -1089,7 +1173,8 @@ SortedChildren = function(obj)
                                 ' |cfaaaaaaa Get' ..
                                 '|cffaafaff' .. k:sub(4) ..
                                 '|cffaaaaaa = ' ..
-                                attribute_str_values(obj, k)
+                                attribute_str_values(obj, k),
+                                'Set'..k:sub(4)
                             })
                         elseif k:find('^Is') and info[3]['Set'..k:sub(3)] then
                             fn_visited[k] = true
@@ -1101,7 +1186,8 @@ SortedChildren = function(obj)
                                 ' |cfaaaaaaa Is' ..
                                 '|cffaafaff' .. k:sub(3) ..
                                 '|cffaaaaaa = ' ..
-                                attribute_str_values(obj, k)
+                                attribute_str_values(obj, k),
+                                'Set'..k:sub(3)
                             })
                         
                         elseif k:find('^Get') or k:find('^Is') then
@@ -1112,7 +1198,8 @@ SortedChildren = function(obj)
                                 SORT_FN ..
                                 ' |cffffafaa fn ' ..
                                 '|cffaaaaff' .. k ..
-                                '|cfaaaaaaa = ' .. attribute_str_values(obj, k)
+                                '|cfaaaaaaa = ' .. attribute_str_values(obj, k),
+                                k
                             })
                         elseif k:find('^Set') and (info[3]['Get'..k:sub(4)] or info[3]['Is'..k:sub(4)]) then
                             -- let Get and Is handle it
@@ -1123,7 +1210,8 @@ SortedChildren = function(obj)
                                 SORT_TYPE ..
                                 SORT_FN ..
                                 ' |cffffafaa fn ' ..
-                                '|cffaaaaff' .. k
+                                '|cffaaaaff' .. k,
+                                k
                             })
                         end
                     end
