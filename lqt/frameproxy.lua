@@ -1,96 +1,105 @@
 local _, namespace = ...
 local LQT = namespace.LQT
 
+
 local FrameProxy = nil
 local FrameProxyMt = nil
+local ApplyFrameProxy
+
 
 local get_context = function()
     return strsplittable('\n', debugstack(3,0,1))[1]
 end
 
+
+local FN = '__FrameProxy_fn'
+local CONTEXT = '__FrameProxy_context'
+local TEXT =  '__FrameProxy_text'
+
+
 FrameProxyMt = {
-    __call = function(proxy, self, ...)
-        if getmetatable(self) == FrameProxyMt then
-            return FrameProxy {
-                __FrameProxy_parent = proxy,
-                __FrameProxy_action = 'callmethod',
-                __FrameProxy_args = { ... },
-                __FrameProxy_context = get_context()
-            }
+    __call = function(proxy, selfMaybe, ...)
+        if getmetatable(selfMaybe) == FrameProxyMt then
+            local fn = rawget(proxy, FN)
+            local args = { ... }
+            return FrameProxy(
+                function(root)
+                    local result, frame = fn(root)
+                    assert(result ~= nil, rawget(proxy, CONTEXT) .. rawget(proxy, TEXT) .. ' is nil')
+                    return result(frame, unpack(args))
+                end,
+                get_context(),
+                rawget(proxy, TEXT) .. '(self, ...)'
+            )
         else
-            return FrameProxy {
-                __FrameProxy_parent = proxy,
-                __FrameProxy_action = 'call',
-                __FrameProxy_args = { self, ... },
-                __FrameProxy_context = get_context()
-            }
+            local fn = rawget(proxy, FN)
+            local args = { selfMaybe, ... }
+            return FrameProxy(
+                function(root)
+                    local result = fn(root)
+                    assert(result ~= nil, rawget(proxy, CONTEXT) .. ' ' .. rawget(proxy, TEXT) .. ' is nil')
+                    return result(unpack(args))
+                end,
+                get_context(),
+                rawget(proxy, TEXT) .. '(...)'
+            )
         end
     end,
     __index = function(self, attr)
-        if attr == '__FrameProxy_attr'
-            or attr == '__FrameProxy_parent'
-            or attr == '__FrameProxy_action'
-            or attr == '__FrameProxy_args'
+        if attr == CONTEXT
+            or attr == FN
+            or attr == TEXT
         then
             return rawget(self, attr)
         end
-        return FrameProxy {
-            __FrameProxy_parent = self,
-            __FrameProxy_action = 'index',
-            __FrameProxy_attr = attr,
-            __FrameProxy_context = get_context()
-        }
+        local fn = rawget(self, FN)
+        return FrameProxy(
+            function(root)
+                local result = fn(root)
+                return result[attr], result
+            end,
+            get_context(),
+            rawget(self, TEXT) .. '.' .. attr
+        )
     end,
     __tostring = function(self)
-        local parent = tostring(self.__FrameProxy_parent or '') or ''
-        if self.__FrameProxy_action == 'index' then
-            return parent .. '.' .. self.__FrameProxy_attr
-        elseif self.__FrameProxy_action == 'call' then
-            return parent .. '(...)'
-        elseif self.__FrameProxy_action == 'callmethod' then
-            return parent .. '(self, ...)'
-        elseif self.__FrameProxy_action == 'callfunc' then
-            return 'fn(' .. parent .. ', ...)'
-        else
-            return self.__FrameProxy_action
-        end
+        return rawget(self, TEXT)
     end,
     __add = function(self, num)
-        return FrameProxy {
-            __FrameProxy_parent = self,
-            __FrameProxy_action = 'callfunc',
-            __FrameProxy_args = { function(result) return result + num end },
-            __FrameProxy_context = get_context()
-        }
+        local fn = rawget(self, FN)
+        if getmetatable(num) == FrameProxyMt then
+            return FrameProxy(
+                function(root)
+                    return fn(root) + ApplyFrameProxy(root, num)
+                end,
+                get_context(),
+                rawget(self, TEXT) .. ' + ' .. tostring(num)
+            )
+        else
+            return FrameProxy(
+                function(root)
+                    return fn(root) + num
+                end,
+                get_context(),
+                rawget(self, TEXT) .. ' + ' .. num
+            )
+        end
     end
 }
 
-FrameProxy = function(table)
-    return setmetatable(table or { __FrameProxy_parent=nil, __FrameProxy_context=get_context() }, FrameProxyMt)
+FrameProxy = function(fn, context, text)
+    return setmetatable(
+        {
+            __FrameProxy_fn = fn or function(root) return root end,
+            __FrameProxy_context = context or get_context(),
+            __FrameProxy_text = text or 'self'
+        },
+        FrameProxyMt
+    )
 end
 
-local function ApplyFrameProxy(frame, proxy)
-    local result, this = nil, nil
-    if proxy.__FrameProxy_parent then
-        result, this = ApplyFrameProxy(frame, proxy.__FrameProxy_parent)
-    else
-        result = frame
-    end
-    if proxy.__FrameProxy_action == 'index' then
-        assert(result ~= nil, 'Frame proxy returns nil at '..proxy.__FrameProxy_context)
-        return result[proxy.__FrameProxy_attr], result
-    elseif proxy.__FrameProxy_action == 'call' then
-        assert(result ~= nil, 'Frame proxy returns nil at '..proxy.__FrameProxy_context)
-        return result(unpack(proxy.__FrameProxy_args))
-    elseif proxy.__FrameProxy_action == 'callmethod' then
-        assert(result ~= nil, 'Frame proxy returns nil at '..proxy.__FrameProxy_context)
-        return result(this, unpack(proxy.__FrameProxy_args))
-    elseif proxy.__FrameProxy_action == 'callfunc' then
-        assert(result ~= nil, 'Frame proxy returns nil at '..proxy.__FrameProxy_context)
-        print(result)
-        return proxy.__FrameProxy_args[1](result)
-    end
-    return frame
+ApplyFrameProxy = function(frame, proxy)
+    return rawget(proxy, FN)(frame, frame)
 end
 
 LQT.ApplyFrameProxy = ApplyFrameProxy
@@ -100,3 +109,11 @@ LQT.FrameProxyMt = FrameProxyMt
 LQT.SELF = FrameProxy()
 LQT.PARENT = FrameProxy():GetParent()
 
+
+--# Tests
+
+local frame = CreateFrame('Frame', nil, UIParent)
+frame:SetSize(20, 32)
+assert(ApplyFrameProxy(frame, LQT.PARENT) == frame:GetParent())
+assert(ApplyFrameProxy(frame, LQT.PARENT:GetName()) == 'UIParent')
+assert(ApplyFrameProxy(frame, LQT.SELF:GetWidth() + LQT.SELF:GetHeight()) == 52)
