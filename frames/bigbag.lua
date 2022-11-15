@@ -8,7 +8,9 @@ local
     ItemButton,
     Texture,
     MaskTexture,
-    FontString
+    FontString,
+    Animation,
+    AnimationGroup
     =
         LQT.PARENT,
         LQT.Style,
@@ -17,12 +19,17 @@ local
         LQT.ItemButton,
         LQT.Texture,
         LQT.MaskTexture,
-        LQT.FontString
+        LQT.FontString,
+        LQT.Animation,
+        LQT.AnimationGroup
 
 
 local db = nil
 local FrameBigBag = nil
 SilverUIBigBag = nil
+
+
+local animate = true
 
 
 local GetContainerNumFreeSlots = GetContainerNumFreeSlots or C_Container.GetContainerNumFreeSlots
@@ -35,7 +42,8 @@ local GetContainerItemInfo = GetContainerItemInfo or C_Container.GetContainerIte
 local QUALITY_COLORS = {}
 do
     local colorSelect = CreateFrame('ColorSelect') -- Convert RGB <-> HSV (:
-    for i = 0, Enum.ItemQualityMeta.NumValues - 1 do
+    QUALITY_COLORS[0] = { 0, 0, 0, 0 }
+    for i = 1, Enum.ItemQualityMeta.NumValues - 1 do
         local r, g, b = GetItemQualityColor(i)
         local brightness = (0.2126*r + 0.7152*g + 0.0722*b)*1.2
         colorSelect:SetColorRGB(r, g, b)
@@ -178,26 +186,45 @@ local StyleItem = Style
     .data {
         Update = function(self)
             local bag, slot = self.bag, self.slot
+            self.info = self.info or {}
             self.isValid = slot <= GetContainerNumSlots(bag)
             if not self.isValid then
+                self:UpdateItemLevel()
                 return
             end
             self.itemId = GetContainerItemID(bag, slot)
-            self.itemLink = GetContainerItemLink(bag, slot)
-            self.hasItem = not not self.itemId
-            icon, _, _, quality = GetContainerItemInfo(bag, slot)
-            self.texture = icon
-            self.quality = quality
-            self.bagFamily = select(2, GetContainerNumFreeSlots(bag))
-            self.icon:SetTexture(self.texture)
-            self.icon:SetAllPoints(self)
+            local newLink = GetContainerItemLink(bag, slot)
+            if newLink ~= self.itemLink then
+                self.itemLink = newLink
+                self:UpdateItemInfo()
+                self:UpdateItemLevel()
+                self.hasItem = not not self.itemId
+                local icon, _, _, quality, _, _, itemLink = GetContainerItemInfo(bag, slot)
+                self.texture = icon
+                self.quality = quality
+                self.bagFamily = select(2, GetContainerNumFreeSlots(bag))
+                self.icon:SetTexture(self.texture)
+                self.icon:SetAllPoints(self)
+                self:UpdateQuality()
+            end
             self.BattlepayItemTexture:SetShown(IsBattlePayItem(bag, slot))
             self.BattlepayItemTexture:SetAllPoints(self)
             self:UpdateCount()
             if self.UpdateCooldown then
                 self:UpdateCooldown(self.texture)
             end
-            self:UpdateQuality()
+        end,
+        UpdateItemInfo = function(self)
+            if self.itemId then
+                local info = self.info
+                info.itemName, info.itemLink, info.itemQuality, info.itemLevel, info.itemMinLevel,
+                    info.itemType, info.itemSubType, info.itemStackCount, info.itemEquipLoc, info.itemTexture,
+                    info.sellPrice, info.classID, info.subclassID, info.bindType, info.expacID, info.setID, info.isCraftingReagent
+                        = GetItemInfo(self.itemLink)
+                info.itemLevel = GetDetailedItemLevelInfo(self.itemLink)
+            else
+                self.info = {}
+            end
         end,
         UpdateCount = function(self)
             self.count = select(2, GetContainerItemInfo(self.bag, self.slot)) or 0
@@ -206,6 +233,13 @@ local StyleItem = Style
                 self.Count:Show()
             else
                 self.Count:Hide()
+            end
+        end,
+        UpdateItemLevel = function(self)
+            if self.info.itemType == 'Armor' or self.info.itemType == 'Weapon' and self.info.itemLevel then
+                self.ItemLevel:SetText(self.info.itemLevel)
+            else
+                self.ItemLevel:SetText('')
             end
         end,
         UpdateQuality = function(self)
@@ -228,11 +262,56 @@ local StyleItem = Style
 {
     Style'.*NormalTexture'
         :Texture 'Interface/AddOns/silver-ui/art/itemslot'
-        :AllPoints(PARENT),
+        :AllPoints(PARENT)
+        :DrawLayer('ARTWORK', 0),
     Style'.IconBorder':Texture '',
     Texture'.QualityGlow'
         :AllPoints(PARENT)
-        :DrawLayer 'ARTWORK',
+        :DrawLayer('ARTWORK', 1),
+    Frame'.ItemLevel'
+        :Points { TOPLEFT = PARENT:TOPLEFT(3, -3),
+                  BOTTOMRIGHT = PARENT:BOTTOMRIGHT() }
+        .init {
+            SetText = function(self, text)
+                self.Text.ItemLevel:SetText(text)
+                self.Text.ItemLevelBg:SetText(text)
+                -- self.Shadow'.*':Hide()
+                -- for i=1, 9 do
+                --     local x = math.cos(math.pi*i/4.5)
+                --     local y = math.sin(math.pi*i/4.5)
+                --     self.Shadow {
+                --         FontString('.ItemLevelShadow' .. i)
+                --             :Font('Fonts/ARIALN.TTF', 12, '')
+                --             :Points { TOPLEFT = PARENT:TOPLEFT(x*0.75, y*0.75) }
+                --             :TextColor(0, 0, 0, 1)
+                --             :Text(text)
+                --             :Show()
+                --     }
+                -- end
+            end
+        }
+    {
+        Frame'.Shadow'
+            :AllPoints(PARENT)
+            -- :IsFrameBuffer(true)
+            :Alpha(0.7),
+        Frame'.Text'
+            :AllPoints(PARENT)
+        {
+            FontString'.ItemLevel'
+                :Font('Fonts/ARIALN.TTF', 12, '')
+                :TextColor(0.7, 0.7, 0.7, 1)
+                :ShadowOffset(0.5, -0.5)
+                :ShadowColor(0, 0, 0, 0.7)
+                :Points { TOPLEFT = PARENT:TOPLEFT() },
+            FontString'.ItemLevelBg'
+                :Font('Fonts/ARIALN.TTF', 12, '')
+                :TextColor(1, 1, 1, 1)
+                :ShadowOffset(0, 0)
+                :ShadowColor(0, 0, 0, 0)
+                :Points { TOPLEFT = PARENT:TOPLEFT() },
+        }
+    }
 }
 
 
@@ -264,13 +343,22 @@ local ButtonAddRow = ButtonRemoveRow
     }
 
 
+local AnchorFrame = Frame
+    :Movable(true)
+    :UserPlaced(false)
+    :Points { CENTER = UIParent:CENTER() }
+    :Size(1, 1)
+    .new()
+
+
 FrameBigBag = Frame
     :Hide()
     :Width(450)
     :Height(450 / 12 * 16 + 18.5)
     :EnableMouse(true)
-    :Point('CENTER', 0, 0)
+    :Point('CENTER', AnchorFrame, 'CENTER')
     -- :FrameLevel(2)
+    :IsFrameBuffer(true)
     .init {
         padding = 5,
         spacing = 4,
@@ -278,6 +366,7 @@ FrameBigBag = Frame
         rowAddButtons = {},
         bags = {},
         items = {},
+        itemsByName = {},
         slots = {},
         sortedSlots = {},
         rowsCreated = 0,
@@ -315,7 +404,11 @@ FrameBigBag = Frame
                 letBlizzard = true
                 self.origCloseAllBags(bag)
                 letBlizzard = false
-                self:Hide()
+                if animate then
+                    self.AnimOut:Play()
+                else
+                    self:Hide()
+                end
             end
             ToggleAllBags = function()
                 self:Toggle()
@@ -341,17 +434,21 @@ FrameBigBag = Frame
                         :SetID(container)
                 }
                 for slot = 1, 36 do
-                    local button = _G['ContainerFrame' .. (container+1) .. 'Item' .. slot]
+                    -- local button = _G['ContainerFrame' .. (container+1) .. 'Item' .. slot]
+                    local button = CreateFrame('ItemButton', nil, self['Bag' .. container], 'ContainerFrameItemButtonTemplate')
                     if button and not button.isExtended then
                         button:UnregisterAllEvents()
                         StyleItem(button)
                         button.parent = self['Bag' .. container]
+                        button.name = 'ContainerFrame' .. (container+1) .. 'Item' .. slot
                         button:SetID(slot)
                         -- button:SetBagID(container) -- taint hell
                         button.bag = container
                         button.slot = slot
+                        button:Update()
                         table.insert(self.items, button)
                         table.insert(bag, button)
+                        self.itemsByName[button.name] = button
                     end
                 end
             end
@@ -365,7 +462,11 @@ FrameBigBag = Frame
 
         Toggle = function(self)
             if self:IsShown() then
-                self:Hide()
+                if animate then
+                    self.AnimOut:Play()
+                else
+                    self:Hide()
+                end
             else
                 self:Show()
                 self.update = true
@@ -373,22 +474,24 @@ FrameBigBag = Frame
         end,
         
         LoadConfig = function(self)
-            if db.x and db.y then
-                SilverUIBigBag:SetPoints { CENTER = UIParent:CENTER(db.x, db.y) }
+            if db.anchor then
+                local from, to, x, y = unpack(db.anchor)
+                AnchorFrame:SetPoint(from, UIParent, to, x, y)
             end
             local slotsFilled = {}
             for itemName, slotName in pairs(db.mapping) do
                 if not slotsFilled[slotName] then
                     slotsFilled[slotName] = true
                     if self.slots[slotName] then
-                        -- self:BindToSlot(_G[itemName], )
-                        self.slots[slotName].item = _G[itemName]
+                        self:BindToSlot(self.itemsByName[itemName], self.slots[slotName])
+                        -- self.slots[slotName].item = self.itemsByName[itemName]
                     else
                         db.mapping[itemName] = nil
                         for _, slot in pairs(self.slots) do
                             if not slot.item then
-                                slot.item = _G[itemName]
-                                db.mapping[itemName] = slot.name
+                                self:BindToSlot(self.itemsByName[itemName], slot)
+                                -- slot.item = self.itemsByName[itemName]
+                                -- db.mapping[itemName] = slot.name
                             end
                         end
                     end
@@ -425,7 +528,7 @@ FrameBigBag = Frame
             end
             for _, slot in pairs(self.sortedSlots) do
                 if slot.item and not slot.item.hasItem then
-                    db.mapping[slot.item:GetName()] = nil
+                    db.mapping[slot.item.name] = nil
                     slot.item = nil
                 end
             end
@@ -436,7 +539,7 @@ FrameBigBag = Frame
                         -- for i=#bag, 1, -1 do
                         for i=1, #bag do
                             local item = bag[i]
-                            if item:IsShown() and item.isValid and not item.extendedFrame and not item.hasItem and not db.mapping[item:GetName()] then
+                            if item:IsShown() and item.isValid and not item.extendedFrame and not item.hasItem and not db.mapping[item.name] then
                                 self:BindToSlot(item, slot)
                                 done = true
                                 break
@@ -453,27 +556,26 @@ FrameBigBag = Frame
 
         GetUnboundItem = function(self)
             for _, item in pairs(self.items) do
-                if item.isValid and not db.mapping[item:GetName()] and not item.extendedFrame then
+                if item.isValid and not db.mapping[item.name] and not item.extendedFrame then
                     return item
                 end
             end
         end,
 
         BindToSlot = function(self, item, slot)
-            local oldSlot = db.mapping[item:GetName()]
+            local oldSlot = db.mapping[item.name]
             if oldSlot then
                 self.slots[oldSlot].item = nil
             end
-            local size = (self:GetWidth() - self.padding*2)/db.columns
             slot.item = item
-            db.mapping[item:GetName()] = slot.name
-            item:SetPoints { CENTER = slot:CENTER() }
-            item:SetScale((size-1) / item:GetWidth())
+            db.mapping[item.name] = slot.name
+            item:SetAllPoints(slot)
+            item:Show()
         end,
 
         EmptyItemToSlot = function(self, newSlot)
             for itemName, slotName in pairs(db.mapping) do
-                local item = _G[itemName]
+                local item = self.itemsByName[itemName]
                 if item:IsShown() and item.isValid and not item.hasItem and not item.extendedFrame then
                     self.slots[slotName].item = nil
                     self:BindToSlot(item, newSlot)
@@ -500,7 +602,7 @@ FrameBigBag = Frame
                         local name = 'Slot' .. row .. '-' .. column
                         local slot = self.slots[name]
                         if slot.item then
-                            db.mapping[slot.item:GetName()] = nil
+                            db.mapping[slot.item.name] = nil
                             slot.item = nil
                         end
                     end
@@ -629,11 +731,12 @@ FrameBigBag = Frame
                 self.initialized = true
             end
             PlaySound(SOUNDKIT.IG_BACKPACK_OPEN)
-        end,
-        OnHide = function(self)
-            PlaySound(SOUNDKIT.IG_BACKPACK_CLOSE)
+            if animate then
+                self.AnimIn:Play(true)
+            end
         end,
         OnUpdate = function(self)
+
             if self.dragging then
                 if not GetCursorInfo() then
                     self.dragging = nil
@@ -642,8 +745,6 @@ FrameBigBag = Frame
             if not self.update or not self.slots then return end
             self.update = false
 
-            local size = (self:GetWidth() - self.padding*2)/db.columns
-
             Style(ContainerFrame1MoneyFrame)
                 :Parent(self)
                 :Points { TOPLEFT = self:TOPLEFT(12, -9) }
@@ -651,27 +752,35 @@ FrameBigBag = Frame
                 Style'.Border':Hide()
             }
 
-            for _, bag in pairs(self.bags) do
-                for _, item in pairs(bag) do
-                    item:SetParent(item.parent)
-                end
-            end
+            -- for _, bag in pairs(self.bags) do
+            --     for _, item in pairs(bag) do
+            --         item:SetParent(item.parent)
+            --     end
+            -- end
 
-            for _, slot in pairs(self.sortedSlots) do
-                if slot.item then
-                    slot.item:SetAllPoints(slot)
-                    slot.item:Show()
-                    slot.item:SetFrameLevel(5)
-                end
-            end
+            -- for _, slot in pairs(self.sortedSlots) do
+            --     if slot.item then
+            --         slot.item:SetAllPoints(slot)
+            --         slot.item:Show()
+            --         slot.item:SetFrameLevel(5)
+            --     end
+            -- end
 
+            if self.delaySortEmpty then
+                self.delaySortEmpty = false
+                self:SortEmpty()
+            end
         end
     }
     :Scripts {
         OnKeyDown = function(self, key)
             if key == 'ESCAPE' then
                 self:SetPropagateKeyboardInput(false)
-                self:Hide()
+                if animate then
+                    self.AnimOut:Play()
+                else
+                    self:Hide()
+                end
             else
                 self:SetPropagateKeyboardInput(true)
             end
@@ -679,7 +788,7 @@ FrameBigBag = Frame
     }
     :EventHooks {
         BAG_UPDATE_DELAYED = function(self)
-            self:SortEmpty()
+            self.delaySortEmpty = true
         end
     }
 {
@@ -710,31 +819,56 @@ FrameBigBag = Frame
         :Scripts {
             OnMouseDown = function(self, button)
                 if button == 'LeftButton' then
-                    self.dragging = true
-                    local x, y = GetCursorPosition()
-                    local _, _, _, px, py = self:GetParent():GetPoint()
-                    local scale = self:GetEffectiveScale()
-                    self.dragOffset = { x/scale - px, y/scale - py }
+                    AnchorFrame:StartMoving()
                 end
             end,
             OnMouseUp = function(self, button)
                 if button == 'LeftButton' then
-                    self.dragging = false
+                    AnchorFrame:StopMovingOrSizing()
+                    local from, _, to, x, y = AnchorFrame:GetPoint()
+                    db.anchor = { from, to, x, y }
                 end
             end,
-            OnUpdate = function(self, dt)
-                if self.dragging then
-                    local x, y = GetCursorPosition()
-                    local scale = self:GetEffectiveScale()
-                    db.x = x/scale - self.dragOffset[1]
-                    db.y = y/scale - self.dragOffset[2]
-                    SilverUIBigBag:SetPoints { CENTER = UIParent:CENTER(db.x, db.y) }
-                end
-            end
         },
 
     FontString'.Count'
         -- :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 12)
-        :Font('Fonts/ARIALN.TTF', 12)
+        :Font('Fonts/ARIALN.TTF', 12),
+    
+    AnimationGroup'.AnimIn' { -- play reversed
+        Animation.Alpha'.Alpha'
+            :Order(1)
+            :Duration(0.25)
+            :FromAlpha(1)
+            :Smoothing('IN')
+            :ToAlpha(0),
+        Animation.Translation'.Translate'
+            :Order(1)
+            :Duration(0.25)
+            :Offset(50, 0)
+            :Smoothing('IN')
+    },
+    AnimationGroup'.AnimOut'
+        :Hooks {
+            OnPlay = function(self)
+                PlaySound(SOUNDKIT.IG_BACKPACK_CLOSE)
+            end,
+            OnFinished = function(self)
+                self:GetParent():Hide()
+            end
+        }
+    {
+        Animation.Alpha'.Alpha'
+            :Order(1)
+            :Duration(0.25)
+            :FromAlpha(1)
+            :Smoothing('IN')
+            :ToAlpha(0),
+        Animation.Translation'.Translate'
+            :Order(1)
+            :Duration(0.25)
+            :Offset(50, 0)
+            :Smoothing('IN')
+    },
 }
 
