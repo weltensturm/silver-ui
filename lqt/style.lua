@@ -112,7 +112,11 @@ local ops = {
     end,
     [SETDATA] = function(object, data)
         for k, v in pairs(data) do
-            object[k] = v
+            if type(v) == 'table' and next(v) == nil then
+                object[k] = {}
+            else
+                object[k] = v
+            end
         end
     end,
     [INIT] = function(object, arg, parent)
@@ -352,8 +356,8 @@ newaction = function(parent, new)
 end
 
 
-get_context = function()
-    return strsplittable('\n', debugstack(3,0,1))[1]
+get_context = function(level)
+    return strsplittable('\n', debugstack(3, 99, 99))[1]
 end
 
 
@@ -403,6 +407,7 @@ LQT.AnimationGroup = LQT.Style
 LQT.Animation = {
     Alpha           = LQT.Style.constructor(function(obj, ...) return obj:CreateAnimation('Alpha', ...) end),
     Rotation        = LQT.Style.constructor(function(obj, ...) return obj:CreateAnimation('Rotation', ...) end),
+    Translation     = LQT.Style.constructor(function(obj, ...) return obj:CreateAnimation('Translation', ...) end),
     Scale           = LQT.Style.constructor(function(obj, ...) return obj:CreateAnimation('Scale', ...) end),
     LineScale       = LQT.Style.constructor(function(obj, ...) return obj:CreateAnimation('LineScale', ...) end),
     LineTranslation = LQT.Style.constructor(function(obj, ...) return obj:CreateAnimation('LineTranslation', ...) end),
