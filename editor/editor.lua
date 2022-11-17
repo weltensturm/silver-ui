@@ -32,6 +32,11 @@ local function GetUIParentChildren()
 end
 
 
+local function slice(table, start, end_)
+    return { unpack(table, start, end_) }
+end
+
+
 local function get_name(obj)
     local parent = obj:GetParent()
     if parent then
@@ -150,7 +155,7 @@ local function attribute_str_values(obj, k)
             str = str .. format_float(v)
         end
     end
-    return str
+    return tostring(str):gsub('\r\n', '\\r\\n'):gsub('\n', '\\n')
 end
 
 
@@ -169,7 +174,7 @@ local ButtonAddonScript = Btn
                 self.ContextMenu.Toggle:SetText('Enable')
                 self.Text:SetTextColor(0.5, 0.5, 0.5, 1)
             end
-            if self.script.code == self.script.code_original or not self.script.code_original then
+            if self.script.code == self.script.code_original or not self.script.code_original or not self.script.imported then
                 self.Edited:Hide()
                 self.ContextMenu.ResetScript:Disable()
                 self.ContextMenu.ResetScript.Text:SetTextColor(0.5, 0.5, 0.5)
@@ -346,7 +351,7 @@ local FrameAddonSection = Frame
         Texture'.Bg'
             -- :Texture 'Interface/BUTTONS/GreyscaleRamp64'
             -- :BlendMode 'ADD'
-            :ColorTexture(1, 1, 1, 0.3)
+            :ColorTexture(0.3, 0.3, 0.3, 0.5)
             -- :VertexColor(1,1,1,0.2)
             :AllPoints(PARENT),
             
@@ -690,13 +695,13 @@ local FrameEditor = Frame
 
 local StyleFrameStackButton = Style
     .data {
-        parent = nil,
         reference = nil,
+        parents = nil,
         referenceName = nil,
         is_gui = nil,
-        SetReference = function(self, selected, reference, referenceName)
-            self.parent = selected
+        SetReference = function(self, reference, parents, referenceName)
             self.reference = reference
+            self.parents = parents
             self.referenceName = referenceName
             self.is_gui =
                 type(reference) == 'table'
@@ -704,6 +709,11 @@ local StyleFrameStackButton = Style
                 and reference:GetObjectType()
                 and reference.GetNumPoints
                 and reference.GetSize
+            if self.is_gui then
+                self.Text:SetTextColor(1, 0.666, 1)
+            else
+                self.Text:SetTextColor(1, 1, 1)
+            end
         end
      }
     :Height(17.5)
@@ -723,7 +733,6 @@ local StyleFrameStackButton = Style
         end,
 
         OnClick = function(self, button)
-            print(self.reference, self.referenceName)
             if self.is_gui and button == 'RightButton' then
                 if self.reference:IsShown() then
                     self.reference:Hide()
@@ -734,10 +743,15 @@ local StyleFrameStackButton = Style
                 if self.is_gui then
                     SetFrameStack(_, self.reference)
                 elseif type(self.reference) == 'table' then
-                    SetFrameStack(_, self.reference, { { self.parent, self.referenceName } })
+                    local parents = {}
+                    for _, v in ipairs(self.parents) do
+                        table.insert(parents, v)
+                    end
+                    table.insert(parents, 1, { self.reference, self.referenceName })
+                    SetFrameStack(_, self.reference, parents)
                 else
-                    if self.referenceName and self.parent[self.referenceName] then
-                        editorWindow.Tracer:StartTrace(self.parent, self.referenceName)
+                    if self.referenceName and self.parents[1][1][self.referenceName] then
+                        editorWindow.Tracer:StartTrace(self.parents[1][1], self.referenceName)
                     end
                 end
             elseif button == 'MiddleButton' then
@@ -749,6 +763,7 @@ local StyleFrameStackButton = Style
     :FrameLevel(10)
 {
     Style'.Text'
+        :Alpha(1)
         :Font('Fonts/ARIALN.TTF', 12, '')
         -- :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11)
 }
@@ -866,7 +881,7 @@ local function spawn()
         if not parents then
             parents = {}
             local parent = selected
-            while parent do
+            while parent and parent.GetParent do
                 table.insert(parents, { parent, get_name(parent) })
                 parent = parent:GetParent()
             end
@@ -878,7 +893,7 @@ local function spawn()
 
             local btn = create_btn()
             StyleFrameStackButton(btn)
-                :Reference(selected, reference)
+                :Reference(reference, slice(parents, i+1), parents[i][2])
                 :Parent(editorWindow)
                 :FrameLevel(10)
                 :Text(parents[i][2])
@@ -887,9 +902,7 @@ local function spawn()
                              or { BOTTOMLEFT = editorWindow.Inspector:TOPLEFT(0, 0) }
                 )
             
-            if lastBtn then
-                btn.Text:SetTextColor(0.7, 0.7, 0.7)
-            end
+            btn.Text:SetAlpha(lastBtn and 0.7 or 1)
             btn:SetWidth(btn.Text:GetWidth() + 20)
 
             table.insert(editorWindow.buttons, btn)
@@ -906,7 +919,7 @@ local function spawn()
 
             local btn = create_btn()
             StyleFrameStackButton(btn)
-                :Reference(selected, reference, attrName)
+                :Reference(reference, parents, attrName)
                 :Parent(editorWindow.Inspector.Content)
                 :Text(name)
                 -- :Height(20)
@@ -966,7 +979,7 @@ SortedChildren = function(obj)
     local SORT_FN = '|c00000003'
     local SORT_MT = '|c00000004'
 
-    if obj.GetObjectType then
+    if obj.GetObjectType and obj.IsShown then
         table.insert(result, {
             nil,
             SORT_ATTR ..
@@ -1027,7 +1040,7 @@ SortedChildren = function(obj)
         })
     end
 
-    local idx = 1
+    local idx = 10000
     local visited = {}
     for k, v in pairs(obj) do
         if type(v) ~= 'table' or not v.GetParent or v:GetParent() ~= obj then
@@ -1057,17 +1070,13 @@ SortedChildren = function(obj)
                     v,
                     SORT_DATA ..
                     '|cffffffff' .. k .. ' = ' ..
-                    '|cffffaaaa' .. type(v) .. '|cffaaaaaa ' .. tostring(v) })
+                    '|cffffaaaa' .. type(v) .. '|cffaaaaaa ' .. tostring(v):gsub('\n', '\\n') })
             end
         end
     end
 
-    table.insert(result, {
-        v,
-        SORT_GUI ..
-        '|cff' .. string.format('%06x', 10000 - idx) ..
-        '|cffaaaaaaChildren'
-    })
+    local hasChildren = false
+    local hasChildrenIndex = idx
     idx = idx - 1
 
     for k, v in pairs(obj) do
@@ -1086,10 +1095,20 @@ SortedChildren = function(obj)
                     -- tostring(-(v:GetLeft() or 999999))
                 })
                 idx = idx - 1
+                hasChildren = true
             else
                 table.insert(result, { v, SORT_DATA .. '|cffffffff' .. k .. ' = |cffffaaaatable'})
             end
         end
+    end
+
+    if hasChildren then
+        table.insert(result, {
+            v,
+            SORT_GUI ..
+            '|cff' .. string.format('%06x', 10000 - hasChildrenIndex) ..
+            '|cffaaaaaaChildren'
+        })
     end
 
     if obj.has_lqt then

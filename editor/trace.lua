@@ -29,10 +29,13 @@ local FrameTracer = Frame
     }
 {
     FontString'.Name'
-        :Font('Fonts/FRIZQT__.ttf', 12, '')
+        :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 12, '')
         :Points { TOPLEFT = PARENT:TOPLEFT(10, 0), TOPRIGHT = PARENT:TOPRIGHT(-10, 0) }
         :JustifyH 'LEFT'
         :Height(16),
+    Texture'.NameBackground'
+        :Points { TOPLEFT = PARENT.Name:TOPLEFT(-10, 0), BOTTOMRIGHT = PARENT.Name:BOTTOMRIGHT(10, 0) }
+        :ColorTexture(0.3, 0.3, 0.3, 0.5),
     EditBox'.Traces'
         :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11, '')
         -- :Size(400, 400)
@@ -141,8 +144,7 @@ local FrameTraceWindow = FrameSmoothScroll
     FontString'.NoTracers'
         :Font('Fonts/FRIZQT__.ttf', 12, '')
         :Points { TOPLEFT = PARENT:TOPLEFT(10, -10), TOPRIGHT = PARENT:TOPRIGHT(-10, -10) }
-        :Text 'No traces running.\nYou can start one by right clicking a function in the frame inspector,\nor by calling trace([frame,] functionName)',
-
+        :Text 'No traces running.\nYou can start one by left clicking a function in the frame inspector,\nor by calling trace([frame,] functionName)',
 }
 
 
