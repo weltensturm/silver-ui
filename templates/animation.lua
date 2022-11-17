@@ -3,15 +3,31 @@ local ADDON, Addon = ...
 local Frame = LQT.Frame
 
 
+local halfpi = math.pi/2
+local halfthree = 3/2
+local half = 1/2
+
+
 local EASE = {
     IN = function(x)
-        return 1-math.sin((x+1)*math.pi/2)
+        return 1-math.sin((x+1)*halfpi)
     end,
     OUT = function(x)
-        return math.sin(x*math.pi/2)
+        return math.sin(x*halfpi)
     end,
     IN_OUT = function(x)
-        return (math.sin((x+3/2)*math.pi)+1)/2
+        return math.sin((x+halfthree)*math.pi)/2 + half
+    end,
+    CUBIC_IN = function(x)
+        return x^3
+    end,
+    CUBIC_OUT = function(x)
+        return 1-(1-x)^3
+    end,
+    CUBIC_IN_OUT = function(x)
+        return x < 0.5 
+            and 4 * x^3
+             or 1 - (-2 * x + 2)^3 / 2;
     end
 }
 
@@ -20,10 +36,10 @@ Addon.Animation = Frame
     .init {
         function(self, parent)
             self.parent = parent
-            self.OnPlay = function() end
-            self.OnFinished = function() end
         end,
         
+        OnPlay = function() end,
+        OnFinished = function() end,
         start = nil,
         ease = EASE.IN_OUT,
 
@@ -36,6 +52,7 @@ Addon.Animation = Frame
         end,
 
         Play = function(self)
+            if not self.parent:IsShown() then return end
             self:OnPlay()
             self.start = GetTime()
             if self.translateFrom then
