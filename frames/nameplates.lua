@@ -32,7 +32,7 @@ Frame -- Enable all plates in combat
     .new()
 
 
-Frame -- Dynamic health bar size
+local healthBarManager = Frame -- Dynamic health bar size
     .data {
         initPlate = WithUnitFrame(function(self, unit, uf)
             uf.name:SetShadowColor(0, 0, 0, 0.5)
@@ -47,25 +47,31 @@ Frame -- Dynamic health bar size
                 diminish = 1
             end
             local x =  healthMax / UnitHealthMax("player") / diminish / 2
-            local scale = max(0.02, (1.0 - 1 / (x + 1)) * 4)
-            print(scale)
-            uf.healthBar:Points { CENTER = uf:CENTER() }
-            uf.healthBar:SetWidth(4+80/2*scale)
-            -- Plater.SetNameplateSize (unitFrame, 4+settings.Width/2*scale, 4+settings.Height/8*sqrt(scale))
-        end)
+            uf.healthBar.CachedScale = max(0.02, (1.0 - 1 / (x + 1)) * 4)
+            self:updateHpScale(uf)
+        end),
+        updateHpScale = function(self, uf)
+            uf.healthBar:SetPoints { CENTER = uf:CENTER() }
+            uf.healthBar:SetWidth(4+80/2*uf.healthBar.CachedScale)
+        end
     }
     :EventHooks {
         NAME_PLATE_UNIT_ADDED = function(self, unit) self:initPlate(unit) end,
         UNIT_HEALTH = function(self, unit) self:adjustHealthbar(unit) end,
+        PLAYER_TARGET_CHANGED = function(self) self:adjustHealthbar('target') end,
     }
     .new()
+
+hooksecurefunc(NamePlateBaseMixin, 'OnSizeChanged', function(self)
+    if self.UnitFrame.unit then
+        healthBarManager:updateHpScale(self.UnitFrame)
+    end
+end)
 
 
 Frame -- Cast bar over health bar
     .data {
         initPlate = WithUnitFrame(function(self, unit, uf)
-            uf.castBar.background:SetTexture('')
-            uf.castBar:SetStatusBarTexture('')
             if UnitCastingInfo(unit) or UnitChannelInfo(unit) then
                 self:castStart(unit)
             end
@@ -79,19 +85,24 @@ Frame -- Cast bar over health bar
             end
 
             local castBar = uf.castBar
+            uf.healthBar:SetPoints { CENTER = uf:CENTER() }
+            castBar:SetPoints { CENTER = uf:CENTER() }
+            castBar:SetSize(uf.healthBar:GetSize())
+            castBar.Text:SetPoints { BOTTOM = castBar:TOP() }
+
             castBar.Icon:SetAlpha(0)
             castBar.Icon:Hide()
             castBar.BorderShield:SetTexture('')
+
+            local bg = castBar.background or castBar.Background
+            bg:SetTexture('')
+            bg:SetAlpha(0)
+            castBar:SetStatusBarColor(0, 0, 0, 0)
 
             local texture = castBar:GetStatusBarTexture()
             castBar.Spark:SetPoint('TOP',texture,'TOPRIGHT',-1,4)
             castBar.Spark:SetPoint('BOTTOM',texture,'BOTTOMRIGHT',-1,-4)
             castBar.Spark:Show()
-
-            uf.healthBar:Points { CENTER = uf:CENTER() }
-            castBar:Points { CENTER = uf:CENTER() }
-            castBar:SetSize(uf.healthBar:GetSize())
-            castBar.Text:Points { BOTTOM = castBar:TOP() }
 
             if notInterruptible then
                 castBar.Spark:SetVertexColor(1, 0, 0, 0.7) 
@@ -106,6 +117,7 @@ Frame -- Cast bar over health bar
         end),
         castStop = WithUnitFrame(function(self, unit, uf)
             uf.name:SetAlpha(1)
+            uf.castBar:Hide()
         end)
     }
     :EventHooks {
@@ -114,6 +126,7 @@ Frame -- Cast bar over health bar
         UNIT_SPELLCAST_STOP = function(self, unit) self:castStop(unit) end,
         UNIT_SPELLCAST_CHANNEL_START = function(self, unit) self:castStart(unit, true) end,
         UNIT_SPELLCAST_CHANNEL_STOP = function(self, unit) self:castStop(unit, true) end,
+        PLAYER_TARGET_CHANGED = function(self) self:initPlate('target') end,
     }
     .new()
 
