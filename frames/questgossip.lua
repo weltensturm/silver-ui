@@ -44,8 +44,8 @@ local function InlineListLayout(selection, filter, margin)
             end
         end
     end
-    -- if after then
-    --     -- print('AFTER', after:GetName(), '->', previous_match:GetName())
+    -- if after and previous_match then
+    --     print('AFTER', after:GetName(), '->', previous_match:GetName())
     --     after:SetPoint('TOPLEFT', previous_match, 'BOTTOMLEFT', 0, -margin.after)
     -- end
 end
@@ -75,6 +75,7 @@ local StyleQuestInfoRewardsFrame = Style {
     Style'.Button'
         .filter(function(self) return not self.PortraitFrame end)
         :Size(200, 20)
+        :HitRectInsets(0, 0, 0, 0)
         :Hooks {
             OnClick = function(self)
                 if QuestFrameRewardPanel:IsShown() and not IsModifierKeyDown() then
@@ -110,7 +111,8 @@ local StyleQuestInfoRewardsFrame = Style {
             :Size(180, 20)
             :TextColor(0.1, 0, 0, 1)
             :ShadowOffset(0, 0)
-            :Points { TOPLEFT = PARENT:TOPLEFT(27, 0) },
+            :Points { TOPLEFT = PARENT:TOPLEFT(27, 0),
+                      RIGHT = PARENT:GetParent():RIGHT() },
 
         Style'.NameFrame'
             :Points { TOPLEFT = PARENT:TOPLEFT(0, -2),
@@ -150,6 +152,11 @@ local StyleQuestInfoRewardsFrame = Style {
 
     function(self)
         InlineListLayout(self'.*', 'Button', { inner=5, after=10 })
+        -- if self.ItemReceiveText then
+        --     for btn in self'.Button' do
+        --         self.ItemReceiveText:SetPoints { TOPLEFT = btn:BOTTOMLEFT(0, -5 )}
+        --     end
+        -- end
         self:FitToChildren()
     end
 }
@@ -260,12 +267,17 @@ local function StyleAll(self, event)
             --     :Width(WIDTH-20),
             Style'.*.ScrollBar':Hide(),
             Style'.*.ScrollBox'
+                :Padding(0, 0, 0, 0, 0)
                 :Width(WIDTH-20)
-                :Height(800)
+                :Height(800) -- just leave it at 800, blizzard calculates the extents wrong,
+                             -- then add virtual bottom padding which makes the scroll target too small for its contents
                 :Points { TOPLEFT = window:TOPLEFT(10, -50), TOPRIGHT = window:TOPRIGHT(-10, -50) }
             {
                 Style'.Shadows':Hide(),
                 Style'.ScrollTarget'
+                    -- :Scripts {
+                    --     OnSizeChanged = nil
+                    -- }
                     :Width(WIDTH-20)
                     :Height(800)
                     :Points { TOPLEFT = PARENT:TOPLEFT(), TOPRIGHT = PARENT:TOPRIGHT() }
@@ -277,42 +289,21 @@ local function StyleAll(self, event)
                             :Width(WIDTH-45)
                             .. function(self)
                                 local tl1, to, tl2, x, y = self:GetPoint()
-                                self:SetPoint(tl1, to, tl2, x, 0)
+                                self:SetPoint(tl1, to, tl2, x, -1)
+                                self:GetParent():SetHeight(self:GetHeight()+3)
                             end,
-                        -- Style'.FontString'
-                        --     :Points { TOPLEFT = PARENT:TOPLEFT(7.5, 0), TOPRIGHT = PARENT:TOPRIGHT(-7.5, 0) }
-                        -- {
-                        --     function(self)
-                        --         self:SetHeight(0)
-                        --         self:SetText(self:GetText())
-                        --         self:GetParent():SetHeight(self:GetHeight() + 5)
-                        --     end
-                        -- },
                     },
                     
-                    Style'.Button' {
-                        function(self)
-                            self:GetFontString():SetWidth(WIDTH-45)
-                            self:SetHeight(self:GetFontString():GetHeight() + 2)
-                        end
-                        -- Style'.FontString'
-                        --     :Points { TOPLEFT = PARENT:TOPLEFT(20, 0), TOPRIGHT = PARENT:TOPRIGHT(-7.5, 0) }
-                        -- {
-                        --     function(self) self:GetParent():SetHeight(self:GetHeight()) end
-                        -- },
-                    },
-                    ListLayout,
-                    Style:FitToChildren(), -- Resizing applies blizzard layout
-                    ListLayout,
-                    function(self) height = height + self:GetHeight()+10 end
+                    function(self)
+                        ListLayout(self)
+                        self:FitToChildren()
+                        height = height + self:GetHeight()+20
+                    end
                 },
-                Style:FitToChildren(),
-                
             }
 
         }
 
-        -- window'.Frame':Strip('Bg', 'SealMaterialBG', 'MaterialTopLeft', 'MaterialTopRight', 'MaterialBotLeft')
         window'.Frame.Texture'.filter(function(t) return t ~= (window.PortraitContainer or {}).portrait end):Hide()
 
         if window == ItemTextFrame then
