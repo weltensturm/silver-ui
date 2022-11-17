@@ -189,17 +189,6 @@ addon:SetEventHooks {
     end,
 
     PLAYER_TARGET_CHANGED = function()
-        -- TargetFrame.textureFrame.texture:SetTexture('Interface/TARGETINGFRAME/UI-TARGETINGFRAME-MINUS')
-        -- TargetFrame.textureFrame.texture:SetTexture('Interface/TARGETINGFRAME/PlayerFrame')
-
-        -- TargetFrame.textureFrame.texture:Hide()
-        -- TargetFrame.textureFrame.texture:SetTexture('Interface/TARGETINGFRAME/PlayerFrame')
-        -- TargetFrame.textureFrame.texture:SetPoints {
-        --     TOPLEFT = TargetFrame.portrait:TOPLEFT(-5, 5),
-        --     BOTTOMRIGHT = TargetFrame.portrait:BOTTOMRIGHT(5, -5)
-        -- }
-        -- TargetFrame.textureFrame.texture:SetTexCoord(0.01,0.73,0.02,0.75)
-
         Style(TargetFrame) {
             StyleTargetFrameThreat,
             StyleTargetFrameRetail,
@@ -211,12 +200,14 @@ addon:SetEventHooks {
                 Style'.*DeadText':Points { BOTTOM = TargetFrame:BOTTOM(0, 18) },
                 Style'.texture':Texture '':Alpha(0),
             },
-            Style'.manabar':Alpha(0),
-            Style'.HealthBar':Alpha(0),
-            Style'.healthbar':Alpha(0),
-            Style'.spellbarAnchor':Points { TOP = TargetFrame:BOTTOM() },
-            Style'.TargetFrameDebuff#':Alpha(0),
-            Style'.TargetFrameBuff#':Alpha(0),
+            Style'.TargetFrameContent.TargetFrameContentMain' {
+                Style'.ManaBar':Alpha(0),
+                Style'.HealthBar':Alpha(0),
+                Style'.healthbar':Alpha(0),
+                Style'.spellbarAnchor':Points { TOP = TargetFrame:BOTTOM() },
+                Style'.TargetFrameDebuff#':Alpha(0),
+                Style'.TargetFrameBuff#':Alpha(0),
+            }
         }
 
     end,
