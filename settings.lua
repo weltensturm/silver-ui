@@ -3,7 +3,7 @@ local settingsLoaded = false
 local settings = {}
 
 
-function SilverUI.Persistent(table)
+function SilverUI.Storage(table)
     if not settingsLoaded then
         settings[table.name] = { table.account or {}, table.character or {}, table.onload }
     else
@@ -145,13 +145,14 @@ frame:SetScript("OnEvent", function(self, event, addon)
         character.addons['Silver UI'] = character.addons['Silver UI'] or { scripts = {}, enabled = true }
 
         for i, script in ipairs(defaultScripts) do
-            local name, code, settings = script[1], script[2], script[2]
+            local name, code, settings = script[1], script[2], script[3]
 
             local found = false
             for _, script in pairs(account.addons['Silver UI'].scripts) do
                 if script.name == name then
                     found = true
                     script.code_original = code
+                    script.imported = true
                 end
             end
             if not found then
@@ -162,7 +163,8 @@ frame:SetScript("OnEvent", function(self, event, addon)
                         code_original = code,
                         hash_original = '',
                         hash_edited = '',
-                        code = code
+                        code = code,
+                        imported = true
                     }
                 )
             end
