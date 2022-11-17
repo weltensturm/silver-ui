@@ -13,7 +13,7 @@ local     PARENT,     Style,     Frame,     Texture,     MaskTexture,     Animat
     = LQT.PARENT, LQT.Style, LQT.Frame, LQT.Texture, LQT.MaskTexture, LQT.AnimationGroup, LQT.Animation
 
 
-local StylePlayerFrame = Style
+Style(PlayerFrame)
     :Size(300, 300/4)
 {
     Frame'.SilverUI'
@@ -41,13 +41,11 @@ local StylePlayerFrame = Style
             Style'.PlayerName':Hide(),
             Style'.PlayerLevelText':Hide(),
             Style'.PlayerHitIndicator':Scale(0.3),
+            Style'.TotalAbsorbBar':SetVertexColor(1,1,1),
+            Style'.TotalAbsorbBar.overlay':SetVertexColor(1,1,1),
             
-            Style'.HealthBarMask'
-                :Show()
-                :Texture'Interface/AddOns/silver-ui/art/playerframe-hp-mask'
-                :AllPoints(PlayerFrame),
             Style'.HealthBarArea' {
-                Style'.PlayerFrameHealthBar'
+                Style'.HealthBar'
                     :Points {
                         TOPLEFT = PlayerFrame:TOPLEFT(21, -38.5),
                         BOTTOMRIGHT = PlayerFrame:BOTTOMRIGHT(-21, 21.5)
@@ -55,16 +53,18 @@ local StylePlayerFrame = Style
                 {
                     Style'.FontString':Scale(0.9),
                     Style'.LeftText':Points { LEFT = PARENT:LEFT(10, 0) },
-                    Style'.RightText':Points { RIGHT = PARENT:RIGHT(-10, 0) }
+                    Style'.RightText':Points { RIGHT = PARENT:RIGHT(-10, 0) },
+                    Style'.HealthBarMask'
+                        :Show()
+                        :Texture'Interface/AddOns/silver-ui/art/playerframe-hp-mask'
+                        :AllPoints(PlayerFrame),
                 }
             },
 
-            Style'.ManaBarMask'
-                :Show()
-                :Texture 'Interface/AddOns/silver-ui/art/playerframe-power-mask'
-                :AllPoints(PlayerFrame),
             Style'.ManaBarArea' {
-                Style'.PlayerFrameManaBar'
+                Style'.ManaBar'
+                    -- :StatusBarTexture 'Interface/RAIDFRAME/Raid-Bar-Hp-Fill'
+                    -- :StatusBarColor(1, 1, 0)
                     :Points {
                         TOPLEFT = PlayerFrame:TOPLEFT(31.5, -26),
                         BOTTOMRIGHT = PlayerFrame:BOTTOMRIGHT(-31.5, 39)
@@ -72,7 +72,11 @@ local StylePlayerFrame = Style
                 {
                     Style'.FontString':Scale(0.8),
                     Style'.LeftText':Points { LEFT = PARENT:LEFT(10, 0) },
-                    Style'.RightText':Points { RIGHT = PARENT:RIGHT(-10, 0) }
+                    Style'.RightText':Points { RIGHT = PARENT:RIGHT(-10, 0) },
+                    Style'.ManaBarMask'
+                        :Show()
+                        :Texture 'Interface/AddOns/silver-ui/art/playerframe-power-mask'
+                        :AllPoints(PlayerFrame),
                 }
             }
 
@@ -90,16 +94,24 @@ local StylePlayerFrame = Style
                 :Size(32, 32),
             Style'.PrestigeBadge'
                 :Size(20, 20),
-            Style'.PlayerRoleIcon'
+            Style'.RoleIcon'
                 :Points { RIGHT = PARENT.GroupIndicator:LEFT() },
         }
     },
 
     Style'.PlayerFrameBottomManagedFramesContainer'
-        :Points { TOP = PlayerFrame:BOTTOM(0, 22) }
+            :Points { TOP = PlayerFrame:BOTTOM(0, 22) }
     {
         Style'.*'
-            :Scale(0.7)
+            :Scale(0.7),
+        Style'.PlayerFrameAlternateManaBar' {
+            Style'.DefaultBorder*'
+                :VertexColor(0.1, 0.1, 0.1, 0.7)
+        },
+        Style'.PaladinPowerBarFrame' {
+            Style'.Texture:NOATTR':VertexColor(0.1, 0.1, 0.1, 0.7),
+            Style'.bankBG':VertexColor(0.1, 0.1, 0.1, 0.7)
+        }
     },
 
     Frame'.Gcd'
@@ -145,19 +157,10 @@ local StylePlayerFrame = Style
             end)
     }
 }
-
-
-local function update()
-    StylePlayerFrame(PlayerFrame)
-end
-
--- hooksecurefunc('PlayerFrame_ToVehicleArt', update)
-hooksecurefunc('PlayerFrame_ToPlayerArt', update)
-hooksecurefunc('PlayerFrame_UpdateArt', update)
-hooksecurefunc('PlayerFrame_UpdateStatus', update)
-hooksecurefunc('PlayerFrame_UpdateRolesAssigned', update)
-
-update()
+    .reapply('PlayerFrame_ToPlayerArt')
+    .reapply('PlayerFrame_UpdateArt')
+    .reapply('PlayerFrame_UpdateStatus')
+    .reapply('PlayerFrame_UpdateRolesAssigned')
 
 
 -- Cast Bar
@@ -165,13 +168,14 @@ update()
 local Hide = Style:Hide()
 
 
-local StyleCastBar = Style -- need to wait until PLAYER_ENTERING_WORLD, otherwise edit mode breaks
+Style(PlayerCastingBarFrame)
     .filter(function(self)
         return self.attachedToPlayerFrame and not self.Selection:IsShown()
     end)
     :FrameLevel(11)
-    :Points { TOPLEFT = PlayerFrame:TOPLEFT(26, -35),
-              BOTTOMRIGHT = PlayerFrame:BOTTOMRIGHT(-26, 35) }
+    :PointBase('TOPLEFT', PlayerFrame, 'TOPLEFT', 26, -35)
+    :PointBase('BOTTOMRIGHT', PlayerFrame, 'BOTTOMRIGHT', -26, 35)
+    .reapply('PlayerFrame_AdjustAttachments')
 {
     Hide'.Icon',
     Hide'.Border',
@@ -194,15 +198,6 @@ local StyleCastBar = Style -- need to wait until PLAYER_ENTERING_WORLD, otherwis
 }
     .reapply('UNIT_SPELLCAST_START', function(self, unit) return unit == 'player' end)
     .reapply('UNIT_SPELLCAST_CHANNEL_START', function(self, unit) return unit == 'player' end)
-
-
-Frame
-    :Events {
-        PLAYER_ENTERING_WORLD = function()
-            StyleCastBar(PlayerCastingBarFrame)
-        end
-    }
-    .new()
 
 
 hooksecurefunc(EditModeManagerFrame, 'EnterEditMode', function()
