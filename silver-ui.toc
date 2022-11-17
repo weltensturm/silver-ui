@@ -20,6 +20,7 @@ lqt/style.lua
 lqt/frame_extensions.lua
 lqt/__finalize__.lua
 
+templates/animation.lua
 templates/box_shadow.lua
 templates/context_menu.lua
 templates/smoothscroll.lua

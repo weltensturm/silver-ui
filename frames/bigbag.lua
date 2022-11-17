@@ -1,4 +1,6 @@
+local ADDON, Addon = ...
 
+local Animation = Addon.Animation
 
 local
     PARENT,
@@ -8,9 +10,7 @@ local
     ItemButton,
     Texture,
     MaskTexture,
-    FontString,
-    Animation,
-    AnimationGroup
+    FontString
     =
         LQT.PARENT,
         LQT.Style,
@@ -19,9 +19,7 @@ local
         LQT.ItemButton,
         LQT.Texture,
         LQT.MaskTexture,
-        LQT.FontString,
-        LQT.Animation,
-        LQT.AnimationGroup
+        LQT.FontString
 
 
 local db = nil
@@ -29,14 +27,27 @@ local FrameBigBag = nil
 SilverUIBigBag = nil
 
 
-local animate = true
-
-
 local GetContainerNumFreeSlots = GetContainerNumFreeSlots or C_Container.GetContainerNumFreeSlots
 local GetContainerNumSlots = GetContainerNumSlots or C_Container.GetContainerNumSlots
 local GetContainerItemID = GetContainerItemID or C_Container.GetContainerItemID
 local GetContainerItemLink = GetContainerItemLink or C_Container.GetContainerItemLink
-local GetContainerItemInfo = GetContainerItemInfo or C_Container.GetContainerItemInfo
+local GetContainerItemInfo = GetContainerItemInfo or function(bag, slot)
+    local info = C_Container.GetContainerItemInfo(bag, slot)
+    if not info then return end
+    return
+        info.iconFileID,
+        info.stackCount,
+        info.isLocked,
+        info.quality,
+        info.isReadable,
+        info.hasLoot,
+        info.hyperlink,
+        info.isFiltered,
+        info.hasNoValue,
+        info.itemID,
+        info.isBound
+end
+local IsBattlePayItem = IsBattlePayItem or C_Container.IsBattlePayItem
 
 
 local QUALITY_COLORS = {}
@@ -58,7 +69,7 @@ do
 end
 
 
-SilverUI.Persistent {
+SilverUI.Storage {
     name = 'bigbag',
     account = {},
     character = {
@@ -358,6 +369,7 @@ FrameBigBag = Frame
     :EnableMouse(true)
     :Point('CENTER', AnchorFrame, 'CENTER')
     -- :FrameLevel(2)
+    :FlattensRenderLayers(true)
     :IsFrameBuffer(true)
     .init {
         padding = 5,
@@ -404,11 +416,7 @@ FrameBigBag = Frame
                 letBlizzard = true
                 self.origCloseAllBags(bag)
                 letBlizzard = false
-                if animate then
-                    self.AnimOut:Play()
-                else
-                    self:Hide()
-                end
+                self.AnimOut:Play()
             end
             ToggleAllBags = function()
                 self:Toggle()
@@ -462,11 +470,7 @@ FrameBigBag = Frame
 
         Toggle = function(self)
             if self:IsShown() then
-                if animate then
-                    self.AnimOut:Play()
-                else
-                    self:Hide()
-                end
+                self.AnimOut:Play()
             else
                 self:Show()
                 self.update = true
@@ -727,13 +731,10 @@ FrameBigBag = Frame
     :Hooks {
         OnShow = function(self)
             if not self.initialized then
-                self:Initialize()
                 self.initialized = true
+                self:Initialize()
             end
-            PlaySound(SOUNDKIT.IG_BACKPACK_OPEN)
-            if animate then
-                self.AnimIn:Play(true)
-            end
+            self.AnimIn:Play()
         end,
         OnUpdate = function(self)
 
@@ -776,11 +777,7 @@ FrameBigBag = Frame
         OnKeyDown = function(self, key)
             if key == 'ESCAPE' then
                 self:SetPropagateKeyboardInput(false)
-                if animate then
-                    self.AnimOut:Play()
-                else
-                    self:Hide()
-                end
+                self.AnimOut:Play()
             else
                 self:SetPropagateKeyboardInput(true)
             end
@@ -835,40 +832,22 @@ FrameBigBag = Frame
         -- :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 12)
         :Font('Fonts/ARIALN.TTF', 12),
     
-    AnimationGroup'.AnimIn' { -- play reversed
-        Animation.Alpha'.Alpha'
-            :Order(1)
-            :Duration(0.25)
-            :FromAlpha(1)
-            :Smoothing('IN')
-            :ToAlpha(0),
-        Animation.Translation'.Translate'
-            :Order(1)
-            :Duration(0.25)
-            :Offset(50, 0)
-            :Smoothing('IN')
-    },
-    AnimationGroup'.AnimOut'
-        :Hooks {
-            OnPlay = function(self)
-                PlaySound(SOUNDKIT.IG_BACKPACK_CLOSE)
-            end,
-            OnFinished = function(self)
-                self:GetParent():Hide()
-            end
-        }
-    {
-        Animation.Alpha'.Alpha'
-            :Order(1)
-            :Duration(0.25)
-            :FromAlpha(1)
-            :Smoothing('IN')
-            :ToAlpha(0),
-        Animation.Translation'.Translate'
-            :Order(1)
-            :Duration(0.25)
-            :Offset(50, 0)
-            :Smoothing('IN')
-    },
+    Animation'.AnimIn'
+        :Ease 'CUBIC_OUT'
+        :Duration(0.25)
+        :Translate({ 50, 0 }, { 0, 0 })
+        :Alpha(0, 1)
+        -- :Scale(0.9, 1)
+        :OnPlay(function() PlaySound(SOUNDKIT.IG_BACKPACK_OPEN) end),
+
+    Animation'.AnimOut'
+        :Ease 'CUBIC_IN'
+        :Duration(0.25)
+        :Translate({ 0, 0 }, { 50, 0 })
+        :Alpha(1, 0)
+        -- :Scale(1, 0.9)
+        :OnFinished(function(self) self:GetParent():Hide() end)
+        :OnPlay(function() PlaySound(SOUNDKIT.IG_BACKPACK_CLOSE) end)
+
 }
 
