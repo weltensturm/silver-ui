@@ -1,17 +1,27 @@
 local ADDON, Addon = ...
 
-
-local TypeInfo, FillTypeInfo = Addon.TypeInfo, Addon.FillTypeInfo
-
-
 local     Style,     Frame,     Button,     Texture,     FontString,     EditBox,     ScrollFrame,
           SELF,     PARENT,     ApplyFrameProxy,     FrameProxyMt
     = LQT.Style, LQT.Frame, LQT.Button, LQT.Texture, LQT.FontString, LQT.EditBox, LQT.ScrollFrame,
       LQT.SELF, LQT.PARENT, LQT.ApplyFrameProxy, LQT.FrameProxyMt
 
+local TypeInfo, FillTypeInfo = Addon.TypeInfo, Addon.FillTypeInfo
 
-local       FrameSmoothScroll,       CodeEditor,       BoxShadow,       ContextMenu,       ContextMenuButton,       FrameTraceWindow
-    = Addon.FrameSmoothScroll, Addon.CodeEditor, Addon.BoxShadow, Addon.ContextMenu, Addon.ContextMenuButton, Addon.FrameTraceWindow
+local
+    FrameSmoothScroll,
+    CodeEditor,
+    BoxShadow,
+    ContextMenu,
+    ContextMenuButton,
+    FrameTraceWindow,
+    FrameInspector
+    = Addon.FrameSmoothScroll,
+      Addon.CodeEditor,
+      Addon.BoxShadow,
+      Addon.ContextMenu,
+      Addon.ContextMenuButton,
+      Addon.FrameTraceWindow,
+      Addon.FrameInspector
 
 
 local editorWindow = nil
@@ -29,28 +39,6 @@ local function GetUIParentChildren()
     end
 
     return found
-end
-
-
-local function slice(table, start, end_)
-    return { unpack(table, start, end_) }
-end
-
-
-local function get_name(obj)
-    local parent = obj:GetParent()
-    if parent then
-        for k, v in pairs(parent) do
-            if v == obj then
-                return '.' .. k
-            end
-        end
-    end
-    local name = obj:GetName()
-    if name and _G[name] then
-        return 'G.' .. name
-    end
-    return name or obj:GetObjectType()
 end
 
 
@@ -133,35 +121,6 @@ do
     setmetatable(uiext_t, { __index=LQT.FrameExtensions })
     table.insert(gui_types, 1, { 'UIEXT', uiext_t })
 end
-
-
-local function format_float(f)
-    if type(f) == 'number' then
-        return tostring(math.floor(f * 10000 + 0.5) / 10000)
-    else
-        return tostring(f)
-    end
-end
-
-
-local function attribute_str_values(obj, k)
-    local str = ''
-    local result = { pcall(obj[k], obj) }
-    for i, v in ipairs(result) do
-        if i > 2 then
-            str = str .. ', '
-        end
-        if i > 1 then
-            str = str .. format_float(v)
-        end
-    end
-    return tostring(str):gsub('\r\n', '\\r\\n'):gsub('\n', '\\n')
-end
-
-
-local hoverFrame = nil
-
-local SetFrameStack = nil
 
 
 local ButtonAddonScript = Btn
@@ -366,27 +325,21 @@ local FrameAddonSection = Frame
 
 local FrameSettings = Frame
 {
-    Frame'.Sections'
+    FrameSmoothScroll'.Sections'
         :Points { TOPLEFT = PARENT:TOPLEFT(),
                   BOTTOMRIGHT = PARENT:BOTTOMLEFT(200, 0) }
-    {
-        FrameSmoothScroll'.Scroller':AllPoints(PARENT)
-    }
         .init(function(self, parent)
-                        
             local previous = nil
             for name, account, character in SilverUI.Addons() do
-                local content = self.Scroller.Content
-                content {
+                self.Content {
                     FrameAddonSection('.' .. name)
+                        :Data(name, account, character)
+                        :Points(
+                            previous and { TOPLEFT = previous:BOTTOMLEFT(), RIGHT = self.Content:RIGHT() }
+                                      or { TOPLEFT = self.Content:TOPLEFT(), RIGHT = self.Content:RIGHT() }
+                        )
                 }
-                if previous then
-                    content[name]:SetPoints { TOPLEFT = previous:BOTTOMLEFT(), RIGHT = content:RIGHT() }
-                else
-                    content[name]:SetPoints { TOPLEFT = content:TOPLEFT(), RIGHT = content:RIGHT() }
-                end
-                content[name]:SetData(name, account, character)
-                previous = content[name]
+                previous = self.Content[name]
             end
         end)
 }
@@ -484,6 +437,7 @@ local FrameEditor = Frame
             if key == 'ESCAPE' then
                 self:SetPropagateKeyboardInput(false)
                 self:Hide()
+                collectgarbage()
             else
                 self:SetPropagateKeyboardInput(true)
             end
@@ -572,7 +526,7 @@ local FrameEditor = Frame
         :Points { RIGHT = PARENT.reloadBtn:LEFT(-5, 0) }
         :Scripts {
             OnClick = function(self, button)
-                hoverFrame:start()
+                editorWindow.FrameInspector:PickFrame()
             end
         },
 
@@ -668,7 +622,7 @@ local FrameEditor = Frame
             CtrlEnter = function(self, code)
                 local func = assert(loadstring('return function(inspect, trace) ' .. code .. '\n end', "silver editor"))
                 local result = { func()(
-                    function(frame) SetFrameStack(_, frame) end,
+                    function(frame) editorWindow.FrameInspector:SetFrameStack(frame) end,
                     function(...) editorWindow.Tracer:StartTrace(...) end
                 ) }
                 if #result > 0 then
@@ -686,86 +640,10 @@ local FrameEditor = Frame
                   BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-330, 15) }
         :Hide(),
 
-    FrameSmoothScroll'.Inspector'
+    FrameInspector'.FrameInspector'
         :Points { TOPLEFT = PARENT.CodeEditor:TOPRIGHT(5, 0),
                   BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-10, 10) },
 
-}
-
-
-local StyleFrameStackButton = Style
-    .data {
-        reference = nil,
-        parents = nil,
-        referenceName = nil,
-        is_gui = nil,
-        SetReference = function(self, reference, parents, referenceName)
-            self.reference = reference
-            self.parents = parents
-            self.referenceName = referenceName
-            self.is_gui =
-                type(reference) == 'table'
-                and reference.GetObjectType
-                and reference:GetObjectType()
-                and reference.GetNumPoints
-                and reference.GetSize
-            if self.is_gui then
-                self.Text:SetTextColor(1, 0.666, 1)
-            else
-                self.Text:SetTextColor(1, 1, 1)
-            end
-        end
-     }
-    :Height(17.5)
-    :Show()
-    :RegisterForClicks('LeftButtonUp', 'RightButtonUp', 'MiddleButtonUp')
-    :Hooks {
-        OnEnter = function(self)
-            if self.is_gui and self.reference ~= hoverFrame and self.reference ~= hoverFrame.tex and self.reference ~= UIParent then
-                hoverFrame:SetAllPoints(self.reference)
-                hoverFrame:Show()
-            end
-        end,
-
-        OnLeave = function(self)
-            hoverFrame:SetAllPoints(editorWindow)
-            hoverFrame:Hide()
-        end,
-
-        OnClick = function(self, button)
-            if self.is_gui and button == 'RightButton' then
-                if self.reference:IsShown() then
-                    self.reference:Hide()
-                else
-                    self.reference:Show()
-                end
-            elseif button == 'LeftButton' then
-                if self.is_gui then
-                    SetFrameStack(_, self.reference)
-                elseif type(self.reference) == 'table' then
-                    local parents = {}
-                    for _, v in ipairs(self.parents) do
-                        table.insert(parents, v)
-                    end
-                    table.insert(parents, 1, { self.reference, self.referenceName })
-                    SetFrameStack(_, self.reference, parents)
-                else
-                    if self.referenceName and self.parents[1][1][self.referenceName] then
-                        editorWindow.Tracer:StartTrace(self.parents[1][1], self.referenceName)
-                    end
-                end
-            elseif button == 'MiddleButton' then
-                editorWindow.Tracer:StartTrace(PlayerCastingBarFrame, 'SetPointBase')
-            end
-        end,
-
-    }
-    :FrameLevel(10)
-{
-    Style'.Text'
-        :Alpha(1)
-        :Font('Fonts/ARIALN.TTF', 12, '')
-        -- :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11)
 }
 
 
@@ -773,477 +651,17 @@ local function spawn()
 
     FillTypeInfo()
 
-    local btnPool = {}
-
-    local create_btn = function()
-        local btn = nil
-        if #btnPool > 0 then
-            btn = btnPool[#btnPool]
-            table.remove(btnPool, #btnPool)
-            btn:UnhookAll()
-            Btn(btn)
-        else
-            btn = Btn.new()
-        end
-        btn.Text:SetTextColor(1, 1, 1)
-        btn.Text:SetFont('Fonts/FRIZQT__.ttf', 12)
-        btn.Text:ClearAllPoints()
-        btn.Text:SetPoint('LEFT', btn, 'LEFT', 10, 0)
-        return btn
-    end
-
     editorWindow = FrameEditor.new('BackdropTemplate')
     SilverUI.Editor = editorWindow
 
-    hoverFrame = Frame
-        :SetFrameStrata('TOOLTIP')
-        .data {
-            start = function(self)
-                self.pick = true
-                self:SetAllPoints(UIPanel)
-                self:EnableMouse(true)
-                self:Show()
-                editorWindow:Hide()
-            end,
-            stop = function(self, stack, smallest)
-                self.pick = false
-                self.tex:SetAllPoints(self)
-                self:EnableMouse(false)
-                self:Hide()
-                editorWindow:Show()
-                SetFrameStack(stack, smallest)
-            end
-        }
-        :Scripts {
-            OnMouseDown = function(self, button)
-                if button == 'LeftButton' then
-                    self:stop(self.lastStack, self.smallest)
-                end
-            end,
-            OnUpdate = function(self, time)
-                if self.pick then
-                    local stack = C_System.GetFrameStack()
-                    if stack ~= self.lastStack then
-                        self.lastStack = stack
-                        local smallest = UIParent
-                        for k, v in pairs(stack) do
-                            if v ~= self.tex then
-                                local w, h = v:GetSize()
-                                local w_c, h_c = smallest:GetSize()
-                                if w*h < w_c*h_c then
-                                    smallest = v
-                                end
-                            end
-                        end
-                        self.smallest = smallest
-                        self.tex:SetAllPoints(smallest)
-                    end
-                end
-            end
-        }
-    {
-        Texture'.tex'
-            :DrawLayer 'OVERLAY'
-            :ColorTexture(0, 1, 0, 0.4)
-            .init(function(self, parent) self:SetAllPoints(parent) end)
-    }
-        .new()
-
     local lastSelected = nil
 
-    SetFrameStack = function(_, selected, parents)
-
-        if selected ~= lastSelected then
-            editorWindow.Inspector:SetVerticalScroll(0)
-        end
-        lastSelected = selected
-
-        for i = #editorWindow.Inspector.Content.children, 1, -1 do
-            editorWindow.Inspector.Content.children[i]:Hide()
-            editorWindow.Inspector.Content.children[i]:ClearAllPoints()
-            editorWindow.Inspector.Content.children[i]:SetParent(nil)
-            table.insert(btnPool, editorWindow.Inspector.Content.children[i])
-            table.remove(editorWindow.Inspector.Content.children, i)
-        end
-
-        for i = #editorWindow.buttons, 1, -1 do
-            editorWindow.buttons[i]:Hide()
-            editorWindow.buttons[i]:ClearAllPoints()
-            editorWindow.buttons[i]:SetParent(UIParent)
-            table.insert(btnPool, editorWindow.buttons[i])
-            table.remove(editorWindow.buttons, i)
-        end
-
-        assert(#editorWindow.Inspector.Content.children == 0)
-
-        local lastBtn = nil
-
-        if not parents then
-            parents = {}
-            local parent = selected
-            while parent and parent.GetParent do
-                table.insert(parents, { parent, get_name(parent) })
-                parent = parent:GetParent()
-            end
-        end
-
-        local lastBtn = nil
-        for i = 1, #parents do
-            local reference = parents[i][1]
-
-            local btn = create_btn()
-            StyleFrameStackButton(btn)
-                :Reference(reference, slice(parents, i+1), parents[i][2])
-                :Parent(editorWindow)
-                :FrameLevel(10)
-                :Text(parents[i][2])
-                :Points(
-                    lastBtn and { TOPRIGHT = lastBtn:TOPLEFT(10, 0) }
-                             or { BOTTOMLEFT = editorWindow.Inspector:TOPLEFT(0, 0) }
-                )
-            
-            btn.Text:SetAlpha(lastBtn and 0.7 or 1)
-            btn:SetWidth(btn.Text:GetWidth() + 20)
-
-            table.insert(editorWindow.buttons, btn)
-
-            lastBtn = btn
-
-        end
-
-        lastBtn = nil
-        for _, obj in pairs(SortedChildren(selected)) do
-            local reference = obj[1]
-            local name = obj[2]
-            local attrName = obj[3]
-
-            local btn = create_btn()
-            StyleFrameStackButton(btn)
-                :Reference(reference, parents, attrName)
-                :Parent(editorWindow.Inspector.Content)
-                :Text(name)
-                -- :Height(20)
-                :Width(editorWindow.Inspector:GetWidth() - 8)
-            {
-                Style'.Text'
-                    :Points { LEFT = btn:LEFT() }
-                .. function(self)
-                    if not self.is_gui then
-                        self:SetTextColor(0.5, 0.5, 0.5)
-                    elseif reference == selected then
-                        self:SetTextColor(1, 1, 0.5)
-                    elseif reference.IsShown and not reference:IsShown() then
-                        self:SetTextColor(0.7, 0.7, 0.7)
-                    else
-                        self:SetTextColor(1, 1, 1)
-                    end
-                end
-            }
-
-            if lastBtn then
-                btn:SetPoint('TOPLEFT', lastBtn, 'BOTTOMLEFT', 0, -0)
-            else
-                btn:SetPoint('TOPLEFT', editorWindow.Inspector.Content, 'TOPLEFT', 10, -0)
-            end
-            lastBtn = btn
-
-            table.insert(editorWindow.Inspector.Content.children, btn)
-        end
-    end
-
-    -- SetFrameStack(nil, UIParent)
-
-    -- editorWindow:SetBackdrop({
-    --     -- bgFile = "Interface/ACHIEVEMENTFRAME/UI-GuildAchievement-Parchment",
-    --     -- bgFile = 'Interface/HELPFRAME/DarkSandstone-Tile',
-    --     edgeFile = "Interface/FriendsFrame/UI-Toast-Border",
-    --     edgeSize = 10,
-    --     tile = true,
-    --     tileSize = 300,
-    --     insets = { left = 1, right = 1, top = 1, bottom = 1 }
-    -- })
     editorWindow:Show()
 
     editorWindow'.*Corner, .*Edge':SetVertexColor(0.2, 0.2, 0.2, 0.5)
 end
 
 
-
-SortedChildren = function(obj)
-
-    local result = {}
-
-    local SORT_ATTR = '|c00000000'
-    local SORT_DATA = '|c00000001'
-    local SORT_GUI = '|c00000002'
-    local SORT_FN = '|c00000003'
-    local SORT_MT = '|c00000004'
-
-    if obj.GetObjectType and obj.IsShown then
-        table.insert(result, {
-            nil,
-            SORT_ATTR ..
-            '|cffaaaaaatype |cffffffff' .. obj:GetObjectType() .. (obj:IsShown() and '' or '|cffaaaaaa H')
-        })
-
-        if obj:GetName() then
-            table.insert(result, {
-                nil,
-                SORT_ATTR ..
-                '|cffaaaaabname |cffffffff' .. obj:GetName()
-            })
-        end
-    end
-
-    if obj.GetTexture then
-        table.insert(result, {
-            nil,
-            SORT_ATTR ..
-            '|cffaaaaabtexture |cffffffff' .. (obj:GetTexture() or 'none')
-        })
-    end
-
-    if obj.GetNumPoints then
-        local point_names = {
-            TOPLEFT = 'TL',
-            TOP = 'T',
-            TOPRIGHT = 'TR',
-            LEFT = 'L',
-            CENTER = 'C',
-            RIGHT = 'R',
-            BOTTOMLEFT = 'BL',
-            BOTTOM = 'B',
-            BOTTOMRIGHT = 'BR'
-        }
-
-        for i = 1, obj:GetNumPoints() do
-            pcall(function()
-                local point, relativeTo, relativePoint, x, y = obj:GetPoint(i)
-                table.insert(result, {
-                    relativeTo,
-                    SORT_ATTR ..
-                    '|cffaaaaac' .. point_names[point] ..
-                    ' |cffffffff' .. (relativeTo and relativeTo:GetObjectType() or '') .. ' ' ..
-                    (relativeTo and relativeTo:GetName() or '') .. '.' ..
-                    point_names[relativePoint] .. '(' .. format_float(x) .. ', ' .. format_float(y) .. ')'
-                })
-            end)
-        end
-    end
-
-    if obj.GetParent then
-        local parent = obj:GetParent()
-        table.insert(result, {
-            parent,
-            SORT_ATTR ..
-            '|cffaaaaabparent |cffffffff' .. tostring(parent and (parent:GetName() or parent:GetObjectType()))
-        })
-    end
-
-    local idx = 10000
-    local visited = {}
-    for k, v in pairs(obj) do
-        if type(v) ~= 'table' or not v.GetParent or v:GetParent() ~= obj then
-            visited[v] = true
-            if type(v) == 'table' then
-                if v.GetObjectType and v.GetTop and v.GetLeft then
-                    table.insert(result, {
-                        v,
-                        SORT_GUI ..
-                        '|cff' .. string.format('%06x', 10000 - idx) ..
-                        '|cffffaaff' .. v:GetObjectType() .. ' ' .. (v:IsShown() and '' or '|cffaaaaaaH ') ..
-                        '|cffffffff' .. k .. ' ' ..
-                        '|cffaaaaaa' .. (v.GetName and (v:GetName() or '') .. ' ' or '') ..
-                        '|c00000000' -- ..
-                        -- tostring(-(v:GetTop() or 999999)) .. ' ' ..
-                        -- tostring(-(v:GetLeft() or 999999))
-                        , k
-                    })
-                    idx = idx - 1
-                else
-                    table.insert(result, { v, SORT_DATA .. '|cffffffff' .. k .. ' = |cffffaaaatable', k })
-                end
-            elseif type(v) == 'function' then
-                table.insert(result, { v, SORT_FN .. '|cffffafaa fn |cffaaaaff' .. k, k })
-            else
-                table.insert(result, {
-                    v,
-                    SORT_DATA ..
-                    '|cffffffff' .. k .. ' = ' ..
-                    '|cffffaaaa' .. type(v) .. '|cffaaaaaa ' .. tostring(v):gsub('\n', '\\n') })
-            end
-        end
-    end
-
-    local hasChildren = false
-    local hasChildrenIndex = idx
-    idx = idx - 1
-
-    for k, v in pairs(obj) do
-        if type(v) == 'table' and v.GetParent and v:GetParent() == obj then
-            visited[v] = true
-            if v.GetObjectType and v.GetTop and v.GetLeft then
-                table.insert(result, {
-                    v,
-                    SORT_GUI ..
-                    '|cff' .. string.format('%06x', 10000 - idx) ..
-                    '|cffffaaff' .. v:GetObjectType() .. ' ' .. (v:IsShown() and '' or '|cffaaaaaaH ') ..
-                    '|cffffffff' .. k .. ' ' ..
-                    '|cffaaaaaa' .. (v.GetName and (v:GetName() or '') .. ' ' or '') ..
-                    '|c00000000' -- ..
-                    -- tostring(-(v:GetTop() or 999999)) .. ' ' ..
-                    -- tostring(-(v:GetLeft() or 999999))
-                })
-                idx = idx - 1
-                hasChildren = true
-            else
-                table.insert(result, { v, SORT_DATA .. '|cffffffff' .. k .. ' = |cffffaaaatable'})
-            end
-        end
-    end
-
-    if hasChildren then
-        table.insert(result, {
-            v,
-            SORT_GUI ..
-            '|cff' .. string.format('%06x', 10000 - hasChildrenIndex) ..
-            '|cffaaaaaaChildren'
-        })
-    end
-
-    if obj.has_lqt then
-        for c in LQT.query(obj, '.*') do
-            if not visited[c] then
-                table.insert(result, {
-                    c,
-                    SORT_GUI ..
-                    '|cff' .. string.format('%06x', 10000 - idx) ..
-                    '|cffffaaff' .. c:GetObjectType() .. ' ' .. (c:IsShown() and '' or '|cffaaaaaaH ') ..
-                    '|cffffffff ' ..
-                    '|cffaaaaaa' .. (c.GetName and (c:GetName() or '') .. ' ' or '') ..
-                    '|c00000000' -- ..
-                    -- tostring(-(c:GetTop() or 999999)) .. ' ' ..
-                    -- tostring(-(c:GetLeft() or 999999))
-                })
-                idx = idx - 1
-            end
-        end
-    end
-
-    if type(obj) == 'table' then
-        local mt = getmetatable(obj)
-        if mt and mt.__index then
-            
-            local all_base_classes = {}
-
-            local fn_visited = {}
-
-            for _, info in pairs(TypeInfo) do
-                local matching_fns = {}
-                local matching_count = 0
-                local fn_count = 0
-                for attr, value in pairs(info[2] or {}) do
-                    fn_count = fn_count + 1
-                    if mt.__index[attr] then
-                        matching_fns[attr] = true
-                        matching_count = matching_count+1
-                    end
-                end
-                if fn_count > 0 and matching_count == fn_count then
-                    for k, v in pairs(matching_fns) do
-                        fn_visited[k] = true
-                    end
-                    table.insert(all_base_classes, { info[1], info[2], matching_fns })
-                end
-            end
-
-            local remaining_fns = {}
-            local remaining_count = 0
-            for k, v in pairs(mt.__index) do
-                if type(v) == 'function' and not fn_visited[k] then
-                    remaining_fns[k] = true
-                    remaining_count = remaining_count+1
-                end
-            end
-            if remaining_count > 0 then
-                table.insert(all_base_classes, { obj:GetObjectType(), mt.__index, remaining_fns })
-            end
-            
-            fn_visited = {}
-            for i, info in pairs(all_base_classes) do
-
-                local SORT_TYPE = '|cff' .. string.format('%06x', 9999 - i)
-
-                table.insert(result, { nil,
-                    SORT_MT ..
-                    SORT_TYPE ..
-                    '|c00000000' ..
-                    '|cffaaaaaa' .. info[1]
-                })
-                for k, v in pairs(info[3]) do
-                    if not fn_visited[k] then
-                        if k:find('^Get') and info[3]['Set'..k:sub(4)] then
-                            fn_visited[k] = true
-                            fn_visited['Set'..k:sub(4)] = true
-                            table.insert(result, { v,
-                                SORT_MT ..
-                                SORT_TYPE ..
-                                SORT_FN ..
-                                ' |cfaaaaaaa Get' ..
-                                '|cffaafaff' .. k:sub(4) ..
-                                '|cffaaaaaa = ' ..
-                                attribute_str_values(obj, k),
-                                'Set'..k:sub(4)
-                            })
-                        elseif k:find('^Is') and info[3]['Set'..k:sub(3)] then
-                            fn_visited[k] = true
-                            fn_visited['Set'..k:sub(3)] = true
-                            table.insert(result, { v,
-                                SORT_MT ..
-                                SORT_TYPE ..
-                                SORT_FN ..
-                                ' |cfaaaaaaa Is' ..
-                                '|cffaafaff' .. k:sub(3) ..
-                                '|cffaaaaaa = ' ..
-                                attribute_str_values(obj, k),
-                                'Set'..k:sub(3)
-                            })
-                        
-                        elseif k:find('^Get') or k:find('^Is') then
-                            fn_visited[k] = true
-                            table.insert(result, { v,
-                                SORT_MT ..
-                                SORT_TYPE ..
-                                SORT_FN ..
-                                ' |cffffafaa fn ' ..
-                                '|cffaaaaff' .. k ..
-                                '|cfaaaaaaa = ' .. attribute_str_values(obj, k),
-                                k
-                            })
-                        elseif k:find('^Set') and (info[3]['Get'..k:sub(4)] or info[3]['Is'..k:sub(4)]) then
-                            -- let Get and Is handle it
-                        else
-                            fn_visited[k] = true
-                            table.insert(result, { v,
-                                SORT_MT ..
-                                SORT_TYPE ..
-                                SORT_FN ..
-                                ' |cffffafaa fn ' ..
-                                '|cffaaaaff' .. k,
-                                k
-                            })
-                        end
-                    end
-                end
-            end
-
-        end
-    end
-
-    table.sort(result, function(a, b) return a[2] < b[2] end)
-
-    return result
-end
 
 
 SLASH_GUITREE1 = '/guitree'
