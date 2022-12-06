@@ -78,55 +78,6 @@ function FrameExtensions:CornerOffset(x, y)
 end
 
 
-function FrameExtensions:SetPoints(points)
-    self:ClearAllPoints()
-    for k, v in pairs(points) do
-        if getmetatable(v) == FrameProxyMt then
-            self:SetPoint(k, unpack(ApplyFrameProxy(self, v)))
-        else
-            self:SetPoint(k, unpack(v))
-        end
-    end
-end
-
-
-function FrameExtensions:LEFT(x, y)
-    return { assert(self), 'LEFT', x, y }
-end
-
-function FrameExtensions:TOPLEFT(x, y)
-    return { assert(self), 'TOPLEFT', x, y }
-end
-
-function FrameExtensions:BOTTOMLEFT(x, y)
-    return { assert(self), 'BOTTOMLEFT', x, y }
-end
-
-function FrameExtensions:RIGHT(x, y)
-    return { assert(self), 'RIGHT', x, y }
-end
-
-function FrameExtensions:TOPRIGHT(x, y)
-    return { assert(self), 'TOPRIGHT', x, y }
-end
-
-function FrameExtensions:BOTTOMRIGHT(x, y)
-    return { assert(self), 'BOTTOMRIGHT', x, y }
-end
-
-function FrameExtensions:TOP(x, y)
-    return { assert(self), 'TOP', x, y }
-end
-
-function FrameExtensions:BOTTOM(x, y)
-    return { assert(self), 'BOTTOM', x, y }
-end
-
-function FrameExtensions:CENTER(x, y)
-    return { assert(self), 'CENTER', x, y }
-end
-
-
 function FrameExtensions:SetScripts(scripts)
     for k, fn in pairs(scripts) do
         self:SetScript(k, fn)
@@ -226,17 +177,20 @@ end
 
 
 function FrameExtensions:SetEventHooks(handlers, context)
-    self.lqtEventHooks = self.lqtEventHooks or {}
+    if not self.lqtEventHooks then
+        self.lqtEventHooks = self.lqtEventHooks or {}
+        self:HookScript('OnEvent', function(self, event, ...)
+            local handler = self.lqtEventHooks[event]
+            if handler then
+                handler(self, ...)
+            end
+        end)
+    end
     self.lqtEventHooksLibrary = self.lqtEventHooksLibrary or {}
     self.lqtEventHooksLibrary[context or get_context()] = TableHandleFrameProxies(self, handlers)
     for event, fn in pairs(handlers) do
         if not self.lqtEventHooks[event] then
             self:RegisterEvent(event)
-            self:HookScript('OnEvent', function(self, event, ...)
-                if self.lqtEventHooks[event] then
-                    self.lqtEventHooks[event](self, ...)
-                end
-            end)
         end
 
         local build = {}
@@ -260,7 +214,7 @@ end
 local function prepareSecureHooks(self, name_or_frame, name)
     self.lqtSecurehooks = self.lqtSecurehooks or {}
     local frame = name and name_or_frame
-    name = frame and name or name_or_frame
+    name = frame and assert(name) or name_or_frame
     if frame then
         local frame_name = frame:GetName()
         assert(frame_name, 'Can only securehook on named frames')
@@ -273,6 +227,7 @@ local function prepareSecureHooks(self, name_or_frame, name)
                 end
             end)
         end
+        return self.lqtSecurehooks[context]
     else
         if not self.lqtSecurehooks[name] then
             self.lqtSecurehooks[name] = {}
@@ -282,8 +237,8 @@ local function prepareSecureHooks(self, name_or_frame, name)
                 end
             end)
         end
+        return self.lqtSecurehooks[name]
     end
-    return self.lqtSecurehooks[name]
 end
 
 function FrameExtensions:RegisterReapply(style, arg1, arg2, arg3, context)
@@ -302,8 +257,15 @@ function FrameExtensions:RegisterReapply(style, arg1, arg2, arg3, context)
     local name = frame and arg2 or arg1
     local filter = frame and arg3 or arg2
 
-    local callback = function(...)
-        if not filter or filter(...) then
+    local callback
+    if filter then
+        callback = function(...)
+            if filter(...) then
+                style.apply(self)
+            end
+        end 
+    else
+        callback = function(...)
             style.apply(self)
         end
     end

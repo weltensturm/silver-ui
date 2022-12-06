@@ -21,21 +21,18 @@ local scale = UIParent:GetEffectiveScale()
 
 
 local TopMenu = Frame
-    :Points { TOPLEFT = UIParent:TOPLEFT(),
-              TOPRIGHT = UIParent:TOPRIGHT() }
+    .TOPLEFT:TOPLEFT(UIParent)
+    .TOPRIGHT:TOPRIGHT(UIParent)
     :Height(24)
     :Hooks(alpha_listeners)
     :FrameStrata 'MEDIUM'
 {
     Texture'.Bg'
+        .TOPLEFT:TOPLEFT()
+        .TOPRIGHT:TOPRIGHT()
         :DrawLayer 'ARTWORK'
         :Texture 'Interface/Common/ShadowOverlay-Top'
-            .init(function(self, parent)
-                Style(self)
-                    :Points { TOPLEFT = parent:TOPLEFT(),
-                              TOPRIGHT = parent:TOPRIGHT() }
-                    :Height(80)
-            end),
+        :Height(80),
             
     -- Texture'.Bg2'
     --     :DrawLayer 'BACKGROUND'
@@ -92,9 +89,8 @@ local MenuButton = Style
     }
 {
     Style'.Texture'
-        :ClearAllPoints()
-        :Size(ICON_SIZE, ICON_SIZE)
-        :Points { TOPLEFT = PARENT:TOPLEFT() },
+        .CENTER:CENTER()
+        :Size(ICON_SIZE, ICON_SIZE),
     Style'.Texture'
         -- :TexCoord(0.1, 0.9, 0.1, 0.9),
 ,
@@ -115,121 +111,26 @@ local MenuButton = Style
             parent'.Texture':AddMaskTexture(self)
         end),
 
-    -- Texture'.Border'
-    --     -- :Texture 'Interface/COMMON/RingBorder'
-    --     :Texture 'Interface/COMMON/BlueMenuRing'
-    --     :DrawLayer 'OVERLAY'
-    --     :TexCoord(0, 1, 0, 1)
-    --     .init(function(self, parent)
-    --         Style(self)
-    --             :Points { TOPLEFT = parent:TOPLEFT(-ICON_SIZE*0.3125, ICON_SIZE*0.3125) }
-    --             :Size(ICON_SIZE*2, ICON_SIZE*2)
-    --             -- :BOTTOMRIGHT(parent:BOTTOMRIGHT(22, -22))
-    --             -- :Alpha(0.5)
-    --     end),
-        
-    -- Texture'.Bg'
-    --     -- :Texture'Interface/BUTTONS/UI-Button-Borders'
-    --     :Texture'Interface/Calendar/ButtonFrame'
-    --     :TexCoord(0, 0.395, 0.5, 0)
-    -- {
-    --     function(self) self:SetAllPoints(self:GetParent()) end
-    -- },
-
-    -- Texture'.BgLeft'
-    --     -- :Texture'Interface/BUTTONS/UI-Button-Borders'
-    --     :Texture'Interface/Calendar/ButtonFrame'
-    --     :TexCoord(0.39, 0.44, 0.5, 0)
-    -- {
-    --     function(self)
-    --         local parent = self:GetParent()
-    --         Style(self)
-    --             :Points { TOPLEFT = parent:TOPLEFT(0, 3),
-    --                       BOTTOMLEFT = parent:BOTTOMLEFT(0, -2) }
-    --             :Width(10)
-    --     end
-    -- },
-
-    -- Texture'.BgRight'
-    --     -- :Texture'Interface/BUTTONS/UI-Button-Borders'
-    --     :Texture'Interface/Calendar/ButtonFrame'
-    --     :TexCoord(0.73, 0.78, 0.5, 0)
-    -- {
-    --     function(self)
-    --         local parent = self:GetParent()
-    --         Style(self)
-    --             :TOPRIGHT(parent:TOPRIGHT(0, 3))
-    --             :BOTTOMRIGHT(parent:BOTTOMRIGHT(0, -2))
-    --             :Width(10)
-    --     end
-    -- },
-
-    -- Texture'.Bg'
-    --     -- :Texture'Interface/BUTTONS/UI-Button-Borders'
-    --     :Texture'Interface/Calendar/ButtonFrame'
-    --     :TexCoord(0.44, 0.73, 0.5, 0)
-    -- {
-    --     function(self)
-    --         local parent = self:GetParent()
-    --         Style(self)
-    --             :Points { TOPLEFT = parent:TOPLEFT(10, 3),
-    --                       BOTTOMRIGHT = parent:BOTTOMRIGHT(-10, -2) }
-    --     end
-    -- },
-
-    -- Texture'.BgLeft'
-    --     :ColorTexture(0.2, 0.2, 0.2)
-    -- {
-    --     function(self)
-    --         local parent = self:GetParent()
-    --         Style(self)
-    --             :Points { TOPLEFT = parent:TOPLEFT(),
-    --                       BOTTOMLEFT = parent:BOTTOMLEFT() }
-    --             :Width(0.75/scale)
-    --     end
-    -- },
-
-    -- Texture'.BgRight'
-    --     :ColorTexture(0.2, 0.2, 0.2)
-    -- {
-    --     function(self)
-    --         local parent = self:GetParent()
-    --         Style(self)
-    --             :TOPRIGHT(parent:TOPRIGHT())
-    --             :BOTTOMRIGHT(parent:BOTTOMRIGHT())
-    --             :Width(0.75/scale)
-    --     end
-    -- },
-
-    -- FontString'.ButtonText'
-    --     :Font('FONTS/FRIZQT__.ttf', 12)
-    --     :JustifyH('LEFT')
-    --     .init(function(self, parent)
-    --         self:SetText(parent.tooltipText)
-    --         self:SetWidth(parent:GetWidth() - 10)
-    --         self:SetPoints { LEFT = parent:LEFT(ICON_SIZE + 5, 0) }
-    --     end)
 }
 
 
 local Dropdown = Frame'.Dropdown'
+    .TOPLEFT:BOTTOMLEFT()
+    .TOPRIGHT:BOTTOMRIGHT()
     :Height(40)
     :Hide()
     :Hooks {
         OnShow = function(self)
-            local parent = self:GetParent()
-            self:SetPoints {
-                TOPLEFT = parent:BOTTOMLEFT(),
-                TOPRIGHT = parent:BOTTOMRIGHT()
-            }
             local prev = nil
             for i, frame in ipairs(self) do
                 if prev then
-                    frame:Points { TOPLEFT = prev:BOTTOMLEFT(),
-                                   TOPRIGHT = prev:BOTTOMRIGHT() }
+                    Style(frame)
+                        .TOPLEFT:BOTTOMLEFT(prev)
+                        .TOPRIGHT:BOTTOMRIGHT(prev)
                 else
-                    frame:Points { TOPLEFT = self:TOPLEFT(),
-                                   TOPRIGHT = self:TOPRIGHT() }
+                    Style(frame)
+                        .TOPLEFT:TOPLEFT()
+                        .TOPRIGHT:TOPRIGHT()
                 end
                 prev = frame
             end
@@ -270,14 +171,10 @@ local DropdownBtn = Frame
         :DrawLayer('BACKGROUND', -1)
         .init(function(self, parent) self:SetAllPoints(parent) end),
     FontString'.DisplayText'
+        .TOPLEFT:TOPLEFT(30, 0)
+        .BOTTOMRIGHT:BOTTOMRIGHT()
         :Font('FONTS/FRIZQT__.ttf', 12)
         :JustifyH 'LEFT'
-        .init(function(self, parent)
-            self:SetPoints {
-                TOPLEFT = parent:TOPLEFT(30, 0),
-                BOTTOMRIGHT = parent:BOTTOMRIGHT()
-            }
-        end)
 }
 
 
@@ -297,15 +194,11 @@ local DropdownSeparator = Frame
     Texture'.Bg'
         :ColorTexture(0.2, 0.2, 0.2)
         :DrawLayer 'BACKGROUND'
-        .init(function(self, parent) self:SetAllPoints(parent) end),
+        :AllPoints(PARENT),
     Texture'.Line'
+        .TOPLEFT:TOPLEFT(5, -1.1)
+        .BOTTOMRIGHT:BOTTOMRIGHT(-5, 1.1)
         :ColorTexture(1,1,1,0.5)
-        .init(function(self, parent)
-            self:SetPoints {
-                TOPLEFT = parent:TOPLEFT(5, -1.1),
-                BOTTOMRIGHT = parent:BOTTOMRIGHT(-5, 1.1)
-            }
-        end)
 }
 
 
@@ -313,12 +206,12 @@ addon:SetEventHooks {
     PLAYER_ENTERING_WORLD = function()
 
         if KeyRingButton then
-            KeyRingButton:SetPoints { TOPRIGHT = UIParent:TOPRIGHT() }
+            KeyRingButton:ClearAllPoints()
+            KeyRingButton:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT')
         end
 
         MenuButton(MainMenuBarBackpackButton)
-            :Points { TOPRIGHT = (KeyRingButton or GameTimeFrame):TOPLEFT() }
-            :Parent(TopMenu)
+            .TOPRIGHT:TOPLEFT(KeyRingButton or GameTimeFrame)
         {
             Style'.*NormalTexture':Texture ''
         }
@@ -326,18 +219,20 @@ addon:SetEventHooks {
         -- Style'.MainMenuBarBackpackButton':Hide(),
         
         Style(MainMenuBarArtFrame or MicroButtonAndBagsBar) {
-            MenuButton'.CharacterBag#Slot'
-                :Parent(TopMenu)
-            {
+            MenuButton'.CharacterBag#Slot, .CharacterReagentBag0Slot' {
                 Style'.*NormalTexture':Texture ''
             },
             Style'.BagBarExpandToggle':Hide()
         }
         local previous = MainMenuBarBackpackButton
         for i=0, 3 do
-            _G['CharacterBag' .. i .. 'Slot']:SetPoints { TOPRIGHT = previous:TOPLEFT() }
-            previous = _G['CharacterBag' .. i .. 'Slot']
+            local bag = _G['CharacterBag' .. i .. 'Slot']
+            bag:ClearAllPoints()
+            bag:SetPoint('TOPRIGHT', previous, 'TOPLEFT')
+            previous = bag
         end
+        Style(CharacterReagentBag0Slot)
+            .TOPRIGHT:TOPLEFT(previous)
     end
 }
 
@@ -349,7 +244,7 @@ local style = function()
     }
 
     Style(QuestLogMicroButton)
-        :Points { TOPLEFT = TopMenu:TOPLEFT(4, -2) }
+        .TOPLEFT:TOPLEFT(TopMenu, 4, -2)
         :Height(26)
         :Width(100)
         -- :Width(QuestLogMicroButton.ButtonText:GetWidth() + ICON_SIZE)
@@ -361,11 +256,11 @@ local style = function()
         :Hooks(alpha_listeners)
         {
         Style'.Texture'
-            :Points { TOPLEFT = QuestLogMicroButton:TOPLEFT(1, -1) }
+            .TOPLEFT:TOPLEFT(1, -1)
             :Size(24, 28)
             :SetTexCoord(0.1, 0.5, 0.05, 0.5),
         FontString'.ButtonText'
-            :Points { LEFT = QuestLogMicroButton:LEFT(24,0) }
+            .LEFT:LEFT(24, 0)
             :Font('FONTS/FRIZQT__.ttf', 12)
             .init(function(self, parent)
                 self:SetText(parent.tooltipText)
@@ -374,9 +269,7 @@ local style = function()
 
     MenuButton(CharacterMicroButton)
         :Textures ''
-        :Points {
-            TOPLEFT = QuestLogMicroButton:TOPRIGHT(10, 2)
-        }
+        .TOPLEFT:TOPRIGHT(QuestLogMicroButton, 10, 2)
         -- :Hooks {
         --     OnEnter = function(self)
         --         self.Dropdown:Show()
@@ -389,15 +282,9 @@ local style = function()
         
         Texture'.BgLeft'
             :ColorTexture(0.2, 0.2, 0.2)
-        {
-            function(self)
-                local parent = self:GetParent()
-                Style(self)
-                    :Points { TOPLEFT = parent:TOPLEFT(-5, 0),
-                              BOTTOMLEFT = parent:BOTTOMLEFT(-5, 0) }
-                    :Width(0.75/scale)
-            end
-        }
+            .TOPLEFT:TOPLEFT(-5, 0)
+            .BOTTOMLEFT:BOTTOMLEFT(-5, 0)
+            :Width(0.75/scale),
 
         -- Dropdown {
         --     DropdownBtn'.1':Text(CharacterFrameTab2Text:GetText()):OnClick(function() CharacterMicroButton:Click() CharacterFrameTab2:Click() end),
@@ -442,7 +329,7 @@ local style = function()
             end
         
             MenuButton(TalentMicroButton)
-                :Points { LEFT = CharacterMicroButton:RIGHT(0,0) }
+                .LEFT:RIGHT(CharacterMicroButton)
                 :Textures(icon)
         end
 
@@ -455,56 +342,50 @@ local style = function()
     else
         
         MenuButton(TalentMicroButton)
-            :Points { LEFT = CharacterMicroButton:RIGHT(0,0) }
+            .LEFT:RIGHT(CharacterMicroButton)
         {
             Style'.Texture':SetTexCoord(0.1, 0.9, 0.4, 1)
         }
     end
 
     MenuButton(SpellbookMicroButton)
-        :Points { LEFT = TalentMicroButton:RIGHT(0, 0) }
+        .LEFT:RIGHT(TalentMicroButton)
         :Textures 'Interface/ICONS/INV_Misc_Book_09'
 
     MenuButton(AchievementMicroButton)
-        :Points { TOPLEFT = SpellbookMicroButton:TOPRIGHT(10,0) }
+        .TOPLEFT:TOPRIGHT(SpellbookMicroButton, 10, 0)
         -- :NormalTexture 'Interface/ICONS/Achievement_Dungeon_ClassicDungeonMaster'
         :Textures 'Interface/ICONS/Achievement_Quests_Completed_06'
     {  
         Texture'.BgLeft'
             :ColorTexture(0.2, 0.2, 0.2)
-        {
-            function(self)
-                local parent = self:GetParent()
-                Style(self)
-                    :Points { TOPLEFT = parent:TOPLEFT(-5, 0),
-                              BOTTOMLEFT = parent:BOTTOMLEFT(-5, 0) }
-                    :Width(0.75/scale)
-            end
-        },
+            .TOPLEFT:TOPLEFT(-5, 0)
+            .BOTTOMLEFT:BOTTOMLEFT(-5, 0)
+            :Width(0.75/scale),
     }
 
     if CollectionsMicroButton then
         MenuButton(CollectionsMicroButton)
-            :Points { LEFT = AchievementMicroButton:RIGHT(0,0) }
+            .LEFT:RIGHT(AchievementMicroButton)
             :Textures 'Interface/ICONS/Achievement_Boss_spoils_of_pandaria'
     end
 
     if EJMicroButton then
         MenuButton(EJMicroButton)
-            :Points { TOPLEFT = CollectionsMicroButton:TOPRIGHT(10, 0) }
+            .TOPLEFT:TOPRIGHT(CollectionsMicroButton, 10, 0)
         {
             Style'.Texture':TexCoord(0.1, 0.9, 0.2, 0.8)
         }
     end
 
     MenuButton(LFDMicroButton)
-        :Points { TOPLEFT = EJMicroButton and EJMicroButton:TOPRIGHT() or AchievementMicroButton:TOPRIGHT() }
+        .TOPLEFT:TOPRIGHT(EJMicroButton or AchievementMicroButton)
     {
         Style'.Texture':TexCoord(0.1, 0.9, 0.2, 0.8)
     }
 
     MenuButton(LFGMicroButton)
-        :Points { TOPLEFT = EJMicroButton and EJMicroButton:TOPRIGHT() or AchievementMicroButton:TOPRIGHT() }
+        .TOPLEFT:TOPRIGHT(EJMicroButton or AchievementMicroButton)
     {
         Style'.Texture':SetTexCoord(0.1, 0.9, 0.45, 0.9)
     }
@@ -512,14 +393,14 @@ local style = function()
 
     if GuildMicroButton then
         MenuButton(GuildMicroButton)
-            :Points { TOPLEFT = (LFDMicroButton or LFGMicroButton):TOPRIGHT() }
+            .TOPLEFT:TOPRIGHT(LFDMicroButton or LFGMicroButton)
         {
             Style'.Texture':TexCoord(0.1, 0.9, 0.2, 0.8)
         }
     end
 
     MenuButton(QuickJoinToastButton or SocialsMicroButton)
-        :Points { TOPLEFT = (GuildMicroButton or LFGMicroButton):TOPRIGHT() }
+        .TOPLEFT:TOPRIGHT(GuildMicroButton or LFGMicroButton)
     {
         Style'.Texture':TexCoord(0.1, 0.9, 0.1, 0.9):Texture(FriendsFrameIcon:GetTexture())
     }
@@ -534,7 +415,7 @@ local style = function()
 
     if PVPMicroButton then
         MenuButton(PVPMicroButton)
-            :Points { TOPLEFT = SocialsMicroButton:TOPRIGHT() }
+            .TOPLEFT:TOPRIGHT(SocialsMicroButton)
         {
             Style'.texture':TexCoord(0.03,0.64,0,0.6)
         }
@@ -542,10 +423,10 @@ local style = function()
 
 
     MenuButton(MainMenuMicroButton)
-        :Points { TOPRIGHT = TopMenu:TOPRIGHT() }
+        .TOPRIGHT:TOPRIGHT(TopMenu)
 
     MenuButton(GameTimeFrame)
-        :Points { TOPRIGHT = MainMenuMicroButton:TOPLEFT() }
+        .TOPRIGHT:TOPLEFT(MainMenuMicroButton)
 
     -- MenuButton(MiniMapMailFrame)
     --     :TOPRIGHT(GameTimeFrame:TOPLEFT())
@@ -557,12 +438,12 @@ local style = function()
 
     if KeyRingButton then
         MenuButton(KeyRingButton)
-            :Points { TOPRIGHT = GameTimeFrame:TOPLEFT() }
+            .TOPRIGHT:TOPLEFT(GameTimeFrame)
     end
 
 
     Style(StoreMicroButton)
-        :Points { BOTTOMLEFT = UIParent:TOPLEFT() }
+        .BOTTOMLEFT:TOPLEFT(UIParent)
 
 end
 
@@ -570,7 +451,7 @@ end
 local doUpdate = false
 
 
-hooksecurefunc('UIParent_ManageFramePositions', function() doUpdate = true end)
+hooksecurefunc('MoveMicroButtons', function() doUpdate = true end)
 
 Frame
     :Events {

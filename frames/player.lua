@@ -1,19 +1,82 @@
 
 if WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE then return end
 
-SilverUI.RegisterScript(
-    'Silver UI',
-    'Player Frame',
-    {
+
+local
+    PARENT,
+    Style,
+    Frame,
+    CheckButton,
+    Texture,
+    MaskTexture,
+    FontString,
+    AnimationGroup,
+    Animation
+    =   LQT.PARENT,
+        LQT.Style,
+        LQT.Frame,
+        LQT.CheckButton,
+        LQT.Texture,
+        LQT.MaskTexture,
+        LQT.FontString,
+        LQT.AnimationGroup,
+        LQT.Animation
+
+
+local db
+local load
+
+
+SilverUI.Storage {
+    name = 'Player Frame',
+    character = {
         enabled = true
     },
-[[
+    onload = function(account, character)
+        db = character
+        if character.enabled then
+            load()
+        end
+    end
+}
 
-local     PARENT,     Style,     Frame,     Texture,     MaskTexture,     AnimationGroup,     Animation
-    = LQT.PARENT, LQT.Style, LQT.Frame, LQT.Texture, LQT.MaskTexture, LQT.AnimationGroup, LQT.Animation
+
+SilverUI.Settings 'Player Frame' {
+
+    Frame:Size(4, 4),
+
+    FontString
+        :Font('Fonts/FRIZQT__.ttf', 16, '')
+        :TextColor(1, 0.8196, 0)
+        :Text 'Player Frame',
+
+    CheckButton
+        :Size(24, 24)
+        :NormalTexture 'Interface/Buttons/UI-CheckBox-Up'
+        :PushedTexture 'Interface/Buttons/UI-CheckBox-Down'
+            :HighlightTexture 'Interface/Buttons/UI-CheckBox-Highlight'
+        :CheckedTexture 'Interface/Buttons/UI-CheckBox-Check'
+        :DisabledCheckedTexture 'Interface/Buttons/UI-CheckBox-Check-Disabled'
+        :HitRectInsets(-4, -100, -4, -4)
+        :Hooks {
+            OnClick = function(self)
+                db.enabled = self:GetChecked()
+            end
+        }
+    {
+        function(self)
+            self:SetChecked(db.enabled)
+        end,
+        FontString'.Label'
+            .LEFT:RIGHT()
+            :Font('Fonts/FRIZQT__.ttf', 12, '')
+            :Text 'Enable'
+    }
+
+}
 
 
-Style(PlayerFrame)
+local StylePlayerFrame = Style
     :Size(300, 300/4)
 {
     Frame'.SilverUI'
@@ -46,14 +109,12 @@ Style(PlayerFrame)
             
             Style'.HealthBarArea' {
                 Style'.HealthBar'
-                    :Points {
-                        TOPLEFT = PlayerFrame:TOPLEFT(21, -38.5),
-                        BOTTOMRIGHT = PlayerFrame:BOTTOMRIGHT(-21, 21.5)
-                    }
+                    .TOPLEFT:TOPLEFT(PlayerFrame, 21, -38.5)
+                    .BOTTOMRIGHT:BOTTOMRIGHT(PlayerFrame, -21, 21.5)
                 {
                     Style'.FontString':Scale(0.9),
-                    Style'.LeftText':Points { LEFT = PARENT:LEFT(10, 0) },
-                    Style'.RightText':Points { RIGHT = PARENT:RIGHT(-10, 0) },
+                    Style'.LeftText'.LEFT:LEFT(10, 0),
+                    Style'.RightText'.RIGHT:RIGHT(-10, 0),
                     Style'.HealthBarMask'
                         :Show()
                         :Texture'Interface/AddOns/silver-ui/art/playerframe-hp-mask'
@@ -65,14 +126,12 @@ Style(PlayerFrame)
                 Style'.ManaBar'
                     -- :StatusBarTexture 'Interface/RAIDFRAME/Raid-Bar-Hp-Fill'
                     -- :StatusBarColor(1, 1, 0)
-                    :Points {
-                        TOPLEFT = PlayerFrame:TOPLEFT(31.5, -26),
-                        BOTTOMRIGHT = PlayerFrame:BOTTOMRIGHT(-31.5, 39)
-                    }
+                    .TOPLEFT:TOPLEFT(PlayerFrame, 31.5, -26)
+                    .BOTTOMRIGHT:BOTTOMRIGHT(PlayerFrame, -31.5, 39)
                 {
                     Style'.FontString':Scale(0.8),
-                    Style'.LeftText':Points { LEFT = PARENT:LEFT(10, 0) },
-                    Style'.RightText':Points { RIGHT = PARENT:RIGHT(-10, 0) },
+                    Style'.LeftText'.LEFT:LEFT(10, 0),
+                    Style'.RightText'.RIGHT:RIGHT(-10, 0),
                     Style'.ManaBarMask'
                         :Show()
                         :Texture 'Interface/AddOns/silver-ui/art/playerframe-power-mask'
@@ -84,26 +143,18 @@ Style(PlayerFrame)
         Style'.PlayerFrameContentContextual' {
             Style'.PlayerPortraitCornerIcon':Hide(),
             Style'.PlayerRestLoop'
-                :Points {
-                    BOTTOMLEFT = PlayerFrame:TOPRIGHT(-31, -32)
-                },
+                .BOTTOMLEFT:TOPRIGHT(PlayerFrame, -31, -32),
             Style'.PrestigePortrait'
-                :Points {
-                    BOTTOMRIGHT = PlayerFrame:TOPLEFT(33, -48)
-                }
+                .BOTTOMRIGHT:TOPLEFT(PlayerFrame, 33, -48)
                 :Size(32, 32),
             Style'.PrestigeBadge'
                 :Size(20, 20),
             Style'.RoleIcon'
-                :Points { RIGHT = PARENT.GroupIndicator:LEFT() },
+                .RIGHT:LEFT(PARENT.GroupIndicator),
         }
     },
 
-    Style'.PlayerFrameBottomManagedFramesContainer'
-            :Points { TOP = PlayerFrame:BOTTOM(0, 22) }
-    {
-        Style'.*'
-            :Scale(0.7),
+    Style'.PlayerFrameBottomManagedFramesContainer' {
         Style'.PlayerFrameAlternateManaBar' {
             Style'.DefaultBorder*'
                 :VertexColor(0.1, 0.1, 0.1, 0.7)
@@ -111,13 +162,17 @@ Style(PlayerFrame)
         Style'.PaladinPowerBarFrame' {
             Style'.Texture:NOATTR':VertexColor(0.1, 0.1, 0.1, 0.7),
             Style'.bankBG':VertexColor(0.1, 0.1, 0.1, 0.7)
-        }
-    },
+        },
+        Style'.MageArcaneChargesFrame'
+            .TOP:BOTTOM(PlayerFrame, 0, 30)
+            :Scale(0.7),
+    }
+        .reapply('PlayerFrame_AdjustAttachments'),
 
     Frame'.Gcd'
         :FrameLevel(11)
-        :Points { TOPLEFT = PlayerFrame:TOPLEFT(33, -35),
-                    BOTTOMLEFT = PlayerFrame:TOPLEFT(33, -39) }
+        .TOPLEFT:TOPLEFT(33, -35)
+        .BOTTOMLEFT:TOPLEFT(33, -39)
         :Scripts {
             OnUpdate = function(self)
                 local gcdStart, gcdDuration = GetSpellCooldown(61304)
@@ -149,12 +204,8 @@ Style(PlayerFrame)
             :Texture 'Interface/UNITPOWERBARALT/Generic1Target_Horizontal_Spark'
             :Width(20)
             :BlendMode 'ADD'
-            .init(function(self, parent)
-                self:SetPoints {
-                    TOP = parent:TOPRIGHT(),
-                    BOTTOM = parent:BOTTOMRIGHT()
-                }
-            end)
+            .TOP:TOPRIGHT()
+            .BOTTOM:BOTTOMRIGHT()
     }
 }
     .reapply('PlayerFrame_ToPlayerArt')
@@ -168,30 +219,37 @@ Style(PlayerFrame)
 local Hide = Style:Hide()
 
 
-Style(PlayerCastingBarFrame)
+local SetPoint = getmetatable(PlayerCastingBarFrame).__index.SetPoint
+
+local function SetPointHack(self)
+    SetPoint(self, 'TOPLEFT', PlayerFrame, 'TOPLEFT', 26, -35)
+    SetPoint(self, 'BOTTOMRIGHT', PlayerFrame, 'BOTTOMRIGHT', -26, 35)
+end
+
+
+local StyleCastBar = Style
     .filter(function(self)
-        return self.attachedToPlayerFrame and not self.Selection:IsShown()
+        return self.attachedToPlayerFrame ~= false and not self.Selection:IsShown()
     end)
+    -- .data { system = nil }
     :FrameLevel(11)
-    :PointBase('TOPLEFT', PlayerFrame, 'TOPLEFT', 26, -35)
-    :PointBase('BOTTOMRIGHT', PlayerFrame, 'BOTTOMRIGHT', -26, 35)
+    { SetPointHack }
+    -- :PointBase('TOPLEFT', PlayerFrame, 'TOPLEFT', 26, -35)
+    -- :PointBase('BOTTOMRIGHT', PlayerFrame, 'BOTTOMRIGHT', -26, 35)
     .reapply('PlayerFrame_AdjustAttachments')
 {
-    Hide'.Icon',
-    Hide'.Border',
-    Hide'.Background',
-    Hide'.EnergyGlow':Texture '',
+    Hide'.Icon':Alpha(0),
     Style'.Text'
         :Scale(0.8)
-        :Points { TOP = PARENT:TOP() },
+        .TOP:TOP(),
     MaskTexture'.BarMask'
         :Texture 'Interface/AddOns/silver-ui/art/playerframe-castbar-mask'
         :AllPoints(PlayerFrame),
-    Style'.Texture:NOATTR:NONAME' {
+    Style'.Texture' {
         function(self)
-            if not self.HasMask then
+            if not self.maskApplied and self ~= self:GetParent().Spark then
                 self:AddMaskTexture(self:GetParent().BarMask)
-                self.HasMask = true
+                self.maskApplied = true
             end
         end
     }
@@ -200,18 +258,13 @@ Style(PlayerCastingBarFrame)
     .reapply('UNIT_SPELLCAST_CHANNEL_START', function(self, unit) return unit == 'player' end)
 
 
-hooksecurefunc(EditModeManagerFrame, 'EnterEditMode', function()
-    PlayerCastingBarFrame:ResetToDefaultPosition()
-    EditModeManagerFrame:SetHasActiveChanges(false);
-end)
 
-
--- XP/rep bars
-
-hooksecurefunc(StatusTrackingBarManager, 'UpdateBarsShown', function()
-    StatusTrackingBarManager:Hide()
-end)
-
-
-]]
-)
+load = function()
+    StylePlayerFrame(PlayerFrame)
+    StyleCastBar(PlayerCastingBarFrame)
+        
+    -- XP/rep bars
+    hooksecurefunc(StatusTrackingBarManager, 'UpdateBarsShown', function()
+        StatusTrackingBarManager:Hide()
+    end)
+end

@@ -64,79 +64,74 @@ local function update()
                 -- Points = {{ TOPLEFT = PlayerFrame:TOPLEFT(0, 2),
                 --             TOPRIGHT = PlayerFrame:TOPRIGHT(0, 2) }},
                 -- Height = 17
-                :Points {
-                    TOPLEFT = PlayerFrame:TOPLEFT(0, 2),
-                    TOPRIGHT = PlayerFrame:TOPRIGHT(0, 2)
-                },
+                .TOPLEFT:TOPLEFT(0, 2)
+                .TOPRIGHT:TOPRIGHT(0, 2),
 
-            Separator'.Middle':Points {
-                LEFT = PlayerFrame:TOPLEFT(0, -15),
-                RIGHT = PlayerFrame:TOPRIGHT(0, -15)
-            },
+            Separator'.Middle'
+                .LEFT:TOPLEFT(0, -15)
+                .RIGHT:TOPRIGHT(0, -15),
 
-            Separator'.Bottom':Points {
-                LEFT = PlayerFrame:BOTTOMLEFT(0, 1),
-                RIGHT = PlayerFrame:BOTTOMRIGHT(0, 1)
-            },
+            Separator'.Bottom'
+                .LEFT:BOTTOMLEFT(0, 1)
+                .RIGHT:BOTTOMRIGHT(0, 1),
             
-            EndCap'.Left':Points {
-                BOTTOMRIGHT = PlayerFrame:BOTTOMLEFT(30.5, -1)
-            },
+            EndCap'.Left'
+                .BOTTOMRIGHT:BOTTOMLEFT(30.5, -1),
 
             EndCap'.Right'
                 :TexCoord(1, 0, 0, 1)
-                :Points { BOTTOMLEFT = PlayerFrame:BOTTOMRIGHT(-30.5, -1) }
+                .BOTTOMLEFT:BOTTOMRIGHT(-30.5, -1)
         },
 
         Style'.classPowerBar'
-            :Points { BOTTOM = PlayerFrame:TOP() }
+            .BOTTOM:TOP()
         {
             Style'.Background'
                 :TexCoord(0, 1, 1, 0)
-                :Points { BOTTOM = PlayerFrame.classPowerBar and PlayerFrame.classPowerBar:BOTTOM(0, -6) }
+                .BOTTOM:BOTTOM(0, -6)
         },
 
         Style'.ComboPointPlayerFrame'
-            :Points { BOTTOM = PlayerFrame:TOP(0, 5) }
+            .BOTTOM:TOP(0, 5)
             :FrameStrata 'BACKGROUND'
         {
             Style'.Background'
                 :Desaturated(true)
                 :TexCoord(0, 1, 1, 0)
-                :Points { BOTTOM = (ComboPointPlayerFrame or UIParent):BOTTOM(0, -6) }
+                .BOTTOM:BOTTOM(0, -6)
         },
 
         Style'.MageArcaneChargesFrame'
-            :Points { BOTTOM = PlayerFrame:TOP(0, -10) }
+            .BOTTOM:TOP(0, -10)
             :FrameStrata 'BACKGROUND'
         {
             Style'.Background'
-                :Points { BOTTOM = (MageArcaneChargesFrame or UIParent):BOTTOM(0, 10) }
+                .BOTTOM:BOTTOM(0, 10)
         },
 
         Style'.RuneFrame'
-            :Points { BOTTOM = PlayerFrame:TOP(0, 2) }
+            .BOTTOM:TOP(0, 2)
             :FrameStrata 'BACKGROUND',
 
         Style'.PlayerFrameAlternateManaBar'
             :StatusBarTexture 'Interface/Destiny/EndscreenBG'
-            :Points { BOTTOM = PlayerFrame:TOP(0, 2) }
+            .BOTTOM:TOP(0, 2)
         {
             Style'.DefaultBorder'
                 :TexCoord(0.125, 0.59375, 0, 1)
                 :VertexColor(0.5, 0.5, 0.5)
-                :Points { BOTTOMLEFT = (PlayerFrameAlternateManaBar or UIParent):BOTTOMLEFT(5.1, 0),
-                          BOTTOMRIGHT = (PlayerFrameAlternateManaBar or UIParent):BOTTOMRIGHT(-5.1, 0) },
+                .BOTTOMLEFT:BOTTOMLEFT(5.1, 0)
+                .BOTTOMRIGHT:BOTTOMRIGHT(-5.1, 0),
             
             Style'.DefaultBorderLeft'
                 :TexCoord(0, 0.125, 0, 1)
                 :VertexColor(0.5, 0.5, 0.5)
-                :Points { BOTTOMRIGHT = (PlayerFrameAlternateManaBar or UIParent):BOTTOMLEFT(5.1, 0) },
+                .BOTTOMRIGHT:BOTTOMLEFT(5.1, 0),
 
             Style'.DefaultBorderRight'
                 :TexCoord(0.59375, 0.71875, 0, 1)
                 :VertexColor(0.5, 0.5, 0.5)
-                :Points { BOTTOMLEFT = (PlayerFrameAlternateManaBar or UIParent):BOTTOMRIGHT(-5.1, 0) }
+                .BOTTOMLEFT:BOTTOMRIGHT(-5.1, 0)
         },
         
         Style'.healthbar'
@@ -146,8 +141,8 @@ local function update()
             -- :StatusBarTexture 'Interface/TARGETINGFRAME/BarFill2'
             -- :StatusBarTexture 'Interface/Artifact/_Artifacts-DependencyBar-Fill'
             -- :StatusBarTexture 'Interface/BUTTONS/GreyscaleRamp64'
-            :Points { TOPLEFT = PlayerFrame:TOPLEFT(0, -17),
-                      BOTTOMRIGHT = PlayerFrame:BOTTOMRIGHT(0, 3) }
+            .TOPLEFT:TOPLEFT(0, -17)
+            .BOTTOMRIGHT:BOTTOMRIGHT(0, 3)
             :FrameStrata 'LOW'
             :FrameLevel(2),
 
@@ -160,8 +155,8 @@ local function update()
             -- :SetStatusBarTexture 'Interface/RAIDFRAME/Raid-Bar-Hp-Fill'
             -- :SetStatusBarTexture 'Interface/AddOns/ElvUI/Media/Textures/Melli'
             -- :StatusBarTexture 'Interface/Destiny/EndscreenBG'
-            :Points { TOPLEFT = PlayerFrame:TOPLEFT(0, -1),
-                      BOTTOMRIGHT = PlayerFrame:TOPRIGHT(0, -13) }
+            .TOPLEFT:TOPLEFT(0, -1)
+            .BOTTOMRIGHT:TOPRIGHT(0, -13)
             :FrameStrata 'LOW'
             :FrameLevel(2),
 
@@ -191,8 +186,8 @@ local function update()
         },
 
         Frame'.Gcd'
-            :Points { TOPLEFT = PlayerFrame:TOPLEFT(0, -1),
-                      BOTTOMLEFT = PlayerFrame:TOPLEFT(0, -13) }
+            .TOPLEFT:TOPLEFT(0, -1)
+            .BOTTOMLEFT:TOPLEFT(0, -13)
             :Scripts {
                 OnUpdate = function(self)
                     local gcdStart, gcdDuration = GetSpellCooldown(61304)
@@ -224,12 +219,8 @@ local function update()
                 :Texture 'Interface/UNITPOWERBARALT/Generic1Target_Horizontal_Spark'
                 :Width(20)
                 :BlendMode 'ADD'
-                .init(function(self, parent)
-                    self:SetPoints {
-                        TOP = parent:TOPRIGHT(0, 5),
-                        BOTTOM = parent:BOTTOMRIGHT(0, -5)
-                    }
-                end)
+                .TOP:TOPRIGHT(0, 5)
+                .BOTTOM:BOTTOMRIGHT(0, -5)
         }
     }
 
@@ -314,8 +305,8 @@ local function update()
 end
 
 hooksecurefunc('TotemFrame_Update', function()
-    TotemFrame
-        :SetPoints { BOTTOM = PlayerFrame:TOP(0, 8) }
+    Style(TotemFrame)
+        .BOTTOM:TOP(PlayerFrame, 0, 8)
 end)
 
 hooksecurefunc('PlayerFrame_ToVehicleArt', update)
@@ -337,13 +328,13 @@ Frame
 
                 Style(PlayerFrame){
                     Style'.ComboPointPlayerFrame'
-                        :Points { BOTTOM = PlayerFrame:TOP(0, 5) }
+                        .BOTTOM:TOP(PlayerFrame, 0, 5)
                         :FrameStrata 'BACKGROUND'
                     {
                         Style'.Background'
                             :Desaturated(true)
                             :TexCoord(0, 1, 1, 0)
-                            :Points { BOTTOM = (ComboPointPlayerFrame or UIParent):BOTTOM(0, -6) }
+                            .BOTTOM:BOTTOM(ComboPointPlayerFrame, 0, -6)
                     }
                 }
 

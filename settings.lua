@@ -1,3 +1,14 @@
+local ADDON, Addon = ...
+
+
+-- local OptionsPanel = CreateFrame('Frame')
+local OptionsPanel = Addon.FrameSmoothScroll.new()
+OptionsPanel.name = "Silver UI"
+OptionsPanel.lastOption = nil
+SilverUI.OptionsPanel = OptionsPanel
+
+InterfaceOptions_AddCategory(OptionsPanel)
+
 
 local settingsLoaded = false
 local settings = {}
@@ -11,6 +22,36 @@ function SilverUI.Storage(table)
         SilverUISavedVariablesCharacter[table.name] = SilverUISavedVariablesCharacter[table.name] or table.character or {}
         if settings.onload then
             settings.onload(SilverUISavedVariablesAccount[table.name], SilverUISavedVariablesCharacter[table.name])
+        end
+    end
+end
+
+
+local settingGuis = {}
+
+
+function SilverUI.Settings(name)
+    return function(settings)
+        table.insert(settingGuis, { name, settings })
+    end
+end
+
+
+local function buildSettings()
+    for setting=1, #settingGuis do
+        local name = settingGuis[setting][1]
+        local settings = settingGuis[setting][2]
+        local lastOption = OptionsPanel.lastOption
+        for i=1, #settings do
+            local Entry = settings[i]
+            local entry = Entry:Parent(OptionsPanel.Content).new()
+            if lastOption then
+                entry:SetPoint('TOPLEFT', lastOption, 'BOTTOMLEFT', 0, -10)
+            else
+                entry:SetPoint('TOPLEFT', OptionsPanel.Content, 'TOPLEFT', 10, -10)
+            end
+            lastOption = entry
+            OptionsPanel.lastOption = entry
         end
     end
 end
@@ -132,6 +173,8 @@ frame:SetScript("OnEvent", function(self, event, addon)
                 callback(SilverUISavedVariablesAccount[name], SilverUISavedVariablesCharacter[name])
             end
         end
+
+        buildSettings()
 
         local account = SilverUISavedVariablesAccount
         local character = SilverUISavedVariablesCharacter

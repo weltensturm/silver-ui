@@ -13,26 +13,46 @@ local StyleTargetFrameThreat = Style {
         :Alpha(0.1)
         :Texture 'Interface/Masks/CircleMaskScalable'
         :TexCoord(0, 1, 0, 1)
-        :Points { CENTER = TargetFrame:CENTER() }
+        .CENTER:CENTER(TargetFrame)
         :Size(84, 84),
 }
 
 local StyleTargetFrameRetail = Style {
     Style'.TargetFrameContainer' {
-        Style'.FrameTexture':Texture '',
-        Style'.BossPortraitFrameTexture':Texture '',
+        Style'.FrameTexture':Texture '':Alpha(0):Atlas '',
+        Style'.BossPortraitFrameTexture':Texture '':Alpha(0):Atlas '',
         Style'.Portrait'
             :Show()
             :DrawLayer 'ARTWORK'
-            :Points { CENTER = PARENT:CENTER() }
+            .CENTER:CENTER()
             :Size(64, 64),
     },
     Style'.TargetFrameContent' {
         Style'.TargetFrameContentMain' {
-            Style'.LevelText':Points { TOP = PARENT:TOP() },
-            Style'.Name':JustifyH 'MIDDLE':Points { BOTTOM = PARENT:BOTTOM() },
+            Style'.LevelText'.TOP:TOP(),
+            Style'.Name':JustifyH 'MIDDLE'.BOTTOM:BOTTOM(0, 4),
             Style'.ReputationColor':Texture '':Alpha(0),
+        },
+        Style'.TargetFrameContentContextual' {
+            Style'.NumericalThreat' {
+                Style'.FontString':Alpha(0),
+                Style'.Texture':Alpha(0)
+            }
         }
+    },
+    Style'.totFrame' {
+        Style'.Texture':Hide(),
+        Style'.HealthBar'
+            .TOPLEFT:TOPLEFT(0, -20)
+            .BOTTOMRIGHT:TOPRIGHT(0, -22)
+        {
+            Style'.HealthBarMask':Hide()
+        },
+        Style'.ManaBar':Hide(),
+        Style'.Name'
+            .TOPLEFT:TOPLEFT(0, -6)
+            .BOTTOMRIGHT:TOPRIGHT(0, -19)
+            :JustifyH 'MIDDLE'
     }
 }
 
@@ -47,46 +67,34 @@ addon:SetEventHooks {
             Style'.textureFrame' {
                 Style'.Texture':Texture '',
                 Style'.texture':Texture 'Interface/TARGETINGFRAME/UI-TARGETINGFRAME-MINUS',
-                Style'.*LevelText' .. function(self)
-                    self:SetPoints {
-                        BOTTOM = self:GetParent():BOTTOM(0, 10)
-                    }
-                end,
-                Style'.TargetFrameTextureFrameName'
-                .. function(self)
-                    self:SetPoints { TOP = self:GetParent():TOP() }
-                end
+                Style'.*LevelText'.BOTTOM:BOTTOM(0, 10),
+                Style'.TargetFrameTextureFrameName'.TOP:TOP()
             },
             Style'.nameBackground':Texture '',
             Style'.Background':Texture '',
 
             Style'.portrait'
-                :DrawLayer 'ARTWORK'
-                .. function(self) self:SetPoints { CENTER = self:GetParent():CENTER() } end,
+                :DrawLayer 'ARTWORK'.CENTER:CENTER(),
 
             Frame'.BgContainer'
                 :FrameStrata 'BACKGROUND'
                 :FrameLevel(0)
                 :Size(92, 92)
-                .init(function(self, parent) self:SetAllPoints(parent) end)
+                :AllPoints(PARENT)
             {
                 Texture'.BarCircularBgBlack'
                     :Texture('Interface/GUILDFRAME/GuildLogoMask_L')
                     :Size(88, 88)
                     :SetDrawLayer('BACKGROUND', 0)
                     :VertexColor(0, 0, 0, 0.7)
-                    .init(function(self, parent)
-                        self:SetPoints { CENTER = parent:CENTER() }
-                    end),
+                    .CENTER:CENTER(),
                 -- Texture'.BarCircularBg'
                 --     -- :Texture('Interface/GUILDFRAME/GuildLogoMask_L')
                 --     :Texture 'Interface/Masks/CircleMaskScalable'
                 --     :Size(84, 84)
                 --     :SetDrawLayer('BACKGROUND', 1)
                 --     :VertexColor(0, 0, 0, 0.7)
-                --     .init(function(self, parent)
-                --         self:SetPoints { CENTER = parent:CENTER() }
-                --     end),
+                --     .CENTER:CENTER()
             },
 
             Cooldown'.HealthBarCircular'
@@ -101,9 +109,7 @@ addon:SetEventHooks {
                 :Rotation(math.rad(90))
                 :HideCountdownNumbers(true)
                 :Reverse(true)
-                .init(function(self, parent)
-                    self:SetPoints { CENTER = parent:CENTER() }
-                end)
+                .CENTER:CENTER()
                 :Show()
                 :CooldownDuration(1)
                 :Pause()
@@ -133,9 +139,7 @@ addon:SetEventHooks {
                 :Rotation(math.rad(-90))
                 :HideCountdownNumbers(true)
                 :Reverse(true)
-                .init(function(self, parent)
-                    self:SetPoints { CENTER = parent:CENTER() }
-                end)
+                .CENTER:CENTER()
                 :Show()
                 :CooldownDuration(1)
                 :Pause()
@@ -162,25 +166,21 @@ addon:SetEventHooks {
                 :FrameLevel(3)
             {
                 Texture'.BarCircularBg'
+                    .CENTER:CENTER()
                     -- :Texture('Interface/GUILDFRAME/GuildLogoMask_L')
                     :Texture 'Interface/Masks/CircleMaskScalable'
                     :Size(80, 80)
                     :SetDrawLayer('BORDER', 1)
-                    :VertexColor(0, 0, 0, 0.4)
-                    .init(function(self, parent)
-                        self:SetPoints { CENTER = parent:CENTER() }
-                    end),
+                    :VertexColor(0, 0, 0, 0.4),
 
                 Texture'.HealthBarCircularBgInner'
+                    .CENTER:CENTER()
                     :Texture('Interface/GUILDFRAME/GuildLogoMask_L')
                     :Size(82, 82)
                     -- :SwipeTexture('Interface/Masks/CircleMaskScalable')
                     :VertexColor(0.1, 0.1, 0.1, 1)
                     -- :FrameStrata('BACKGROUND', 1)
-                    :DrawLayer 'BORDER'
-                    .init(function(self, parent)
-                        self:SetPoints { CENTER = parent:CENTER() }
-                    end),
+                    :DrawLayer 'BORDER',
             }
 
         }
@@ -194,17 +194,15 @@ addon:SetEventHooks {
             StyleTargetFrameRetail,
             Style'.textureFrame' {
                 Style'.*LevelText'
-                    :Points {
-                        BOTTOM = TargetFrame:BOTTOM()
-                    },
-                Style'.*DeadText':Points { BOTTOM = TargetFrame:BOTTOM(0, 18) },
+                    .BOTTOM:BOTTOM(TargetFrame),
+                Style'.*DeadText'.BOTTOM:BOTTOM(TargetFrame, 0, 18),
                 Style'.texture':Texture '':Alpha(0),
             },
             Style'.TargetFrameContent.TargetFrameContentMain' {
                 Style'.ManaBar':Alpha(0),
                 Style'.HealthBar':Alpha(0),
                 Style'.healthbar':Alpha(0),
-                Style'.spellbarAnchor':Points { TOP = TargetFrame:BOTTOM() },
+                Style'.spellbarAnchor'.TOP:BOTTOM(TargetFrame),
                 Style'.TargetFrameDebuff#':Alpha(0),
                 Style'.TargetFrameBuff#':Alpha(0),
             }

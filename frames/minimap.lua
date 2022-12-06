@@ -3,6 +3,7 @@ local
     Style,
     Frame,
     Cooldown,
+    CheckButton,
     Texture,
     FontString,
     MaskTexture
@@ -10,9 +11,63 @@ local
     LQT.Style,
     LQT.Frame,
     LQT.Cooldown,
+    LQT.CheckButton,
     LQT.Texture,
     LQT.FontString,
     LQT.MaskTexture
+
+
+local db
+local load
+
+
+SilverUI.Storage {
+    name = 'Minimap',
+    character = {
+        enabled = true
+    },
+    onload = function(account, character)
+        db = character
+        if character.enabled then
+            load()
+        end
+    end
+}
+
+
+SilverUI.Settings 'Minimap' {
+
+    Frame:Size(4, 4),
+
+    FontString
+        :Font('Fonts/FRIZQT__.ttf', 16, '')
+        :TextColor(1, 0.8196, 0)
+        :Text 'Minimap',
+
+    CheckButton
+        :Size(24, 24)
+        :NormalTexture 'Interface/Buttons/UI-CheckBox-Up'
+        :PushedTexture 'Interface/Buttons/UI-CheckBox-Down'
+	 	:HighlightTexture 'Interface/Buttons/UI-CheckBox-Highlight'
+        :CheckedTexture 'Interface/Buttons/UI-CheckBox-Check'
+        :DisabledCheckedTexture 'Interface/Buttons/UI-CheckBox-Check-Disabled'
+        :HitRectInsets(-4, -100, -4, -4)
+        :Hooks {
+            OnClick = function(self)
+                db.enabled = self:GetChecked()
+            end
+        }
+    {
+        function(self)
+            self:SetChecked(db.enabled)
+        end,
+        FontString'.Label'
+            .LEFT:RIGHT()
+            :Font('Fonts/FRIZQT__.ttf', 12, '')
+            :Text 'Enable'
+    }
+
+}
 
 
 local Hide = Style:Hide()
@@ -37,41 +92,35 @@ local StyleMinimapCluster = Style
     Hide'.MinimapBorderTop',
     Hide'.MinimapBorder',
     Style'.BorderTop'
-        :Points { TOP = MinimapCluster:TOP(0, -17) }
+        .TOP:TOP(MinimapCluster, 0, -17)
     {
         Hide'.Texture'
     },
     Style'.MinimapZoneTextButton'
-        :Points {
-            TOP = Minimap:TOP(0, -6-MAP_INSET)
-        }
+        .TOP:TOP(Minimap, 0, -6-MAP_INSET)
         :Width(100)
         :Hooks(alphaHooks),
     Style'.Tracking'
-        :Points {
-            CENTER = Minimap:LEFT(5, -5)
-        },
+        .CENTER:LEFT(Minimap, 5, -5),
     Style'.ZoneTextButton'
         :AllPoints(MinimapCluster.BorderTop)
     {
-        Style'.FontString':JustifyH('MIDDLE')
+        Style'.FontString'
+            :JustifyH 'CENTER'
+            :AllPoints(PARENT)
     },
     Style'.TimeManagerClockButton'
-        :Points { BOTTOM = Minimap:BOTTOM(0, 0) }
+        .BOTTOM:BOTTOM(Minimap, 0, MAP_INSET)
     {
         Hide'.Texture'
     },
     Style'.MiniMapTrackingButtonBorder':Texture '',
     Style'.MiniMapTrackingBackground':Texture '',
-        
+
     Style'.Minimap'
-        -- :Size(200, 200)
-        -- :Points { TOPRIGHT = MinimapCluster:TOPRIGHT(-10, -20) }
-        :Points { CENTER = MinimapCluster:CENTER() }
-        :Size(175, 175)
-        -- :MaskTexture 'Interface/GUILDFRAME/GuildLogoMask_L'
-        -- :MaskTexture 'Interface/Masks/CircleMaskScalable'
-        :MaskTexture 'Interface/CHARACTERFRAME/TempPortraitAlphaMask'
+        .CENTER:CENTER()
+        :Size(195, 195)
+        :MaskTexture 'Interface/AddOns/silver-ui/art/circle'
         :Hooks {
             OnMouseWheel = function(self, delta)
                 if WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE then
@@ -83,17 +132,17 @@ local StyleMinimapCluster = Style
     {
         function(self)
             if self.SetQuestBlobRingScalar then
-                self:SetQuestBlobRingScalar(0.8)
+                self:SetQuestBlobRingScalar(0.98)
             end
             if self.SetTaskBlobRingScalar then
-                self:SetTaskBlobRingScalar(0.8)
+                self:SetTaskBlobRingScalar(0.98)
             end
         end,
 
         Style'.Button':Hooks(alphaHooks),
         
         Style'.MinimapBackdrop'
-            :SetAllPoints(Minimap)
+            :AllPoints(Minimap)
         {
             Hide'.MinimapZoomIn',
             Hide'.MinimapZoomOut',
@@ -106,28 +155,36 @@ local StyleMinimapCluster = Style
         },
 
         Texture'.BgOuter'
-            :Texture 'Interface/GUILDFRAME/GuildLogoMask_L'
-            -- :Texture 'Interface/CHARACTERFRAME/TempPortraitAlphaMask'
-            :Points { TOPLEFT = Minimap:TOPLEFT(-19-MAP_INSET, 19+MAP_INSET),
-                    BOTTOMRIGHT = Minimap:BOTTOMRIGHT(19+MAP_INSET, -19-MAP_INSET) }
+            .TOPLEFT:TOPLEFT(-1.5, 1.5)
+            .BOTTOMRIGHT:BOTTOMRIGHT(1.5, -1.5)
+            :Texture 'Interface/AddOns/silver-ui/art/circle'
             :DrawLayer 'BACKGROUND'
             :VertexColor(0, 0, 0, 1),
 
         Texture'.Bg'
-            :Texture 'Interface/GUILDFRAME/GuildLogoMask_L'
-            -- :Texture 'Interface/CHARACTERFRAME/TempPortraitAlphaMask'
-            :Points { TOPLEFT = Minimap:TOPLEFT(-18-MAP_INSET, 18+MAP_INSET),
-                    BOTTOMRIGHT = Minimap:BOTTOMRIGHT(18+MAP_INSET, -18-MAP_INSET) }
+            .TOPLEFT:TOPLEFT(-1, 1)
+            .BOTTOMRIGHT:BOTTOMRIGHT(1, -1)
+            :Texture 'Interface/AddOns/silver-ui/art/circle'
             :DrawLayer 'BACKGROUND'
             :VertexColor(0.15, 0.1, 0.1, 0.8),
             
-        Frame'.ShadowFrame':FrameStrata 'BACKGROUND' {
-            Texture'.Shadow'
-                :Points { TOPLEFT = MinimapCluster:TOPLEFT(20+MAP_INSET, -20-MAP_INSET),
-                        BOTTOMRIGHT = MinimapCluster:BOTTOMRIGHT(-20-MAP_INSET, 20+MAP_INSET) }
+        Frame'.ShadowFrame'
+            :FrameStrata 'BACKGROUND'
+            .TOPLEFT:TOPLEFT(-12, 12)
+            .BOTTOMRIGHT:BOTTOMRIGHT(12, -12)
+        {
+            Texture'.Shadow30'
+                :AllPoints(PARENT)
                 :Texture('Interface/Masks/CircleMaskScalable')
                 :DrawLayer 'BACKGROUND'
-                :VertexColor(0,0,0, 0.5)
+                :VertexColor(0,0,0, 0.3)
+                :Rotation(30),
+            Texture'.Shadow45'
+                :AllPoints(PARENT)
+                :Texture('Interface/Masks/CircleMaskScalable')
+                :DrawLayer 'BACKGROUND'
+                :VertexColor(0,0,0, 0.3)
+                :Rotation(45)
         },
 
         Style'.TimeManagerClockButton' {
@@ -135,15 +192,15 @@ local StyleMinimapCluster = Style
         },
 
         Texture'.ZoneBackground'
+            .TOPLEFT:TOPLEFT(0, -3+MAP_INSET)
+            .TOPRIGHT:TOPRIGHT(0, -3+MAP_INSET)
             :Texture 'Interface/Common/ShadowOverlay-Top'
-            :Points { TOPLEFT = Minimap:TOPLEFT(0, -3+MAP_INSET),
-                    TOPRIGHT = Minimap:TOPRIGHT(0, -3+MAP_INSET) }
             :Height(30),
 
         Texture'.ClockBackground'
+            .BOTTOMLEFT:BOTTOMLEFT(0, 3-MAP_INSET)
+            .BOTTOMRIGHT:BOTTOMRIGHT(0, 3-MAP_INSET)
             :Texture 'Interface/Common/ShadowOverlay-Bottom'
-            :Points { BOTTOMLEFT = Minimap:BOTTOMLEFT(0, 3-MAP_INSET),
-                    BOTTOMRIGHT = Minimap:BOTTOMRIGHT(0, 3-MAP_INSET) }
             :Height(30),
         
         MaskTexture'.ZoneBackgroundMask'
@@ -151,22 +208,19 @@ local StyleMinimapCluster = Style
                 Minimap.ZoneBackground:AddMaskTexture(self)
                 Minimap.ClockBackground:AddMaskTexture(self)
             end)
-            -- :Texture 'Interface/GUILDFRAME/GuildLogoMask_L'
-            :Texture 'Interface/CHARACTERFRAME/TempPortraitAlphaMask'
-            :Points { TOPLEFT = Minimap:TOPLEFT(4+MAP_INSET, -4-MAP_INSET),
-                    BOTTOMRIGHT = Minimap:BOTTOMRIGHT(-4-MAP_INSET, 4+MAP_INSET) },
+            :Texture 'Interface/AddOns/silver-ui/art/circle'
+            .TOPLEFT:TOPLEFT(4+MAP_INSET, -4-MAP_INSET)
+            .BOTTOMRIGHT:BOTTOMRIGHT(-4-MAP_INSET, 4+MAP_INSET),
     
         Cooldown'.XPBG'
-            :UseCircularEdge(true)
-            :Points { TOPLEFT = Minimap:TOPLEFT(-20.5-MAP_INSET, 20.5+MAP_INSET),
-                    BOTTOMRIGHT = Minimap:BOTTOMRIGHT(20.5+MAP_INSET, -20.5-MAP_INSET) }
-            :Cooldown(GetTime() - UnitXP('player')/UnitXPMax('player')*0.964, 1)
+            :DrawEdge(false)
+            .TOPLEFT:TOPLEFT(-3.5, 3.5)
+            .BOTTOMRIGHT:BOTTOMRIGHT(3.5, -3.5)
+            :Cooldown(GetTime(), 1)
             :Rotation(math.rad(180*1.035))
-            :SwipeTexture 'Interface/GUILDFRAME/GuildLogoMask_L'
-            -- :SwipeTexture 'Interface/CHARACTERFRAME/TempPortraitAlphaMask'
+            :SwipeTexture 'Interface/AddOns/silver-ui/art/circle'
             -- :SwipeColor(0.2, 1, 0.5, 1)
             :SwipeColor(1, 1, 1, 1)
-            :DrawEdge(false)
             :FrameStrata('BACKGROUND', 1)
             :HideCountdownNumbers(true)
             :Reverse(true)
@@ -183,28 +237,25 @@ local StyleMinimapCluster = Style
                 target = UnitXP('player')/UnitXPMax('player'),
                 start = GetTime()
             }
-            :UseCircularEdge(true)
-            :Points { TOPLEFT = Minimap:TOPLEFT(-20.5-MAP_INSET, 20.5+MAP_INSET),
-                    BOTTOMRIGHT = Minimap:BOTTOMRIGHT(20.5+MAP_INSET, -20.5-MAP_INSET) }
+            :DrawEdge(false)
+            .TOPLEFT:TOPLEFT(-3.5, 3.5)
+            .BOTTOMRIGHT:BOTTOMRIGHT(3.5, -3.5)
             :Cooldown(GetTime(), 1)
             :Pause()
             :Rotation(math.rad(180*1.035))
-            :SwipeTexture 'Interface/GUILDFRAME/GuildLogoMask_L'
-            -- :SwipeTexture 'Interface/CHARACTERFRAME/TempPortraitAlphaMask'
+            :SwipeTexture 'Interface/AddOns/silver-ui/art/circle'
             :SwipeColor(0.3, 0.3, 0.3, 1)
-            :DrawEdge(true)
             :FrameStrata('BACKGROUND', 2)
             :HideCountdownNumbers(true)
             :Reverse(true)
             :Events {
                 PLAYER_XP_UPDATE = function(self)
                     self.target = UnitXP('player')/math.max(UnitXPMax('player'), 1)
-                    print(target)
                     self.start = GetTime()
                     -- self:SetCooldown(GetTime() - UnitXP('player')/UnitXPMax('player')*0.965, 1)
                 end,
                 PLAYER_ENTERING_WORLD = function(self)
-                    self.progress = -0.001
+                    self.progress = 0.001
                     self:SetCooldownDuration(1)
                 end
             }
@@ -219,7 +270,7 @@ local StyleMinimapCluster = Style
             },
 
         Frame'.Level'
-            :Points { CENTER = Minimap:BOTTOM(0, 0) }
+            .CENTER:BOTTOM(0, MAP_INSET)
             :Events {
                 PLAYER_LEVEL_CHANGED = function(self, old, new)
                     self.Text:SetText(new)
@@ -228,17 +279,16 @@ local StyleMinimapCluster = Style
         {
             FontString'.Text'
                 :Font('FONTS/FRIZQT__.ttf', 10, '')
-                :Points { CENTER = Minimap:BOTTOM(0, -3-MAP_INSET) }
+                .CENTER:BOTTOM(Minimap, 0, -MAP_INSET)
                 :Size(50, 50)
                 .init(function(self)
                     self:SetText(UnitLevel('player'))
                 end),
             Frame'.BgFrame':FrameStrata 'BACKGROUND' {
                 Texture'.Bg'
-                    -- :Texture 'Interface/GUILDFRAME/GuildLogoMask_L'
-                    :Texture 'Interface/CHARACTERFRAME/TempPortraitAlphaMask'
+                    :Texture 'Interface/AddOns/silver-ui/art/circle'
                     :Size(22, 22)
-                    :Points { CENTER = Minimap:BOTTOM(0, 1-MAP_INSET) }
+                    .CENTER:BOTTOM(Minimap, 0, 3-MAP_INSET)
                     :VertexColor(0, 0, 0, 0.5)
             }
         }
@@ -251,49 +301,52 @@ local StyleMinimapCluster = Style
 local libDbIcons = {}
 local once = false
 
-Frame
-    :Hooks {
-        OnUpdate = function(self, dt)
-            if alpha ~= alphaTarget then
-                
-                local sign = alpha >= alphaTarget and -1 or 1
-                alpha = math.min(1, math.max(0, alpha + sign * dt*5))
 
-                MinimapBackdrop:SetAlpha(alpha^2)
-                for _, v in ipairs(libDbIcons) do
-                    v:SetAlpha(alpha^2)
-                end
-            end
-        end
-    }
-    :EventHooks {
-        PLAYER_ENTERING_WORLD = function()
-            if once then return end
-            once = true
+load = function()
+    Frame
+        :Hooks {
+            OnUpdate = function(self, dt)
+                if alpha ~= alphaTarget then
+                    
+                    local sign = alpha >= alphaTarget and -1 or 1
+                    alpha = math.min(1, math.max(0, alpha + sign * dt*5))
 
-            if LibStub then
-                libDbIcons = {}
-                for k, v in pairs(LibStub.libs) do
-                    if k:find('^LibDBIcon-') then
-                        for name, button in pairs(v.objects) do
-                            Style(button)
-                                :Hooks(alphaHooks)
-                            table.insert(libDbIcons, button)
-                        end
+                    MinimapBackdrop:SetAlpha(alpha^2)
+                    for _, v in ipairs(libDbIcons) do
+                        v:SetAlpha(alpha^2)
                     end
                 end
             end
-        
-            Style(UIWidgetTopCenterContainerFrame)
-                :Points { TOP = MinimapCluster:BOTTOM(0, -4) }
+        }
+        :EventHooks {
+            PLAYER_ENTERING_WORLD = function()
+                if once then return end
+                once = true
 
-            if WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE then
-                MinimapCluster:SetPoints { TOPRIGHT = UIParent:TOPRIGHT(0, -15) }
+                if LibStub then
+                    libDbIcons = {}
+                    for k, v in pairs(LibStub.libs) do
+                        if k:find('^LibDBIcon-') then
+                            for name, button in pairs(v.objects) do
+                                Style(button)
+                                    :Hooks(alphaHooks)
+                                table.insert(libDbIcons, button)
+                            end
+                        end
+                    end
+                end
+            
+                Style(UIWidgetTopCenterContainerFrame)
+                    .TOP:BOTTOM(MinimapCluster, 0, -4)
+
+                if WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE then
+                    MinimapCluster:ClearAllPoints()
+                    MinimapCluster:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', 0, -15)
+                end
+
+                StyleMinimapCluster(MinimapCluster)
+
             end
-
-            StyleMinimapCluster(MinimapCluster)
-
-        end
-    }
-    .new()
-
+        }
+        .new()
+end

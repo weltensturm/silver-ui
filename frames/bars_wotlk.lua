@@ -67,19 +67,6 @@ end
 local addon = Frame
     :EventHooks {
         PLAYER_ENTERING_WORLD = function()
-            Style(OrderHallCommandBar)
-                :FrameStrata 'LOW'
-                :Points {
-                    BOTTOM = UIParent:TOP()
-                }
-            {
-                Style'.Background':Texture '',
-                Style'.ClassIcon':Texture '',
-                Style'.AreaName':Hide(),
-                Style'.Currency':Points {
-                    TOPLEFT = UIParent:TOPLEFT(150, -5)
-                }
-            }
             Style(MainMenuBar)
                 :FrameStrata 'LOW'
                 -- :Points { BOTTOM = UIParent:TOP() }
@@ -199,8 +186,8 @@ local FrameActionBar = Frame
             if self.Anim ~= MAnim then
                 self.Anim = MAnim
                 local anim = MAnim^2
-                self.ArtFrame:SetPoints { BOTTOMLEFT = self:BOTTOMLEFT(0, -anim*60),
-                                          TOPRIGHT = self:TOPRIGHT(0, -anim*60) }
+                self.ArtFrame:SetPoint('BOTTOMLEFT', self, 'BOTTOMLEFT', 0, -anim*60)
+                self.ArtFrame:SetPoint('TOPRIGHT', self, 'TOPRIGHT', 0, -anim*60)
             end
         end
     }
@@ -215,12 +202,8 @@ local FrameActionBar = Frame
             :DrawLayer 'BACKGROUND'
             :VertexColor(0.7, 0.7, 0.7)
             :TexCoord(unpack(BG_TEXCOORD))
-            .init(function(self, parent)
-                self:SetPoints {
-                    TOPLEFT = parent:TOPLEFT(0, 6.5),
-                    BOTTOMRIGHT = parent:BOTTOMRIGHT(0, -0.5)
-                }
-            end)
+            .TOPLEFT:TOPLEFT(0, 6.5)
+            .BOTTOMRIGHT:BOTTOMRIGHT(0, -0.5)
     },
 
     Frame'.ArtShadow'
@@ -229,12 +212,8 @@ local FrameActionBar = Frame
         Texture'.Shadow'
             :Texture 'Interface/Common/ShadowOverlay-Bottom'
             :Height(100)
-            .init(function(self, parent)
-                self:SetPoints {
-                    BOTTOMLEFT = parent:GetParent():BOTTOMLEFT(0, -1),
-                    BOTTOMRIGHT = parent:GetParent():BOTTOMRIGHT(0, -1)
-                }
-            end)
+            .BOTTOMLEFT:BOTTOMLEFT(PARENT:GetParent(), 0, -1)
+            .BOTTOMRIGHT:BOTTOMRIGHT(PARENT:GetParent(), 0, -1)
     }
 }
 
@@ -246,14 +225,14 @@ local ActionBarMiddle = FrameActionBar
 
 local ActionBarLeft = FrameActionBar
     :ButtonPrefix 'MultiBarBottomLeftButton'
-    :Points { TOPRIGHT = ActionBarMiddle:TOPLEFT(),
-              BOTTOMRIGHT = ActionBarMiddle:BOTTOMLEFT() }
+    .TOPRIGHT:TOPLEFT(ActionBarMiddle)
+    .BOTTOMRIGHT:BOTTOMLEFT(ActionBarMiddle)
     .new()
 
 local ActionBarRight = FrameActionBar
     :ButtonPrefix 'MultiBarBottomRightButton'
-    :Points { TOPLEFT = ActionBarMiddle:TOPRIGHT(),
-              BOTTOMLEFT = ActionBarMiddle:BOTTOMRIGHT() }
+    .TOPLEFT:TOPRIGHT(ActionBarMiddle)
+    .BOTTOMLEFT:BOTTOMRIGHT(ActionBarMiddle)
     .new()
 
 
@@ -272,8 +251,10 @@ for barname, bar in pairs(bars) do
 
         Style(btn)
             :Hooks(MouseHooks)
-            :Points(prev and { BOTTOMLEFT = bar:BOTTOMLEFT(BTN_OUTER+(i-1)*(BTN_WIDTH+BTN_INNER), BTN_OUTER) }
-                          or { BOTTOMLEFT = bar:BOTTOMLEFT(BTN_OUTER, BTN_OUTER) })
+            .BOTTOMLEFT:BOTTOMLEFT(bar,
+                                   prev and BTN_OUTER+(i-1)*(BTN_WIDTH+BTN_INNER)
+                                         or BTN_OUTER,
+                                   BTN_OUTER)
             :Size(BTN_WIDTH, BTN_WIDTH)
             -- :FrameStrata('MEDIUM', 1)
         {

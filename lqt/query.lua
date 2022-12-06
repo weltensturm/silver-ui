@@ -25,46 +25,40 @@ local function has_value(table, value)
 end
 
 
-local function matches(obj, selector, attr_name)
+local function IterArgs(fn, ...)
+    for i=1, select('#', ...) do
+        fn(select(i, ...))
+    end
+end
+
+
+local function matches(obj, selector, parent)
     if selector == '*' then
+        return true
+    elseif parent and parent[selector] == obj then
         return true
     elseif selector:find(':') then
         local found = true
         for part in selector:gmatch('%s*([^:]+)') do
-            found = found and matches(obj, part, attr_name)
+            found = found and matches(obj, part, parent)
         end
         return found
     else
         selector = '^' .. selector:gsub("%*", ".*"):gsub("#", "%%d+") .. '$'
         local name = obj:GetName()
+        local attr_name = nil
+        for k, v in pairs(parent or {}) do
+            if v == obj then
+                attr_name = k
+                break
+            end
+        end
         return
                 selector == '^NOATTR$' and (not attr_name or #attr_name == 0) or
                 selector == '^NONAME$' and not name or
                 attr_name and string.match(attr_name, selector) or
                 string.match(obj:GetObjectType(), selector) or
                 name and string.match(name, selector)
-    end
-end
-
-
-local function children(obj)
-    if obj == UIParent then
-        local found = {}
-    
-        local object = EnumerateFrames()
-        while object do
-            if not object:IsForbidden() and not found[object] and object:GetParent() == UIParent then
-                found[object] = true
-            end
-            object = EnumerateFrames(object)
-        end
-        
-        return keys(found)
-    else
-        if obj.GetRegions and obj.GetChildren then
-            return values(merge({ obj:GetRegions() }, { obj:GetChildren() }))
-        end
-        return values({})
     end
 end
 
@@ -88,10 +82,10 @@ local function parent_anchor_value(t, obj, anchoridx)
 end
 
 
-local function order_keys_by_anchors(parent, t)
+local function sortByAnchors(t)
     local result = {}
     local anchoridx = {}
-    for obj, _ in pairs(t) do
+    for _, obj in pairs(t) do
         if not anchoridx[obj] then
             parent_anchor_value(t, obj, anchoridx)
         end
@@ -142,32 +136,32 @@ local function lqt_result(table)
                 end
             end
         end,
-        __index = function(self, i)
+        __index = function(self, attr)
             return function(self, ...)
                 if self ~= table then
-                    return lqt_result_meta[i](table, self, ...)
+                    return lqt_result_meta[attr](table, self, ...)
                 else
-                    for _, entry in pairs(self) do
-                        local name = entry:GetName()
-                        assert(entry[i], entry:GetObjectType() .. (name and (' ' .. name) or '') .. ' has no function named ' .. i)
+                    for i = 1, #self do
+                        local name = rawget(self, i):GetName()
+                        assert(rawget(self, i)[attr], rawget(self, i):GetObjectType() .. (name and (' ' .. name) or '') .. ' has no function named ' .. attr)
                     end
-                    for _, entry in pairs(self) do
-                        entry[i](entry, ...)
+                    for i = 1, #self do
+                        rawget(self, i)[attr](rawget(self, i), ...)
                     end
                     return self
                 end
             end
         end,
-        __concat = function(self, right)
-            and_then = right
-            for at_k, at_v in pairs(self) do
-                for _, v in pairs(and_then) do
-                    local name = at_v:GetName()
-                    assert(at_v[v[1]], at_v:GetObjectType() .. (name and (' ' .. name) or '') .. ' has no function named ' .. v[1])
-                end
-            end
-            return self
-        end
+        -- __concat = function(self, right)
+        --     and_then = right
+        --     for at_k, at_v in pairs(self) do
+        --         for _, v in pairs(and_then) do
+        --             local name = at_v:GetName()
+        --             assert(at_v[v[1]], at_v:GetObjectType() .. (name and (' ' .. name) or '') .. ' has no function named ' .. v[1])
+        --         end
+        --     end
+        --     return self
+        -- end
     }
     setmetatable(table, meta)
     return table
@@ -184,62 +178,132 @@ function lqt_result_meta:filter(fn)
     return lqt_result(filtered)
 end
 
+function lqt_result_meta:sort(fn)
+    if fn then
+        return lqt_result(fn(self))
+    else
+        return lqt_result(sortByAnchors(self))
+    end
+end
+
+function lqt_result_meta:all()
+    return { unpack(self) }
+end
+
+
+local pattern_cache = {}
+local compile_pattern = function(str)
+    if pattern_cache[str] then return pattern_cache[str]() end
+    local multipattern
+    local index_selector, index_remainder
+    local global_selector, global_remainder
+    if str:find(',') then
+        multipattern = {}
+        for part in str:gmatch('%s*([^,]+)') do
+            table.insert(multipattern, part)
+        end
+    elseif str:sub(1, 1) == '.' then
+        str = str:sub(2)
+        index_selector, index_remainder = split_at_find(str, '[%.%s]')
+        index_remainder = strtrim(index_remainder)
+        if tonumber(index_selector) ~= nil then
+            index_selector = tonumber(index_selector)
+        end
+    else
+        global_selector, global_remainder = split_at_find(str, '[%.%s]')
+        global_remainder = strtrim(global_remainder)
+    end
+    local compiled = function()
+        return
+            multipattern,
+            index_selector,
+            index_remainder,
+            global_selector,
+            global_remainder
+    end
+    pattern_cache[str] = compiled
+    return compiled()
+end
+
 
 local function query(obj, pattern, constructor, found)
+    if not obj.GetRegions or not obj.GetChildren then return lqt_result {} end
     if type(pattern) == 'table' then
-        return apply_style(lqt_result({ obj }), pattern)
+        return apply_style({ obj }, pattern)
     end
     local root = not found
     local found = found or {}
-    if pattern:find(',') then
-        for part in pattern:gmatch('%s*([^,]+)') do
-            query(obj, part, constructor, found)
+    local 
+        multipattern,
+        index_selector,
+        index_remainder,
+        global_selector,
+        global_remainder
+            = compile_pattern(pattern)
+    if multipattern then
+        for i = 1, #multipattern do
+            query(obj, multipattern[i], constructor, found)
         end
-    elseif pattern:sub(1, 1) == '.' then
-        pattern = strsub(pattern, 2)
-
-        local selector, remainder = split_at_find(pattern, '[%.%s]')
-        remainder = strtrim(remainder)
-
-        if tonumber(selector) ~= nil then
-            selector = tonumber(selector)
-        end
-
-        if #remainder == 0 then
+    elseif obj ~= UIParent and index_selector then
+        if #index_remainder == 0 then
             if constructor then
-                if not obj[selector] then
-                    obj[selector] = constructor(obj)
+                if not obj[index_selector] or obj[index_selector]:GetParent() ~= obj then
+                    obj[index_selector] = constructor(obj)
                 end
-                return lqt_result { obj[selector] }
+                return lqt_result { obj[index_selector] }
             end
         end
 
-        local attrs = {}
-        for k, v in pairs(obj) do
-            attrs[v] = k
-        end
-        for child in children(obj) do
-            if matches(child, selector, attrs[child]) then
-                -- print("FOUND", obj:GetName(), selector, '=', child:GetObjectType(), child:GetName())
-                if remainder == '' then
-                    found[child] = true
-                else
-                    query(child, remainder, constructor, found)
+        IterArgs(
+            function(child)
+                if not found[child] and matches(child, index_selector, obj) then
+                    if #index_remainder == 0 then
+                        found[child] = true
+                    else
+                        query(child, index_remainder, constructor, found)
+                    end
                 end
-            end
-        end
+            end,
+            obj:GetRegions()
+        )
+        IterArgs(
+            function(child)
+                if not found[child] and matches(child, index_selector, obj) then
+                    if #index_remainder == 0 then
+                        found[child] = true
+                    else
+                        query(child, index_remainder, constructor, found)
+                    end
+                end
+            end,
+            obj:GetChildren()
+        )
+        IterArgs(
+            function(child)
+                if not found[child] and matches(child, index_selector, obj) then
+                    if #index_remainder == 0 then
+                        found[child] = true
+                    else
+                        query(child, index_remainder, constructor, found)
+                    end
+                end
+            end,
+            obj:GetAnimationGroups()
+        )
     else
-        local selector, remainder = split_at_find(pattern, '[%.%s]')
-        remainder = strtrim(remainder)
-        if #remainder > 0 then
-            query(_G[selector], remainder, constructor, found)
-            -- return _G[selector](remainder, constructor)
-        elseif _G[selector] then
-            found[_G[selector]] = true
+        assert(obj == UIParent)
+        if #global_remainder > 0 then
+            query(_G[global_selector], global_remainder, constructor, found)
+        elseif _G[global_selector] then
+            found[_G[global_selector]] = true
         end
     end
     if root then
-        return lqt_result(order_keys_by_anchors(obj, found))
+        local result = {}
+        for frame, _ in pairs(found) do
+            table.insert(result, frame)
+        end
+        return lqt_result(result)
     end
 end
 

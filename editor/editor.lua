@@ -205,9 +205,10 @@ local ButtonAddonScript = Btn
 {
     Style'.Text'
         :JustifyH 'LEFT'
-        :Points { TOPLEFT = PARENT:TOPLEFT(10, 0),
-                  BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-10, 0) },
-    Texture'.Edited':Points { RIGHT = PARENT:RIGHT(-4,0) }
+        .TOPLEFT:TOPLEFT(10, 0)
+        .BOTTOMRIGHT:BOTTOMRIGHT(-10, 0),
+    Texture'.Edited'
+        .RIGHT:RIGHT(-4,0)
         :Texture 'Interface/BUTTONS/UI-GuildButton-OfficerNote-Disabled'
         :Size(16, 16),
     ContextMenu'.ContextMenu' {
@@ -232,7 +233,7 @@ local FrameAddonSection = Frame
             self.settings = character
             self.Head:SetText(name)
             self {
-                Style'.Script#':Hide():Points { TOP = self:TOP() }
+                Style'.Script#':Hide().TOP:TOP()
             }
             local height = 28
             local previous = self.Head
@@ -240,7 +241,8 @@ local FrameAddonSection = Frame
                 self {
                     ButtonAddonScript('.Script' .. i)
                         :Height(18)
-                        :Points { TOPLEFT = previous:BOTTOMLEFT(), RIGHT = self:RIGHT() }
+                        .TOPLEFT:BOTTOMLEFT(previous)
+                        .RIGHT:RIGHT()
                         :Data(name, script, character.scripts[script.name])
                         :Show()
                 }
@@ -282,7 +284,9 @@ local FrameAddonSection = Frame
         end
     }
 {
-    Btn'.Head':Points { TOPLEFT = PARENT:TOPLEFT(), RIGHT = PARENT:RIGHT() }
+    Btn'.Head'
+        .TOPLEFT:TOPLEFT()
+        .RIGHT:RIGHT()
         :Height(28)
         :RegisterForClicks('LeftButtonUp', 'RightButtonUp')
         :Hooks {
@@ -297,7 +301,8 @@ local FrameAddonSection = Frame
             end
         }
     {
-        Texture'.Disabled':Points { RIGHT = PARENT:RIGHT(-4, 0) }
+        Texture'.Disabled'
+            .RIGHT:RIGHT(-4, 0)
             :Texture 'Interface/BUTTONS/UI-GROUPLOOT-PASS-DOWN'
             -- :Desaturated(true)
             :BlendMode 'BLEND'
@@ -305,8 +310,8 @@ local FrameAddonSection = Frame
 
         Style'.Text'
             :JustifyH 'LEFT'
-            :Points { TOPLEFT = PARENT:TOPLEFT(10, 0),
-                      BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-10, 0) },
+            .TOPLEFT:TOPLEFT(10, 0)
+            .BOTTOMRIGHT:BOTTOMRIGHT(-10, 0),
         Texture'.Bg'
             -- :Texture 'Interface/BUTTONS/GreyscaleRamp64'
             -- :BlendMode 'ADD'
@@ -326,20 +331,23 @@ local FrameAddonSection = Frame
 local FrameSettings = Frame
 {
     FrameSmoothScroll'.Sections'
-        :Points { TOPLEFT = PARENT:TOPLEFT(),
-                  BOTTOMRIGHT = PARENT:BOTTOMLEFT(200, 0) }
+        .TOPLEFT:TOPLEFT()
+        .BOTTOMRIGHT:BOTTOMLEFT(200, 0)
         .init(function(self, parent)
             local previous = nil
             for name, account, character in SilverUI.Addons() do
                 self.Content {
                     FrameAddonSection('.' .. name)
                         :Data(name, account, character)
-                        :Points(
-                            previous and { TOPLEFT = previous:BOTTOMLEFT(), RIGHT = self.Content:RIGHT() }
-                                      or { TOPLEFT = self.Content:TOPLEFT(), RIGHT = self.Content:RIGHT() }
-                        )
                 }
-                previous = self.Content[name]
+                local content = self.Content[name]
+                if previous then
+                    content:SetPoint('TOPLEFT', previous, 'BOTTOMLEFT')
+                else
+                    content:SetPoint('TOPLEFT', self.Content, 'TOPLEFT')
+                end
+                content:SetPoint('RIGHT', self.Content, 'RIGHT')
+                previous = content
             end
         end)
 }
@@ -374,7 +382,7 @@ local FrameEditor = Frame
             self.CodeEditor:Show()
             self.CodeEditor.Content.Editor.Save = function(code)
                 script.code = code
-                self.Settings.Sections.Scroller.Content'.Frame':Update()
+                self.Settings.Sections.Content'.Frame':Update()
             end
             self.CodeEditor.Content.Editor:SetText(script.code)
             self.CodeEditor.Content.Editor:SetCursorPosition(0)
@@ -450,14 +458,14 @@ local FrameEditor = Frame
         :Height(24)
         :ColorTexture(0.2, 0.2, 0.2, 0.7)
         :DrawLayer('BACKGROUND', -6)
-        :Points { TOPLEFT = PARENT:TOPLEFT(0, -5),
-                  RIGHT = PARENT:RIGHT() },
+        .TOPLEFT:TOPLEFT(0, -5)
+        .RIGHT:RIGHT(),
 
     Frame'.TitleMoveHandler'
         :Height(29)
         -- :FrameLevel(5)
-        :Points { TOPLEFT = PARENT:TOPLEFT(),
-                  TOPRIGHT = PARENT:TOPRIGHT() }
+        .TOPLEFT:TOPLEFT()
+        .TOPRIGHT:TOPRIGHT()
         :Scripts {
             OnMouseDown = function(self, button)
                 if button == 'LeftButton' then
@@ -485,7 +493,7 @@ local FrameEditor = Frame
 
     Frame'.Resizer'
         :Size(16, 16)
-        :Points { BOTTOMRIGHT = PARENT:BOTTOMRIGHT() }
+        .BOTTOMRIGHT:BOTTOMRIGHT()
         :Scripts {
             OnMouseDown = function(self, button)
                 self:GetParent():StartSizing('bottomright')
@@ -509,21 +517,21 @@ local FrameEditor = Frame
         :SetText('X')
         :FrameLevel(10)
         :Scripts { OnClick = function(self) self:GetParent():Hide() end }
-        :Points { TOPRIGHT = PARENT:TOPRIGHT(-6, -6) },
+        .TOPRIGHT:TOPRIGHT(-6, -6),
     
     Btn'.reloadBtn'
         :Size(16, 16)
         :NormalTexture 'Interface/BUTTONS/UI-RefreshButton'
         :FrameLevel(10)
         :Scripts { OnClick = function(self) ReloadUI() end }
-        :Points { RIGHT = PARENT.closeBtn:LEFT() },
+        .RIGHT:LEFT(PARENT.closeBtn),
     
     Button'.pickFrameBtn'
         :NormalTexture 'Interface/CURSOR/UnableCrosshairs'
         :HighlightTexture 'Interface/CURSOR/Crosshairs'
         :FrameLevel(10)
         :Size(16, 16)
-        :Points { RIGHT = PARENT.reloadBtn:LEFT(-5, 0) }
+        .RIGHT:LEFT(PARENT.reloadBtn, -5, 0)
         :Scripts {
             OnClick = function(self, button)
                 editorWindow.FrameInspector:PickFrame()
@@ -535,7 +543,7 @@ local FrameEditor = Frame
         :Text 'Playground'
         :Width(SELF.Text:GetWidth()+20)
         :FrameLevel(10)
-        :Points { TOPLEFT = PARENT:TOPLEFT(15, -5) }
+        .TOPLEFT:TOPLEFT(15, -5)
         :Scripts {
             OnClick = function(self) self:GetParent():EnterPlayground() end
         }
@@ -548,7 +556,7 @@ local FrameEditor = Frame
         :Text 'Trace'
         :Width(SELF.Text:GetWidth()+20)
         :FrameLevel(10)
-        :Points { TOPLEFT = PARENT.enterPlaygroundBtn:TOPRIGHT(3, 0) }
+        .TOPLEFT:TOPRIGHT(PARENT.enterPlaygroundBtn, 3, 0)
         :Scripts {
             OnClick = function(self) self:GetParent():EnterTrace() end
         }
@@ -557,13 +565,13 @@ local FrameEditor = Frame
     },
 
     Frame'.TracerHead'
-        :Points { TOPLEFT = PARENT:TOPLEFT(3, -17),
-                TOPRIGHT = PARENT:TOPRIGHT(3, -17) }
+        .TOPLEFT:TOPLEFT(3, -17)
+        .TOPRIGHT:TOPRIGHT(3, -17)
         :Height(25)
         :Hide()
     {
         Btn'.BackButton'
-            :Points { LEFT = PARENT:TOPLEFT(5, 0) }
+            .LEFT:TOPLEFT(5, 0)
             :Text '<'
             :Hooks {
                 OnClick = function(self)
@@ -572,18 +580,18 @@ local FrameEditor = Frame
             },
         FontString'.Name'
             :Font('Fonts/FRIZQT__.ttf', 12, '')
-            :Points { LEFT = PARENT.BackButton:RIGHT(10, 0) }
+            .LEFT:RIGHT(PARENT.BackButton, 10, 0)
             :Text 'Trace',
     },
 
     Frame'.EditorHead'
-        :Points { TOPLEFT = PARENT:TOPLEFT(3, -17),
-                  TOPRIGHT = PARENT:TOPRIGHT(3, -17) }
+        .TOPLEFT:TOPLEFT(3, -17)
+        .TOPRIGHT:TOPRIGHT(3, -17)
         :Height(25)
         :Hide()
     {
         Btn'.BackButton'
-            :Points { LEFT = PARENT:TOPLEFT(5, 0) }
+            .LEFT:TOPLEFT(5, 0)
             :Text '<'
             :Hooks {
                 OnClick = function(self)
@@ -592,11 +600,11 @@ local FrameEditor = Frame
             },
         FontString'.AddonName'
             :Font('Fonts/FRIZQT__.ttf', 12, '')
-            :Points { LEFT = PARENT.BackButton:RIGHT(10, 0) },
+            .LEFT:RIGHT(PARENT.BackButton, 10, 0),
         EditBox'.ScriptName'
             :Font('Fonts/FRIZQT__.ttf', 12, '')
             :Size(200, 16)
-            :Points { LEFT = PARENT.AddonName:RIGHT() }
+            .LEFT:RIGHT(PARENT.AddonName)
             :Hooks {
                 OnTextChanged = function(self, text)
                     editorWindow:RenameScript(self:GetText())
@@ -608,15 +616,15 @@ local FrameEditor = Frame
         {
             Texture'.ScriptNameBorder'
                 :ColorTexture(0.5, 0.5, 0.5, 0.7)
-                :Points { TOPLEFT = PARENT:BOTTOMLEFT(),
-                        TOPRIGHT = PARENT:BOTTOMRIGHT() }
+                .TOPLEFT:BOTTOMLEFT()
+                .TOPRIGHT:BOTTOMRIGHT()
                 :Height(1)
         }
     },
 
     CodeEditor'.CodeEditor'
-        :Points { TOPLEFT = PARENT.TitleBg:BOTTOMLEFT(),
-                BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-330, 0) }
+        .TOPLEFT:BOTTOMLEFT(PARENT.TitleBg)
+        .BOTTOMRIGHT:BOTTOMRIGHT(-330, 0)
         :Hide()
         .data {
             CtrlEnter = function(self, code)
@@ -632,17 +640,18 @@ local FrameEditor = Frame
         },
 
     FrameSettings'.Settings'
-        :Points { TOPLEFT = PARENT:TOPLEFT(0, -30),
-                  BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-330, 15) },
+        .TOPLEFT:TOPLEFT(0, -30)
+        .BOTTOMRIGHT:BOTTOMRIGHT(-330, 15),
 
     FrameTraceWindow'.Tracer'
-        :Points { TOPLEFT = PARENT:TOPLEFT(0, -30),
-                  BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-330, 15) }
+        .TOPLEFT:TOPLEFT(0, -30)
+        .BOTTOMRIGHT:BOTTOMRIGHT(-330, 15)
         :Hide(),
 
     FrameInspector'.FrameInspector'
-        :Points { TOPLEFT = PARENT.CodeEditor:TOPRIGHT(5, 0),
-                  BOTTOMRIGHT = PARENT:BOTTOMRIGHT(-10, 10) },
+        .TOPLEFT:TOPRIGHT(PARENT.CodeEditor, 5, 0)
+        .BOTTOMRIGHT:BOTTOMRIGHT(-10, 10)
+        :ClickFunction(function(self, frame, functionName) self:GetParent().Tracer:StartTrace(frame, functionName) end),
 
 }
 

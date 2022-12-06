@@ -132,7 +132,8 @@ local Btn = Button
         :SetFont('Fonts/FRIZQT__.ttf', 12)
         :TextColor(1, 1, 1)
         :Font('Fonts/FRIZQT__.ttf', 12)
-        :Points { LEFT = PARENT:LEFT(10, 0), RIGHT = PARENT:RIGHT(-10, 0) },
+        .LEFT:LEFT(10, 0)
+        .RIGHT:RIGHT(-10, 0),
     Texture'.hoverBg'
         -- :ColorTexture(0.3, 0.3, 0.3)
         :Texture 'Interface/BUTTONS/UI-Listbox-Highlight2'
@@ -208,7 +209,7 @@ local FrameInspectorButton = Btn
                     self.inspector:SetFrameStack(self.reference, parents)
                 else
                     if self.referenceName and self.parents[1][1][self.referenceName] then
-                        editorWindow.Tracer:StartTrace(self.parents[1][1], self.referenceName)
+                        self.inspector:ClickFunction(self.parents[1][1], self.referenceName)
                     end
                 end
             end
@@ -228,12 +229,16 @@ Addon.FrameInspector = FrameSmoothScroll
     .init {
         selected = nil,
 
+        ClickFunction = function() end,
+        SetClickFunction = function(self, fn)
+            self.ClickFunction = fn
+        end,
+
         PickFrame = function(self)
             self.FramePicker:Start()
         end,
 
         SetFrameStack = function(self, selected, parents)
-            print(selected)
 
             if selected ~= self.selected then
                 self:SetVerticalScroll(0)
@@ -253,17 +258,13 @@ Addon.FrameInspector = FrameSmoothScroll
             local previous = nil
             for i = 1, #parents do
                 local reference = parents[i][1]
-                print(parents[i][2])
 
                 self {
                     FrameInspectorButton('.Parent' .. i)
                         .data { inspector = self }
                         :Reference(reference, slice(parents, i+1), parents[i][2])
                         :FrameLevel(10)
-                        :Points(
-                            previous and { TOPRIGHT = previous:TOPLEFT(10, 0) }
-                                      or { BOTTOMLEFT = self:TOPLEFT(0, 0) }
-                        )
+                        :ClearAllPoints()
                     {
                         Style'.Text'
                             :Alpha(previous and 0.7 or 1)
@@ -271,7 +272,13 @@ Addon.FrameInspector = FrameSmoothScroll
                         Style:Width(SELF.Text:GetStringWidth() + 20)
                     }
                 }
-                previous = self['Parent' .. i]
+                local content = self['Parent' .. i]
+                if previous then
+                    content:SetPoint('TOPRIGHT', previous, 'TOPLEFT', 10, 0)
+                else
+                    content:SetPoint('BOTTOMLEFT', self, 'TOPLEFT')
+                end
+                previous = content
             end
 
             previous = nil
@@ -287,13 +294,10 @@ Addon.FrameInspector = FrameSmoothScroll
                         :Reference(reference, parents, attrName)
                         :Text(name)
                         :Width(self:GetWidth() - 8)
-                        :Points(
-                            previous and { TOPLEFT = previous:BOTTOMLEFT() }
-                                      or { TOPLEFT = self.Content:TOPLEFT(10, -0) }
-                        )
+                        .TOPLEFT:TOPLEFT(self.Content, 10, 0)
                     {
                         Style'.Text'
-                            :Points { LEFT = PARENT:LEFT() }
+                            .LEFT:LEFT()
                         .. function(self)
                             if not self.is_gui then
                                 self:SetTextColor(0.5, 0.5, 0.5)
@@ -307,6 +311,10 @@ Addon.FrameInspector = FrameSmoothScroll
                         end
                     }
                 }
+                local content = self.Content['Member' .. i]
+                if previous then
+                    content:SetPoint('TOPLEFT', previous, 'BOTTOMLEFT')
+                end
                 previous = self.Content['Member' .. i]
             end
         end
@@ -388,26 +396,40 @@ SortedChildren = function(obj)
         })
     end
 
+    local WHITE = '|cffffffff'
+    local GREY = '|cffaaaaaa'
+    local TYPE = '|cffffaaff'
+    local METHOD = '|cffaafaff'
+    local FUNCTION = '|cffaaaaff'
+
     local idx = 10000
+    local IDX = function()
+        local c = '|cff' .. string.format('%06x', 10000 - idx)
+        idx = idx - 1
+        return c
+    end
     local visited = {}
+    local childAttributeNames = {}
+
     for k, v in pairs(obj) do
-        if type(v) ~= 'table' or not v.GetParent or v:GetParent() ~= obj then
+        if type(v) == "table" and v.GetParent and v:GetParent() == obj then
+            childAttributeNames[v] = k
+        else
             visited[v] = true
             if type(v) == 'table' then
                 if v.GetObjectType and v.GetTop and v.GetLeft then
                     table.insert(result, {
                         v,
                         SORT_GUI ..
-                        '|cff' .. string.format('%06x', 10000 - idx) ..
-                        '|cffffaaff' .. v:GetObjectType() .. ' ' .. (v:IsShown() and '' or '|cffaaaaaaH ') ..
-                        '|cffffffff' .. k .. ' ' ..
-                        '|cffaaaaaa' .. (v.GetName and (v:GetName() or '') .. ' ' or '') ..
+                        IDX() ..
+                        TYPE .. v:GetObjectType() .. ' ' .. (v:IsShown() and '' or GREY .. 'H ') ..
+                        WHITE .. k .. ' ' ..
+                        GREY .. (v.GetName and (v:GetName() or '') .. ' ' or '') ..
                         '|c00000000',
                         k
                     })
-                    idx = idx - 1
                 else
-                    table.insert(result, { v, SORT_DATA .. '|cffffffff' .. k .. ' = |cffffaaaatable', k })
+                    table.insert(result, { v, SORT_DATA .. WHITE .. k .. ' = |cffffaaaatable', k })
                 end
             elseif type(v) == 'function' then
                 table.insert(result, { v, SORT_FN .. '|cffffafaa fn |cffaaaaff' .. k, k })
@@ -415,64 +437,34 @@ SortedChildren = function(obj)
                 table.insert(result, {
                     v,
                     SORT_DATA ..
-                    '|cffffffff' .. k .. ' = ' ..
-                    '|cffffaaaa' .. type(v) .. '|cffaaaaaa ' .. tostring(v):gsub('\n', '\\n') })
+                    WHITE .. k .. ' = ' ..
+                    '|cffffaaaa' .. type(v) .. GREY .. ' ' .. tostring(v):gsub('\n', '\\n') })
             end
         end
     end
 
-    local hasChildren = false
-    local hasChildrenIndex = idx
-    idx = idx - 1
-
-    for k, v in pairs(obj) do
-        if type(v) == 'table' and v.GetParent and v:GetParent() == obj then
-            visited[v] = true
-            if v.GetObjectType and v.GetTop and v.GetLeft then
-                table.insert(result, {
-                    v,
-                    SORT_GUI ..
-                    '|cff' .. string.format('%06x', 10000 - idx) ..
-                    '|cffffaaff' .. v:GetObjectType() .. ' ' .. (v:IsShown() and '' or '|cffaaaaaaH ') ..
-                    '|cffffffff' .. k .. ' ' ..
-                    '|cffaaaaaa' .. (v.GetName and (v:GetName() or '') .. ' ' or '') ..
-                    '|c00000000' -- ..
-                    -- tostring(-(v:GetTop() or 999999)) .. ' ' ..
-                    -- tostring(-(v:GetLeft() or 999999))
-                })
-                idx = idx - 1
-                hasChildren = true
-            else
-                table.insert(result, { v, SORT_DATA .. '|cffffffff' .. k .. ' = |cffffaaaatable'})
-            end
-        end
-    end
-
-    if hasChildren then
+    if next(childAttributeNames) then
         table.insert(result, {
             v,
             SORT_GUI ..
-            '|cff' .. string.format('%06x', 10000 - hasChildrenIndex) ..
-            '|cffaaaaaaChildren'
+            IDX() ..
+            GREY .. 'Children'
         })
     end
 
-    if obj.has_lqt then
-        for c in LQT.query(obj, '.*') do
-            if not visited[c] then
-                table.insert(result, {
-                    c,
-                    SORT_GUI ..
-                    '|cff' .. string.format('%06x', 10000 - idx) ..
-                    '|cffffaaff' .. c:GetObjectType() .. ' ' .. (c:IsShown() and '' or '|cffaaaaaaH ') ..
-                    '|cffffffff ' ..
-                    '|cffaaaaaa' .. (c.GetName and (c:GetName() or '') .. ' ' or '') ..
-                    '|c00000000' -- ..
-                    -- tostring(-(c:GetTop() or 999999)) .. ' ' ..
-                    -- tostring(-(c:GetLeft() or 999999))
-                })
-                idx = idx - 1
-            end
+    for c in LQT.query(obj, '.*').sort() do
+        if not visited[c] then
+            table.insert(result, {
+                c,
+                SORT_GUI ..
+                IDX() ..
+                TYPE .. c:GetObjectType() .. ' ' .. ((not c.IsShown or c:IsShown()) and '' or '|cffaaaaaaH ') ..
+                WHITE .. (childAttributeNames[c] and childAttributeNames[c] .. ' ' or '') ..
+                GREY .. (c.GetName and (c:GetName() or '') .. ' ' or '') ..
+                '|c00000000' -- ..
+                -- tostring(-(c:GetTop() or 999999)) .. ' ' ..
+                -- tostring(-(c:GetLeft() or 999999))
+            })
         end
     end
 
@@ -524,7 +516,7 @@ SortedChildren = function(obj)
                     SORT_MT ..
                     SORT_TYPE ..
                     '|c00000000' ..
-                    '|cffaaaaaa' .. info[1]
+                    GREY .. info[1]
                 })
                 for k, v in pairs(info[3]) do
                     if not fn_visited[k] then
@@ -536,7 +528,7 @@ SortedChildren = function(obj)
                                 SORT_TYPE ..
                                 SORT_FN ..
                                 ' |cfaaaaaaa Get' ..
-                                '|cffaafaff' .. k:sub(4) ..
+                                METHOD .. k:sub(4) ..
                                 '|cffaaaaaa = ' ..
                                 attribute_str_values(obj, k),
                                 'Set'..k:sub(4)
@@ -548,8 +540,8 @@ SortedChildren = function(obj)
                                 SORT_MT ..
                                 SORT_TYPE ..
                                 SORT_FN ..
-                                ' |cfaaaaaaa Is' ..
-                                '|cffaafaff' .. k:sub(3) ..
+                                ' ' .. GREY .. ' Is' ..
+                                METHOD .. k:sub(3) ..
                                 '|cffaaaaaa = ' ..
                                 attribute_str_values(obj, k),
                                 'Set'..k:sub(3)
@@ -562,7 +554,7 @@ SortedChildren = function(obj)
                                 SORT_TYPE ..
                                 SORT_FN ..
                                 ' |cffffafaa fn ' ..
-                                '|cffaaaaff' .. k ..
+                                FUNCTION .. k ..
                                 '|cfaaaaaaa = ' .. attribute_str_values(obj, k),
                                 k
                             })
@@ -575,7 +567,7 @@ SortedChildren = function(obj)
                                 SORT_TYPE ..
                                 SORT_FN ..
                                 ' |cffffafaa fn ' ..
-                                '|cffaaaaff' .. k,
+                                FUNCTION .. k,
                                 k
                             })
                         end

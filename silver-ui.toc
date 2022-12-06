@@ -11,7 +11,6 @@ indent.lua
 
 #-# base
 __init__.lua
-settings.lua
 util.lua
 lqt/__init__.lua
 lqt/frameproxy.lua
@@ -26,8 +25,11 @@ templates/context_menu.lua
 templates/smoothscroll.lua
 templates/code_editor.lua
 
+settings.lua
+
 editor/trace.lua
 editor/typeinfo.lua
+editor/frame_inspector.lua
 editor/editor.lua
 
 #-# skins
@@ -46,4 +48,4 @@ frames/player_wotlk.lua
 frames/tooltip.lua
 frames/raidframe.lua
 frames/bigbag.lua
-# frames/nameplates.lua
+frames/nameplates.lua

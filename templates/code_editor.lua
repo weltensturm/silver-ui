@@ -21,7 +21,8 @@ Addon.CodeEditor = FrameSmoothScroll {
             },
 
         FontString'.CursorHelper'
-            :Points { TOPLEFT = PARENT:TOPLEFT(40,-3), TOPRIGHT = PARENT:TOPRIGHT() }
+            .TOPLEFT:TOPLEFT(40,-3)
+            .TOPRIGHT:TOPRIGHT()
             :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11, '')
             :JustifyH("LEFT")
             :JustifyV("TOP")
@@ -29,16 +30,16 @@ Addon.CodeEditor = FrameSmoothScroll {
             :Alpha(0),
         
         FontString'.Shadow'
-            :Points { TOPLEFT = PARENT:TOPLEFT(40,-3), TOPRIGHT = PARENT:TOPRIGHT() }
+            .TOPLEFT:TOPLEFT(40,-3)
+            .TOPRIGHT:TOPRIGHT()
             :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11, '')
             :JustifyH("LEFT")
             :JustifyV("TOP")
             :TextColor(0.7, 0.7, 0.7),
 
         EditBox'.Editor'
-            .init { function(self, parent) self.parent = parent end }
-            .init { Save = function() end }
-            :Points { TOPLEFT = PARENT:TOPLEFT(40,-3), TOPRIGHT = PARENT:TOPRIGHT() }
+            .TOPLEFT:TOPLEFT(40,-3)
+            .TOPRIGHT:TOPRIGHT()
             :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11, '')
             :FrameLevel(5)
             :Scripts {
@@ -138,11 +139,13 @@ Addon.CodeEditor = FrameSmoothScroll {
             :JustifyV("TOP")
             :MultiLine(true)
             .init {
-                function(self)
+                function(self, parent)
+                    self.parent = parent
                     self.OrigGetText = self.GetText
                     self.parent.Shadow.OrigSetText = self.parent.Shadow.SetText
                     LqtIndentationLib.enable(self, nil, 4)
                 end,
+                Save = function() end,
                 CursorIntoView = function(self)
                     self.parent.CursorHelper:SetText(self:OrigGetText():sub(1, self:GetCursorPosition()))
                     local height = self.parent.CursorHelper:GetHeight()
@@ -158,7 +161,7 @@ Addon.CodeEditor = FrameSmoothScroll {
             },
     
         FontString'.LineNumbers'
-            :Points { TOPRIGHT = PARENT.Editor:TOPLEFT(-4, 0) }
+            .TOPRIGHT:TOPLEFT(PARENT.Editor, -4, 0)
             :JustifyH('LEFT')
             :TextColor(0.7, 0.7, 0.7)
             :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11, ''),
@@ -167,15 +170,13 @@ Addon.CodeEditor = FrameSmoothScroll {
             :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11, '')
             :JustifyH 'LEFT'
             :Hide()
-            :Points {
-                BOTTOMLEFT = PARENT:GetParent():GetParent():BOTTOMLEFT(2, 2),
-                BOTTOMRIGHT = PARENT:GetParent():GetParent():BOTTOMRIGHT(-2, 2),
-            },
+            .BOTTOMLEFT:BOTTOMLEFT(PARENT:GetParent():GetParent(), 2, 2)
+            .BOTTOMRIGHT:BOTTOMRIGHT(PARENT:GetParent():GetParent(), -2, 2),
 
         Texture'.Red'
             :ColorTexture(0.3, 0, 0, 0.9)
-            :Points { TOPLEFT = PARENT.Error:TOPLEFT(-2, 2),
-                      BOTTOMRIGHT = PARENT.Error:BOTTOMRIGHT(2, -2) },
+            .TOPLEFT:TOPLEFT(PARENT.Error, -2, 2)
+            .BOTTOMRIGHT:BOTTOMRIGHT(PARENT.Error, 2, -2),
 
     }
 }

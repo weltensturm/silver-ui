@@ -47,11 +47,11 @@ Addon.ContextMenuButton = Button
 
 
 Addon.ContextMenu = Frame
+    .TOPLEFT:BOTTOMLEFT()
     .init {
         function(self, parent)
             _G.Mixin(self, _G.BackdropTemplateMixin)
             self:HookScript('OnSizeChanged', self.OnBackdropSizeChanged)
-            self:SetPoints { TOPLEFT = parent:BOTTOMLEFT() }
             self.buttons = {}
         end
     }
@@ -74,9 +74,9 @@ Addon.ContextMenu = Frame
             local height = 0
             for _, btn in pairs(self.buttons) do
                 if previous then
-                    btn:SetPoints { TOPLEFT = previous:BOTTOMLEFT() }
+                    btn:SetPoint('TOPLEFT', previous, 'BOTTOMLEFT')
                 else
-                    btn:SetPoints { TOPLEFT = self:TOPLEFT(12, -6) }
+                    btn:SetPoint('TOPLEFT', self, 'TOPLEFT', 12, -6)
                 end
                 btn:SetWidth(9999)
                 width = math.max(width, btn.Text:GetStringWidth())

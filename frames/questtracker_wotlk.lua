@@ -60,9 +60,8 @@ local StyleWatchFrame = Style .. Hooks
         Style'.WatchFrameItem#:Button' ..
             function(self)
                 local to = select(2, self:GetPoint())
-                self:SetPoints {
-                    TOPRIGHT = to:TOPLEFT(0, -2)
-                }
+                self:ClearAllPoints()
+                self:SetPoint('TOPRIGHT', to, 'TOPLEFT', 0, -2)
             end
     }
 }

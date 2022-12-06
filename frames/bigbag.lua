@@ -63,8 +63,6 @@ do
         colorSelect:SetColorHSV(h, s, v)
         r, g, b = colorSelect:GetColorRGB()
         QUALITY_COLORS[i] = { r, g, b, 0.7 }
-
-        QUALITY_COLORS[i] = { r, g, b, 0.7 }
     end
 end
 
@@ -254,7 +252,11 @@ local StyleItem = Style
             end
         end,
         UpdateQuality = function(self)
-            if self.quality then
+            if self.info.itemType == 'Quest' then
+                self.QualityGlow:Show()
+                self.QualityGlow:SetTexture 'Interface/AddOns/silver-ui/art/itemslot_glow'
+                self.QualityGlow:SetVertexColor(1, 1, 0, 1)
+            elseif self.quality then
                 local percBrightness = 1 -- 0.299*r + 0.587*g + 0.114*b
                 -- if self.quality == 5 or self.quality == 6 then
                 --     percBrightness = 1
@@ -280,8 +282,8 @@ local StyleItem = Style
         :AllPoints(PARENT)
         :DrawLayer('ARTWORK', 1),
     Frame'.ItemLevel'
-        :Points { TOPLEFT = PARENT:TOPLEFT(3, -3),
-                  BOTTOMRIGHT = PARENT:BOTTOMRIGHT() }
+        .TOPLEFT:TOPLEFT(3, -3)
+        .BOTTOMRIGHT:BOTTOMRIGHT()
         .init {
             SetText = function(self, text)
                 self.Text.ItemLevel:SetText(text)
@@ -293,7 +295,7 @@ local StyleItem = Style
                 --     self.Shadow {
                 --         FontString('.ItemLevelShadow' .. i)
                 --             :Font('Fonts/ARIALN.TTF', 12, '')
-                --             :Points { TOPLEFT = PARENT:TOPLEFT(x*0.75, y*0.75) }
+                --             .TOPLEFT:TOPLEFT(x*0.75, y*0.75)
                 --             :TextColor(0, 0, 0, 1)
                 --             :Text(text)
                 --             :Show()
@@ -310,17 +312,17 @@ local StyleItem = Style
             :AllPoints(PARENT)
         {
             FontString'.ItemLevel'
-                :Font('Fonts/ARIALN.TTF', 12, '')
+                :Font('Fonts/ARIALN.TTF', 12, 'OUTLINE')
                 :TextColor(0.7, 0.7, 0.7, 1)
                 :ShadowOffset(0.5, -0.5)
                 :ShadowColor(0, 0, 0, 0.7)
-                :Points { TOPLEFT = PARENT:TOPLEFT() },
+                .TOPLEFT:TOPLEFT(),
             FontString'.ItemLevelBg'
-                :Font('Fonts/ARIALN.TTF', 12, '')
-                :TextColor(1, 1, 1, 1)
+                :Font('Fonts/ARIALN.TTF', 12, 'OUTLINE')
+                :TextColor(1, 1, 1, 0.7)
                 :ShadowOffset(0, 0)
                 :ShadowColor(0, 0, 0, 0)
-                :Points { TOPLEFT = PARENT:TOPLEFT() },
+                .TOPLEFT:TOPLEFT(),
         }
     }
 }
@@ -357,7 +359,7 @@ local ButtonAddRow = ButtonRemoveRow
 local AnchorFrame = Frame
     :Movable(true)
     :UserPlaced(false)
-    :Points { CENTER = UIParent:CENTER() }
+    .CENTER:CENTER(UIParent)
     :Size(1, 1)
     .new()
 
@@ -367,7 +369,7 @@ FrameBigBag = Frame
     :Width(450)
     :Height(450 / 12 * 16 + 18.5)
     :EnableMouse(true)
-    :Point('CENTER', AnchorFrame, 'CENTER')
+    .CENTER:CENTER(AnchorFrame)
     -- :FrameLevel(2)
     :FlattensRenderLayers(true)
     :IsFrameBuffer(true)
@@ -641,10 +643,8 @@ FrameBigBag = Frame
                     local size = (self:GetWidth() - self.padding*2)/db.columns
                     Style(self.Items) {
                         FrameSlot('.' .. name)
-                            :Points {
-                                TOPLEFT = self.Items:TOPLEFT((column-1)*size + self.padding, -(row-1)*size - self.padding - 20),
-                                BOTTOMRIGHT = self.Items:TOPLEFT(column*size + self.padding, -row*size - self.padding - 20)
-                            },
+                            .TOPLEFT:TOPLEFT((column-1)*size + self.padding, -(row-1)*size - self.padding - 20)
+                            .BOTTOMRIGHT:TOPLEFT(column*size + self.padding, -row*size - self.padding - 20)
                     }
                     self.slots[name] = self.Items[name]
                     self.slots[name].name = name
@@ -655,12 +655,12 @@ FrameBigBag = Frame
                 local slot = self.slots[rowFirstSlot]
                 self.SlotManager {
                     ButtonRemoveRow('.Remover-' .. rowFirstSlot)
+                        .RIGHT:LEFT(slot, -4, 0)
                         :Show()
-                        :Points { RIGHT = slot:LEFT(-4, 0) }
                         .data { row = row },
                     ButtonAddRow('.Adder-' .. rowFirstSlot)
+                        .RIGHT:TOPLEFT(slot, -4, 0)
                         :Show()
-                        :Points { RIGHT = slot:TOPLEFT(-4, 0) }
                         .data { row = row }
                 }
             else
@@ -697,7 +697,8 @@ FrameBigBag = Frame
             end
             self.countFree = free
             self.countMax = max
-            self.Count:SetPoints { RIGHT = self.closeBtn:LEFT(-3, 0) }
+            self.Count:ClearAllPoints()
+            self.Count:SetPoint('RIGHT', self.closeBtn, 'LEFT', -3, 0)
             self.Count:SetText('' .. max-free .. '/' .. max)
             self.Count:SetTextColor(1,1,1,1)
             if free == 0 then
@@ -748,7 +749,7 @@ FrameBigBag = Frame
 
             Style(ContainerFrame1MoneyFrame)
                 :Parent(self)
-                :Points { TOPLEFT = self:TOPLEFT(12, -9) }
+                .TOPLEFT:TOPLEFT(12, -9)
             {
                 Style'.Border':Hide()
             }
@@ -776,8 +777,15 @@ FrameBigBag = Frame
     :Scripts {
         OnKeyDown = function(self, key)
             if key == 'ESCAPE' then
-                self:SetPropagateKeyboardInput(false)
                 self.AnimOut:Play()
+                local propagate =
+                    MerchantFrame:IsVisible()
+                    or BankFrame:IsVisible()
+                    or MailFrame:IsVisible()
+                    or TradeFrame:IsVisible()
+                    or (AuctionHouseFrame and AuctionHouseFrame:IsVisible() or false)
+                    or (GuildBankFrame and GuildBankFrame:IsVisible() or false)
+                self:SetPropagateKeyboardInput(propagate)
             else
                 self:SetPropagateKeyboardInput(true)
             end
@@ -796,23 +804,23 @@ FrameBigBag = Frame
         :AllPoints(PARENT),
 
     Btn'.closeBtn'
+        .TOPRIGHT:TOPRIGHT(-6, -5)
         :SetText('X')
         -- :FrameLevel(6)
-        :Scripts { OnClick = function(self) CloseAllBags() end }
-        :Points { TOPRIGHT = PARENT:TOPRIGHT(-6, -5) },
+        :Scripts { OnClick = function(self) CloseAllBags() end },
 
     Texture'.TitleBg'
+        .TOPLEFT:TOPLEFT(3, -3)
+        .RIGHT:RIGHT(-3, 0)
         :Height(25)
         :ColorTexture(0.07, 0.07, 0.07, 0.5)
-        :DrawLayer('BACKGROUND', 1)
-        :Points { TOPLEFT = PARENT:TOPLEFT(3, -3),
-                  RIGHT = PARENT:RIGHT(-3, 0) },
+        :DrawLayer('BACKGROUND', 1),
 
     Frame'.TitleMoveHandler'
+        .TOPLEFT:TOPLEFT(3, -3)
+        .TOPRIGHT:TOPRIGHT(3, -3)
         :Height(25)
         -- :FrameLevel(5)
-        :Points { TOPLEFT = PARENT:TOPLEFT(3, -3),
-                  TOPRIGHT = PARENT:TOPRIGHT(3, -3) }
         :Scripts {
             OnMouseDown = function(self, button)
                 if button == 'LeftButton' then
@@ -847,7 +855,7 @@ FrameBigBag = Frame
         :Alpha(1, 0)
         -- :Scale(1, 0.9)
         :OnFinished(function(self) self:GetParent():Hide() end)
-        :OnPlay(function() PlaySound(SOUNDKIT.IG_BACKPACK_CLOSE) end)
+        :OnPlay(function() PlaySound(SOUNDKIT.IG_BACKPACK_CLOSE) end),
 
 }
 

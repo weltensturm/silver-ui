@@ -9,6 +9,7 @@ local     Style,     Frame,     Button,     Texture,     FontString,     EditBox
     = LQT.Style, LQT.Frame, LQT.Button, LQT.Texture, LQT.FontString, LQT.EditBox, LQT.ScrollFrame,
       LQT.SELF, LQT.PARENT, LQT.ApplyFrameProxy, LQT.FrameProxyMt
 
+local query = LQT.query
 
 local tuples = Addon.util.tuples
 
@@ -30,16 +31,19 @@ local FrameTracer = Frame
 {
     FontString'.Name'
         :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 12, '')
-        :Points { TOPLEFT = PARENT:TOPLEFT(10, 0), TOPRIGHT = PARENT:TOPRIGHT(-10, 0) }
+        .TOPLEFT:TOPLEFT(10, 0)
+        .TOPRIGHT:TOPRIGHT(-10, 0)
         :JustifyH 'LEFT'
         :Height(16),
     Texture'.NameBackground'
-        :Points { TOPLEFT = PARENT.Name:TOPLEFT(-10, 0), BOTTOMRIGHT = PARENT.Name:BOTTOMRIGHT(10, 0) }
+        .TOPLEFT:TOPLEFT(PARENT.Name, -10, 0)
+        .BOTTOMRIGHT:BOTTOMRIGHT(PARENT.Name, 10, 0)
         :ColorTexture(0.3, 0.3, 0.3, 0.5),
     EditBox'.Traces'
         :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11, '')
         -- :Size(400, 400)
-        :Points { TOPLEFT = PARENT.Name:BOTTOMLEFT(), RIGHT = PARENT:RIGHT(200, 0) }
+        .TOPLEFT:BOTTOMLEFT(PARENT.Name)
+        .RIGHT:RIGHT(200, 0)
         :JustifyH 'LEFT'
         :JustifyV 'TOP'
         :MultiLine(true)
@@ -122,17 +126,22 @@ local FrameTraceWindow = FrameSmoothScroll
         OnUpdate = function(self)
             if self.update then
                 self.update = false
-                self.Content'.Tracer#':SetPoints {}:Hide()
+                query(self.Content, '.Tracer#'):Hide()
                 local previous = nil
                 for i, tracer in pairs(self.tracers) do
-                    self.Content {
-                        FrameTracer('.Tracer' .. i)
-                            :Points(previous and { TOPLEFT = previous:BOTTOMLEFT(), TOPRIGHT = previous:BOTTOMRIGHT() }
-                                              or { TOPLEFT = self.Content:TOPLEFT(), TOPRIGHT = self.Content:TOPRIGHT() })
-                            :Data(tracer)
-                            :Show()
-                    }
-                    previous = self.Content['Tracer' .. i]
+                    FrameTracer('.Tracer' .. i)
+                        :Data(tracer)
+                        :Show()
+                        .apply(self.Content)
+                    local tracer = self.Content['Tracer' .. i]
+                    if previous then
+                        tracer:SetPoint('TOPLEFT', previous, 'BOTTOMLEFT')
+                        tracer:SetPoint('TOPRIGHT', previous, 'BOTTOMRIGHT')
+                    else
+                        tracer:SetPoint('TOPLEFT', self.Content, 'TOPLEFT')
+                        tracer:SetPoint('TOPRIGHT', self.Content, 'TOPRIGHT')
+                    end
+                    previous = tracer
                 end
                 if #self.tracers > 0 then
                     self.NoTracers:Hide()
@@ -143,7 +152,8 @@ local FrameTraceWindow = FrameSmoothScroll
 {
     FontString'.NoTracers'
         :Font('Fonts/FRIZQT__.ttf', 12, '')
-        :Points { TOPLEFT = PARENT:TOPLEFT(10, -10), TOPRIGHT = PARENT:TOPRIGHT(-10, -10) }
+        .TOPLEFT:TOPLEFT(10, -10)
+        .TOPRIGHT:TOPRIGHT(-10, -10)
         :Text 'No traces running.\nYou can start one by left clicking a function in the frame inspector,\nor by calling trace([frame,] functionName)',
 }
 

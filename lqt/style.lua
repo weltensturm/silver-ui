@@ -11,6 +11,7 @@ local TABLE = 4
 local FN = 5
 local SETDATA = 6
 local INIT = 7
+local ACTION_COMPILED = 8
 
 
 local PARENT = 1
@@ -20,6 +21,9 @@ local NAME = 4
 local CONSTRUCTOR = 5
 local BOUND_FRAME = 6
 local FILTER = 7
+local COMPILED = 8
+local CONTEXT = 9
+local CLEARS_POINTS = 10
 
 
 local newaction = nil
@@ -54,20 +58,20 @@ end
 
 local ops = {
     [CALLMETHOD] = function(object, args)
-        local setter = object['Set'..args[1]]
-        if setter then
+        local SetFn = object['Set'..args[1]]
+        if SetFn then
             if isWithContext(args[1], false) then
-                setter(object, unpack(args[2]), args[3])
+                SetFn(object, unpack(args[2]), args[3])
             else
-                setter(object, unpack(args[2]))
+                SetFn(object, unpack(args[2]))
             end
         else
-            setter = object[args[1]]
-            assert(setter, args[3] .. ':\n' .. object:GetObjectType() .. ' has no function ' .. args[1])
+            SetFn = object[args[1]]
+            -- assert(SetFn, args[3] .. ':\n' .. object:GetObjectType() .. ' has no function ' .. args[1])
             if isWithContext(args[1], true) then
-                setter(object, unpack(args[2]), args[3])
+                SetFn(object, unpack(args[2]), args[3])
             else
-                setter(object, unpack(args[2]))
+                SetFn(object, unpack(args[2]))
             end
         end
     end,
@@ -131,6 +135,9 @@ local ops = {
                 end
             end
         end
+    end,
+    [ACTION_COMPILED] = function(object, fn, constructed)
+        fn(object, constructed)
     end
 }
 
@@ -148,19 +155,44 @@ local function run_all(action, frame, constructed)
 end
 
 
+local function compile(style)
+    local compiled = style[COMPILED]
+    if compiled then
+        return compiled
+    end
+    local chain = {}
+    local parent = style
+    while parent do
+        if parent[ACTION] ~= NOOP then
+            table.insert(chain, 1, parent)
+        end
+        parent = parent[PARENT]
+    end
+    local compiled = function(action, frame, constructed)
+        for _, s in ipairs(chain) do
+            ops[s[ACTION]](frame or s[BOUND_FRAME], s[ARGS], constructed)
+        end
+    end
+    style[COMPILED] = compiled
+    return compiled
+end
+
+
 local StyleActions = {}
 
 function StyleActions:apply(frame, parent_from_new)
+    -- print(get_context(5))
+    debugprofilestart()
     local name = self[NAME]
     local construct = self[CONSTRUCTOR]
     local frame = frame or self[BOUND_FRAME]
     local filter = self[FILTER]
+    local compiled = compile(self)
 
     if parent_from_new then
         if not filter or filter(frame) then
-            run_all(self, frame, parent_from_new)
+            compiled(self, frame, parent_from_new)
         end
-        return self
     elseif name and construct then
         name = checkChildName(name)
         local constructed = nil
@@ -168,21 +200,24 @@ function StyleActions:apply(frame, parent_from_new)
             frame[name] = construct(frame)
             constructed = frame
         end
-        run_all(self, frame[name], constructed)
-        return self
+        compiled(self, frame[name], constructed)
     elseif name then
         for result in query(frame, name) do
             if not filter or filter(result) then
-                run_all(self, result)
+                compiled(self, result)
             end
         end
-        return self
     else
         if not filter or filter(frame) then
-            run_all(self, frame)
+            compiled(self, frame)
         end
-        return self
     end
+
+    local time = debugprofilestop()
+    if time > 1 then
+        print(time, self[CONTEXT])
+    end
+    return self
 end
 
 function StyleActions:constructor(fn)
@@ -220,14 +255,62 @@ function StyleActions:filter(fn)
 end
 
 function StyleActions:reapply(arg1, arg2, arg3)
-    local context = get_context()
-    local action = newaction(self, { [ACTION]=CALLMETHOD, [ARGS]={ 'RegisterReapply', { self, arg1, arg2, arg3, context }, context } })
+    local context = get_context(4)
+    local action = newaction(self, { [ACTION]=CALLMETHOD, [ARGS]={ 'RegisterReapply', { self.clear_name(), arg1, arg2, arg3 or function() end, context }, context } })
     if action[BOUND_FRAME] then
         run_single(action)
     end
     return action
 end
 
+function StyleActions:clear_name()
+    local action = newaction(self, {})
+    action[NAME] = nil
+    return action
+end
+
+function StyleActions:Events(table)
+    return newaction(self, { [EVENTS] = table })
+end
+
+function StyleActions:Hooks(table)
+    return newaction(self, { [HOOKS] = table })
+end
+
+
+local PointsMagicMt = {
+    __index = function(self, attr)
+        local point, style = self[1], self[2]
+        return function(self1, target, x, y)
+            assert(self == self1, 'Cannot call .' .. attr .. ', use ' .. attr .. ':')
+            if not style[CLEARS_POINTS] then
+                style = newaction(style, { [CLEARS_POINTS]=true })
+                    :ClearAllPoints()
+            end
+            if type(target) ~= 'table' then
+                y = x
+                x = target
+                target = LQT.PARENT
+            end
+            return style:Point(self[1], target, attr, x, y)
+        end
+    end,
+    __call = function(self, ...)
+        assert(false, 'Style:' .. self[1] .. '() is reserved - sorry')
+    end
+}
+
+
+local StyleIndex = {}
+function StyleIndex:TOP() return setmetatable({ 'TOP', self }, PointsMagicMt) end
+function StyleIndex:TOPRIGHT() return setmetatable({ 'TOPRIGHT', self }, PointsMagicMt) end
+function StyleIndex:RIGHT() return setmetatable({ 'RIGHT', self }, PointsMagicMt) end
+function StyleIndex:BOTTOMRIGHT() return setmetatable({ 'BOTTOMRIGHT', self }, PointsMagicMt) end
+function StyleIndex:BOTTOM() return setmetatable({ 'BOTTOM', self }, PointsMagicMt) end
+function StyleIndex:BOTTOMLEFT() return setmetatable({ 'BOTTOMLEFT', self }, PointsMagicMt) end
+function StyleIndex:LEFT() return setmetatable({ 'LEFT', self }, PointsMagicMt) end
+function StyleIndex:TOPLEFT() return setmetatable({ 'TOPLEFT', self }, PointsMagicMt) end
+function StyleIndex:CENTER() return setmetatable({ 'CENTER', self }, PointsMagicMt) end
 
 
 local StyleChainMeta = {}
@@ -235,6 +318,8 @@ local StyleChainMeta = {}
 function StyleChainMeta:__index(attr)
     if type(attr) == 'number' then
         return rawget(self, attr)
+    elseif StyleIndex[attr] then
+        return StyleIndex[attr](self)
     else
         return function(arg1, ...)
             if arg1 == self then -- called with :
@@ -242,7 +327,29 @@ function StyleChainMeta:__index(attr)
                 if hasFrameProxy(...) then
                     action = newaction(self, { [ACTION]=CALLMETHOD_FRAMEPROXY_ARGS, [ARGS]={ attr, { ... }, get_context() } })
                 else
-                    action = newaction(self, { [ACTION]=CALLMETHOD, [ARGS]={ attr, { ... }, get_context() } })
+                    local context = get_context():gsub('%[string "(@.*)"%]:(%d+).*', '%1:%2')
+                    local args = { ... }
+                    local callmethod_text = [[
+                        return function(self, ...)
+                            if self.Set%s then
+                                self:Set%s(...)
+                            else
+                                self:%s(...)
+                            end
+                        end
+                    ]]
+                    local callmethod = assert(loadstring(callmethod_text:format(attr, attr, attr), context))()
+                    local wrapper
+                    if isWithContext(attr) then
+                        wrapper = function(obj)
+                            callmethod(obj, unpack(args), context)
+                        end
+                    else
+                        wrapper = function(obj)
+                            callmethod(obj, unpack(args))
+                        end
+                    end
+                    action = newaction(self, { [ACTION]=ACTION_COMPILED, [ARGS]=wrapper, [CONTEXT]=context })
                 end
                 if action[BOUND_FRAME] then
                     run_single(action)
@@ -349,7 +456,10 @@ newaction = function(parent, new)
         [BOUND_FRAME]  = new[BOUND_FRAME]  or parent and parent[BOUND_FRAME],
         [FILTER]       = new[FILTER] and (parent and parent[FILTER] and function(obj) return parent[FILTER](obj) and new[FILTER](obj) end
                                                                      or new[FILTER])
-                                      or parent and parent[FILTER]
+                                      or parent and parent[FILTER],
+        [COMPILED] = nil,
+        [CONTEXT] = get_context(4),
+        [CLEARS_POINTS] = new[CLEARS_POINTS] or parent and parent[CLEARS_POINTS]
     }                   
     setmetatable(action, StyleChainMeta)
     return action
@@ -357,7 +467,7 @@ end
 
 
 get_context = function(level)
-    return strsplittable('\n', debugstack(3, 99, 99))[1]
+    return strsplittable('\n', debugstack(level or 3, 99, 99))[1]
 end
 
 
@@ -375,9 +485,13 @@ LQT.Button = LQT.Style
 LQT.ItemButton = LQT.Style
     .constructor(function(obj, ...) return CreateFrame('ItemButton', nil, obj, ...) end)
 
+    
+LQT.CheckButton = LQT.Style
+    .constructor(function(obj, ...) return CreateFrame('CheckButton', nil, obj, ...) end)
+
 
 LQT.Cooldown = LQT.Style
-    .constructor(function(obj, ...) return CreateFrame('Cooldown', nil, obj, ...) end)
+    .constructor(function(obj, ...) return CreateFrame('Cooldown', nil, obj, 'CooldownFrameTemplate', ...) end)
 
 
 LQT.Texture = LQT.Style

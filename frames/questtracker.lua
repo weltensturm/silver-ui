@@ -26,43 +26,97 @@ local hooks = {
 local frames_hide = {}
 local buttons_hide = {}
 
-local SectionStyle = nil
+
+local TextStyle = Style {
+    function(self)
+        -- self:SetWidth(440)
+        if self.GetStringWidth then
+            self:SetWidth(self:GetStringWidth())
+        else
+            self:SetWidth(self:GetTextWidth())
+        end
+    end
+}
+
+
+local SectionStyle = Style {
+    -- function(self)
+    --     if self.module then
+    --         self.module.fromHeaderOffsetY = 0
+    --         self.module.fromModuleOffsetY = 0
+    --     end
+    -- end,
+    Style'.rightButton'
+        .TOPLEFT:TOPRIGHT()
+        :Hooks(hooks),
+    TextStyle'.HeaderText',
+    TextStyle'.HeaderButton':FrameLevel(3):Hooks(hooks),
+    TextStyle'.Text',
+    Style'.Frame' {
+        TextStyle'.Text',
+        Style'.Dash':Text '',
+        Style'.Check':Hide(),
+        
+        Style'.Bar'
+            .LEFT:LEFT()
+        {
+            Style'.Label'
+                .TOPLEFT:TOPLEFT(),
+            Style'.Texture':Texture ''
+        }
+
+        -- Style'.Bar' {
+        --     function(self)
+        --         self:Points { LEFT = self:GetParent():LEFT(5, 0) }
+        --     end
+        -- }
+        -- Style'.Bar'
+        --     :Height(4)
+        -- {
+        --     Style'.BorderMid':Height(6),
+        --     Style'.BorderRight':Size(6, 6),
+        --     Style'.BorderLeft':Size(6, 6),
+        --     function(self)
+        --         self:Points { LEFT = self:GetParent():LEFT() }
+        --     end
+        -- }
+    }
+}
+
+
+
+local StyleObjectiveTrackerFrame = Style {
+    Frame'.HoverBg'
+        :AllPoints(ObjectiveTrackerFrame)
+        :Hooks(hooks),
+        
+    Style'.BlocksFrame' {
+        Style'.Button':Hooks(hooks):Alpha(0),
+        Style'.ScrollFrame' {
+            SectionStyle'.ScrollContents',
+            Style'.ScrollContents' {
+                Style'.Frame' {
+                    Style'.Icon':Hide(),
+                    Style'.Bar' {
+                        Style'.Label'
+                            .LEFT:LEFT(20, 5)
+                    }
+                }
+            }
+        },
+        Style'.Frame' {
+            SectionStyle,
+            -- Style:FitToChildren(),
+        },
+        -- Style:FitToChildren()
+    }
+}
 
 
 local function update_size(e)
-
     frames_hide = ObjectiveTrackerFrame.BlocksFrame'.Frame'
     buttons_hide = ObjectiveTrackerFrame.BlocksFrame'.Button'
-    
-    Style(ObjectiveTrackerFrame) {
-        Frame'.HoverBg'
-            :AllPoints(ObjectiveTrackerFrame)
-            :Hooks(hooks),
-            
-        Style'.BlocksFrame' {
-            Style'.Button':Hooks(hooks):Alpha(0),
-            Style'.ScrollFrame' {
-                SectionStyle'.ScrollContents',
-                Style'.ScrollContents' {
-                    Style'.Frame' {
-                        Style'.Icon':Hide(),
-                        Style'.Bar' {
-                            Style'.Label' {
-                                function(self)
-                                    self:SetPoints { LEFT = self:GetParent():LEFT(20, 5) }
-                                end
-                            }
-                        }
-                    }
-                }
-            },
-            Style'.Frame' {
-                SectionStyle,
-                -- Style:FitToChildren(),
-            },
-            -- Style:FitToChildren()
-        }
-    }
+    StyleObjectiveTrackerFrame(ObjectiveTrackerFrame)
 end
 
 local addon = Frame
@@ -101,76 +155,13 @@ local addon = Frame
     .new()
 
 
-local TextStyle = Style {
-    function(self)
-        -- self:SetWidth(440)
-        if self.GetStringWidth then
-            self:SetWidth(self:GetStringWidth())
-        else
-            self:SetWidth(self:GetTextWidth())
-        end
-    end
-}
-
-
-SectionStyle = Style {
-    -- function(self)
-    --     if self.module then
-    --         self.module.fromHeaderOffsetY = 0
-    --         self.module.fromModuleOffsetY = 0
-    --     end
-    -- end,
-    Style'.rightButton'
-        :Hooks(hooks)
-        { function(self) self:Points { TOPLEFT = self:GetParent():TOPRIGHT() } end },
-    TextStyle'.HeaderText',
-    TextStyle'.HeaderButton':FrameLevel(3):Hooks(hooks),
-    TextStyle'.Text',
-    Style'.Frame' {
-        TextStyle'.Text',
-        Style'.Dash':Text '',
-        Style'.Check':Hide(),
-        
-        Style'.Bar' {
-            function(self)
-                self:SetPoints { LEFT = self:GetParent():LEFT() }
-            end,
-            Style'.Label' {
-                function(self)
-                    self:SetPoints { TOPLEFT = self:GetParent():TOPLEFT() }
-                end
-            },
-            Style'.Texture':Texture ''
-        }
-
-        -- Style'.Bar' {
-        --     function(self)
-        --         self:Points { LEFT = self:GetParent():LEFT(5, 0) }
-        --     end
-        -- }
-        -- Style'.Bar'
-        --     :Height(4)
-        -- {
-        --     Style'.BorderMid':Height(6),
-        --     Style'.BorderRight':Size(6, 6),
-        --     Style'.BorderLeft':Size(6, 6),
-        --     function(self)
-        --         self:Points { LEFT = self:GetParent():LEFT() }
-        --     end
-        -- }
-    }
-}
-
-
 Style(ObjectiveTrackerFrame) {
     Style'.HeaderMenu' {
         Style'.Button':Hooks(hooks),
         Frame'.HoverFrame'
             :FrameStrata('BACKGROUND', -1)
-            :Points {
-                TOPLEFT = ObjectiveTrackerFrame:TOPLEFT(),
-                TOPRIGHT = ObjectiveTrackerFrame:TOPRIGHT()
-            }
+            .TOPLEFT:TOPLEFT(ObjectiveTrackerFrame)
+            .TOPRIGHT:TOPRIGHT(ObjectiveTrackerFrame)
             :Hooks(hooks)
             :Hooks {
                 OnMouseDown = function(self)

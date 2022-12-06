@@ -1,11 +1,12 @@
 
-local addon = CreateFrame('Frame')
+local query, Style, Frame = LQT.query, LQT.Style, LQT.Frame
+
 
 local center = GameTooltip.NineSlice.Center
 local tex = center:GetTexture()
 local color = { center:GetVertexColor() }
 color[4] = 0.7
-for slice in GameTooltip'.NineSlice.Texture' do
+for slice in query(GameTooltip, '.NineSlice.Texture') do
     if slice ~= center then
         slice:SetTexture ''
         slice:SetAlpha(0)
@@ -15,32 +16,22 @@ for slice in GameTooltip'.NineSlice.Texture' do
     end
 end
 
-center:SetPoints {
-    TOPLEFT = GameTooltip:TOPLEFT(0, -2),
-    BOTTOMRIGHT = GameTooltip:BOTTOMRIGHT()
-}
 
-GameTooltip:SetHooks {
-    OnShow = function()
-
-    end
-}
-
-GameTooltipStatusBar:SetPoints({
-    TOPLEFT = GameTooltip:BOTTOMLEFT(6, 6),
-    TOPRIGHT = GameTooltip:BOTTOMRIGHT(-6, 6)
-})
-GameTooltipStatusBar:SetHeight(1)
+local StyleCenter = Style(center)
+    .TOPLEFT:TOPLEFT(GameTooltip, 0, -2)
+    .BOTTOMRIGHT:BOTTOMRIGHT(GameTooltip)
 
 
-addon:SetEvents {
-    UPDATE_MOUSEOVER_UNIT = function()
-        
-        center:SetPoints {
-            TOPLEFT = GameTooltip:TOPLEFT(0, -2),
-            BOTTOMRIGHT = GameTooltip:BOTTOMRIGHT()
-        }
+Style(GameTooltipStatusBar)
+    .TOPLEFT:BOTTOMLEFT(GameTooltip, 6, 6)
+    .TOPRIGHT:BOTTOMRIGHT(GameTooltip, -6, 6)
+    :Height(1)
 
-    end
-}
 
+Frame
+    :Events {
+        UPDATE_MOUSEOVER_UNIT = function()
+            StyleCenter()
+        end
+    }
+    .new()
