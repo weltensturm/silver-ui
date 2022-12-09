@@ -40,7 +40,7 @@ local function InlineListLayout(selection, filter, margin)
                     -- print('ANCHOR', element:GetName() or element:GetObjectType(), '->', (previous_match or before):GetName() or (previous_match or before):GetObjectType())
                     element:ClearAllPoints()
                     element:SetPoint('TOP', previous_match or before, 'BOTTOM', 0, -margin.inner)
-                    element:SetPoint('LEFT', element:GetParent(), 'LEFT')
+                    element:SetPoint('LEFT', element:GetParent(), 'LEFT', margin.left, 0)
                     previous_match = element
                 else
                     before = element
@@ -53,8 +53,6 @@ local function InlineListLayout(selection, filter, margin)
         after:SetPoint('TOPLEFT', previous_match, 'BOTTOMLEFT', 0, -margin.after)
     end
 end
-
-_G.InlineListLayout = InlineListLayout
 
 
 local ListLayout = Style {
@@ -161,7 +159,7 @@ local StyleQuestInfoRewardsFrame = Style {
     end,
 
     function(self)
-        InlineListLayout(self'.*', 'Button', { inner=5, after=10 })
+        InlineListLayout(self'.*', 'Button', { left=0, inner=5, after=10 })
         -- if self.ItemReceiveText then
         --     for btn in self'.Button' do
         --         self.ItemReceiveText:SetPoints { TOPLEFT = btn:BOTTOMLEFT(0, -5 )}
@@ -276,8 +274,8 @@ local function StyleAll()
 
             -- Frame'.ScrollBoxAnchor'
             --     :Width(WIDTH-20),
-            Style'.*.ScrollBar':Hide(),
-            Style'.*.ScrollBox'
+            Style'.Frame.ScrollBar':Hide(),
+            Style'.Frame.ScrollBox'
                 :Padding(0, 0, 0, 0, 0)
                 :Width(WIDTH-20)
                 :Height(800) -- just leave it at 800, blizzard calculates the extents wrong,
@@ -428,7 +426,7 @@ local function StyleAll()
                             .BOTTOMRIGHT:BOTTOMRIGHT(PARENT.Icon, 10, -7)
                     }
                 }
-                InlineListLayout(query(content, '.*'), 'QuestProgressItem#', { inner=5, after=10 })
+                InlineListLayout(query(content, '.*'), 'QuestProgressItem#', { left=10, inner=5, after=10 })
 
                 Style(QuestInfoItemHighlight) {
                     Style'.Texture'
