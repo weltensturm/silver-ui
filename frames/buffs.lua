@@ -1,5 +1,5 @@
 
-local SELF, PARENT, Frame, Style, Cooldown, Texture, MaskTexture = LQT.SELF, LQT.PARENT, LQT.Frame, LQT.Style, LQT.Cooldown, LQT.Texture, LQT.MaskTexture
+local query, SELF, PARENT, Frame, Style, Cooldown, Texture, MaskTexture = LQT.query, LQT.SELF, LQT.PARENT, LQT.Frame, LQT.Style, LQT.Cooldown, LQT.Texture, LQT.MaskTexture
 
 
 local scale = UIParent:GetScale()
@@ -177,6 +177,13 @@ local StyleDebuffIcon = Style
 }
 
 
+local function score(a)
+    return
+        (a.count and a.count:IsShown() and tonumber(a.count:GetText() or '0') or 0)*10000000
+        + a.Icon:GetTexture()
+end
+
+
 local BuffManager = Frame
     .init {
         fullUpdate = function(self)
@@ -198,13 +205,7 @@ local BuffManager = Frame
         
             
             table.sort(sorted, function(a, b)
-                local ascore =
-                    (a.count and tonumber(a.count:GetText() or '0') or 0)*10000000
-                    + a.Icon:GetTexture()
-                local bscore =
-                    (b.count and tonumber(b.count:GetText() or '0') or 0)*10000000
-                    + b.Icon:GetTexture()
-                return ascore < bscore
+                return score(a) < score(b)
             end)
         
             self.cacheBuffs = sorted
