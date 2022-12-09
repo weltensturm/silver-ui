@@ -257,6 +257,7 @@ local StyleMinimapCluster = Style
                 PLAYER_ENTERING_WORLD = function(self)
                     self.progress = 0.001
                     self:SetCooldownDuration(1)
+                    self:SetCooldown(GetTime(), 1)
                 end
             }
             :Hooks {
