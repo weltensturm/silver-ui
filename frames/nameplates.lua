@@ -2,12 +2,16 @@
 
 
 local
+    SELF,
+    PARENT,
     Frame,
     CheckButton,
     FontString,
     Style,
     Texture
-    =   LQT.Frame,
+    =   LQT.SELF,
+        LQT.PARENT,
+        LQT.Frame,
         LQT.CheckButton,
         LQT.FontString,
         LQT.Style,
@@ -45,7 +49,7 @@ SilverUI.Settings 'Nameplates' {
         :Size(24, 24)
         :NormalTexture 'Interface/Buttons/UI-CheckBox-Up'
         :PushedTexture 'Interface/Buttons/UI-CheckBox-Down'
-	 	:HighlightTexture 'Interface/Buttons/UI-CheckBox-Highlight'
+        :HighlightTexture 'Interface/Buttons/UI-CheckBox-Highlight'
         :CheckedTexture 'Interface/Buttons/UI-CheckBox-Check'
         :DisabledCheckedTexture 'Interface/Buttons/UI-CheckBox-Check-Disabled'
         :HitRectInsets(-4, -100, -4, -4)
@@ -67,6 +71,19 @@ SilverUI.Settings 'Nameplates' {
 }
 
 
+local darken
+do
+    local colorSelect = CreateFrame('ColorSelect') -- Convert RGB <-> HSV (:
+    darken = function(r, g, b, darken)
+        colorSelect:SetColorRGB(r, g, b)
+        local h, s, v = colorSelect:GetColorHSV()
+        v = v * darken
+        colorSelect:SetColorHSV(h, s, v)
+        return colorSelect:GetColorRGB()
+    end
+end
+
+
 local function WithUnitFrame(fn)
     return function(self, unit, ...)
         local plate = C_NamePlate.GetNamePlateForUnit(unit)
@@ -76,6 +93,161 @@ local function WithUnitFrame(fn)
     end
 end
 
+
+local StyleUnitFrame = Style {
+    Frame'.SilverUI'
+        :AllPoints(PARENT)
+        :RegisterEvent 'PLAYER_REGEN_DISABLED'
+        :RegisterEvent 'PLAYER_REGEN_ENABLED'
+        .init {
+            UpdateUnit = function(self)
+                self:UnregisterEvent('UNIT_THREAT_LIST_UPDATE')
+                self:RegisterUnitEvent('UNIT_THREAT_LIST_UPDATE', self.uf.unit)
+                self:UpdateThreat()
+            end,
+
+            UpdateThreat = function(self)
+                local r, g, b = self.uf.healthBar.r, self.uf.healthBar.g, self.uf.healthBar.b
+                if UnitAffectingCombat('player') then
+                    local threat = UnitThreatSituation('player', self.uf.unit) or 0
+                    local r, g, b = self.uf.healthBar.r, self.uf.healthBar.g, self.uf.healthBar.b
+                    r, g, b = darken(r, g, b, 0.75 + threat/3/4)
+                    self.uf.healthBar.barTexture:SetVertexColor(r, g, b)
+                else
+                    self.uf.healthBar.barTexture:SetVertexColor(r, g, b)
+                end
+            end
+        }
+        .init {
+            function(self, uf)
+                self.uf = uf
+                if uf.unit then
+                    self:UpdateUnit()
+                end
+            end
+        }
+        :Hooks {
+            OnShow = SELF.UpdateThreat,
+            OnEvent = SELF.UpdateThreat
+        },
+    
+    Style'.name'
+        :ShadowColor(0, 0, 0, 0.5),
+    Style'.ClassificationFrame'
+        :Alpha(0)
+}
+
+
+local StyleUnitFrameCastBar = Style {
+    
+    Frame'.SilverUICast'
+        :AllPoints(PARENT)
+        :RegisterEvent 'PLAYER_TARGET_CHANGED'
+        .data {
+            UpdateUnit = function(self)
+                self:UnregisterEvent 'UNIT_SPELLCAST_START'
+                self:UnregisterEvent 'UNIT_SPELLCAST_STOP'
+                self:UnregisterEvent 'UNIT_SPELLCAST_CHANNEL_START'
+                self:UnregisterEvent 'UNIT_SPELLCAST_CHANNEL_STOP'
+
+                if self.uf.unit then
+                    self:RegisterUnitEvent('UNIT_SPELLCAST_START', self.uf.unit)
+                    self:RegisterUnitEvent('UNIT_SPELLCAST_STOP', self.uf.unit)
+                    self:RegisterUnitEvent('UNIT_SPELLCAST_CHANNEL_START', self.uf.unit)
+                    self:RegisterUnitEvent('UNIT_SPELLCAST_CHANNEL_STOP', self.uf.unit)
+                    self:UpdateCastBar()
+                end
+            end,
+            UpdateCastBar = function(self)
+                if not self.uf.unit then return end
+                
+                local casting = UnitCastingInfo(self.uf.unit)
+                local channeling = UnitChannelInfo(self.uf.unit)
+
+                if casting or channeling then
+                    local notInterruptible
+                    if channeling then
+                        notInterruptible = select(7, UnitChannelInfo(self.uf.unit))
+                    else
+                        notInterruptible = select(8, UnitCastingInfo(self.uf.unit))
+                    end
+
+                    local castBar = self.uf.castBar
+                    self.uf.healthBar:ClearAllPoints()
+                    self.uf.healthBar:SetPoint('CENTER', self.uf, 'CENTER')
+                    castBar:ClearAllPoints()
+                    castBar:SetPoint('CENTER', self.uf, 'CENTER')
+                    castBar:SetSize(self.uf.healthBar:GetSize())
+                    castBar.Text:ClearAllPoints()
+                    castBar.Text:SetPoint('BOTTOM', castBar, 'TOP')
+
+                    -- castBar.Icon:SetAlpha(0)
+                    -- castBar.Icon:SetAtlas('')
+                    -- castBar.Icon:SetScale(0)
+                    castBar.Icon:SetMask 'Interface/AddOns/silver-ui/art/force-hide'
+                    castBar.BorderShield:SetTexture('')
+
+                    local bg = castBar.background or castBar.Background
+                    bg:SetTexture('')
+                    bg:SetAlpha(0)
+                    castBar:SetStatusBarColor(0, 0, 0, 0)
+
+                    local texture = castBar:GetStatusBarTexture()
+                    castBar.Spark:SetPoint('TOP',texture,'TOPRIGHT',-1,4)
+                    castBar.Spark:SetPoint('BOTTOM',texture,'BOTTOMRIGHT',-1,-4)
+                    castBar.Spark:Show()
+
+                    if notInterruptible then
+                        castBar.Spark:SetVertexColor(1, 0, 0, 0.7) 
+                        local r, g, b, a = self.uf.name:GetTextColor()
+                        castBar.Text:SetTextColor(r, g, b, 1)
+                    else
+                        castBar.Spark:SetVertexColor(1, 1, 1, 1) 
+                        castBar.Text:SetTextColor(1, 1, 1, 1)
+                    end
+                    castBar.Text:SetFont(self.uf.name:GetFont())
+                    self.nameAlpha = 0
+                    self:UpdateName()
+                else
+                    self.uf.castBar:Hide()
+                    self.nameAlpha = 1
+                    self:UpdateName()
+                end
+
+            end,
+            UpdateName = function(self)
+                self.uf.name:SetAlpha(self.nameAlpha)
+            end
+        }
+        .init {
+            function(self, uf)
+                self.uf = uf
+                if uf.unit then
+                    self:UpdateUnit()
+                end
+            end
+        }
+        :Hooks {
+            OnEvent = SELF.UpdateCastBar,
+            OnShow = SELF.UpdateCastBar
+        }
+
+
+}
+
+
+hooksecurefunc('CompactUnitFrame_SetUnit', function(self, unit)
+    if self.SilverUI then
+        self.SilverUI:UpdateUnit()
+        self.SilverUICast:UpdateUnit()
+    end
+end)
+
+hooksecurefunc('CompactUnitFrame_UpdateName', function(self)
+    if self.SilverUICast then
+        self.SilverUICast:UpdateName()
+    end
+end)
 
 load = function()
 
@@ -90,12 +262,11 @@ load = function()
         .new()
 
 
-
     local healthBarManager = Frame -- Dynamic health bar size
         .data {
             initPlate = WithUnitFrame(function(self, unit, uf)
-                uf.name:SetShadowColor(0, 0, 0, 0.5)
-                uf.classificationIndicator:SetVertexColor(0,0,0,0)
+                StyleUnitFrame(uf)
+                StyleUnitFrameCastBar(uf)
                 self:adjustHealthbar(unit)
             end),
             adjustHealthbar = WithUnitFrame(function(self, unit, uf)
@@ -108,31 +279,17 @@ load = function()
                 local x =  healthMax / UnitHealthMax("player") / diminish / 1.75
                 uf.healthBar.CachedScale = max(0.02, (1.0 - 1 / (x + 1)) * 4)
                 self:updateHpScale(uf)
-                self:updateThreat(unit, uf)
             end),
             updateHpScale = function(self, uf)
                 uf.healthBar:ClearAllPoints()
                 uf.healthBar:SetPoint('CENTER', uf, 'CENTER')
                 uf.healthBar:SetWidth(4+100/2*uf.healthBar.CachedScale)
-            end,
-            updateThreat = function(self, unit, uf)
-                if UnitAffectingCombat('player') then
-                    local threat = UnitThreatSituation('player', unit) or 0
-                    local r, g, b, a = uf.healthBar.barTexture:GetVertexColor()
-                    uf.healthBar.barTexture:SetVertexColor(r, 0.3-threat/10, b, a)
-                end
             end
         }
         :EventHooks {
             NAME_PLATE_UNIT_ADDED = function(self, unit) self:initPlate(unit) end,
             UNIT_HEALTH = function(self, unit) self:adjustHealthbar(unit) end,
-            PLAYER_TARGET_CHANGED = function(self) self:adjustHealthbar('target') end,
-            UNIT_THREAT_LIST_UPDATE = function(self, unit)
-                local nameplate = C_NamePlate.GetNamePlateForUnit(unit)
-                if nameplate and nameplate.UnitFrame then
-                    self:updateThreat(unit, nameplate.UnitFrame)
-                end
-            end
+            PLAYER_TARGET_CHANGED = function(self) self:adjustHealthbar('target') end
         }
         .new()
 
@@ -141,72 +298,5 @@ load = function()
             healthBarManager:updateHpScale(self.UnitFrame)
         end
     end)
-
-
-    Frame -- Cast bar over health bar
-        .data {
-            initPlate = WithUnitFrame(function(self, unit, uf)
-                if UnitCastingInfo(unit) or UnitChannelInfo(unit) then
-                    self:castStart(unit)
-                end
-            end),
-            castStart = WithUnitFrame(function(self, unit, uf, channel)
-                local notInterruptible
-                if channel then
-                    notInterruptible = select(7, UnitChannelInfo(unit))
-                else
-                    notInterruptible = select(8, UnitCastingInfo(unit))
-                end
-
-                local castBar = uf.castBar
-                uf.healthBar:ClearAllPoints()
-                uf.healthBar:SetPoint('CENTER', uf, 'CENTER')
-                castBar:ClearAllPoints()
-                castBar:SetPoint('CENTER', uf, 'CENTER')
-                castBar:SetSize(uf.healthBar:GetSize())
-                castBar.Text:ClearAllPoints()
-                castBar.Text:SetPoint('BOTTOM', castBar, 'TOP')
-
-                -- castBar.Icon:SetAlpha(0)
-                -- castBar.Icon:SetAtlas('')
-                -- castBar.Icon:SetScale(0)
-                castBar.Icon:SetMask 'Interface/AddOns/silver-ui/art/force-hide'
-                castBar.BorderShield:SetTexture('')
-
-                local bg = castBar.background or castBar.Background
-                bg:SetTexture('')
-                bg:SetAlpha(0)
-                castBar:SetStatusBarColor(0, 0, 0, 0)
-
-                local texture = castBar:GetStatusBarTexture()
-                castBar.Spark:SetPoint('TOP',texture,'TOPRIGHT',-1,4)
-                castBar.Spark:SetPoint('BOTTOM',texture,'BOTTOMRIGHT',-1,-4)
-                castBar.Spark:Show()
-
-                if notInterruptible then
-                    castBar.Spark:SetVertexColor(1, 0, 0, 0.7) 
-                    local r, g, b, a = uf.name:GetTextColor()
-                    castBar.Text:SetTextColor(r, g, b, 1)
-                else
-                    castBar.Spark:SetVertexColor(1, 1, 1, 1) 
-                    castBar.Text:SetTextColor(1, 1, 1, 1)
-                end
-                castBar.Text:SetFont(uf.name:GetFont())
-                uf.name:SetAlpha(0)
-            end),
-            castStop = WithUnitFrame(function(self, unit, uf)
-                uf.name:SetAlpha(1)
-                uf.castBar:Hide()
-            end)
-        }
-        :EventHooks {
-            NAME_PLATE_UNIT_ADDED = function(self, unit) self:initPlate(unit) end,
-            UNIT_SPELLCAST_START = function(self, unit) self:castStart(unit) end,
-            UNIT_SPELLCAST_STOP = function(self, unit) self:castStop(unit) end,
-            UNIT_SPELLCAST_CHANNEL_START = function(self, unit) self:castStart(unit, true) end,
-            UNIT_SPELLCAST_CHANNEL_STOP = function(self, unit) self:castStop(unit, true) end,
-            PLAYER_TARGET_CHANGED = function(self) self:initPlate('target') end,
-        }
-        .new()
 
 end
