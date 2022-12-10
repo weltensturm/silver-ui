@@ -369,7 +369,7 @@ hooksecurefunc('ActionButtonCooldown_OnCooldownDone', function(button)
 end)
 
 for _, bar in pairs(bars) do
-    bar {
+    Style(bar) {
         StyleActionButton'.CheckButton'
     }
 end

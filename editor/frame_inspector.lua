@@ -1,9 +1,30 @@
 local ADDON, Addon = ...
 
-local     Style,     Frame,     Button,     Texture,     FontString,     EditBox,     ScrollFrame,
-          SELF,     PARENT,     ApplyFrameProxy,     FrameProxyMt
-    = LQT.Style, LQT.Frame, LQT.Button, LQT.Texture, LQT.FontString, LQT.EditBox, LQT.ScrollFrame,
-      LQT.SELF, LQT.PARENT, LQT.ApplyFrameProxy, LQT.FrameProxyMt
+local
+    query,
+    Style,
+    Frame,
+    Button,
+    Texture,
+    FontString,
+    EditBox,
+    ScrollFrame,
+    SELF,
+    PARENT,
+    ApplyFrameProxy,
+    FrameProxyMt
+    =   LQT.query,
+        LQT.Style,
+        LQT.Frame,
+        LQT.Button,
+        LQT.Texture,
+        LQT.FontString,
+        LQT.EditBox,
+        LQT.ScrollFrame,
+        LQT.SELF,
+        LQT.PARENT,
+        LQT.ApplyFrameProxy,
+        LQT.FrameProxyMt
 
 local TypeInfo, FillTypeInfo = Addon.TypeInfo, Addon.FillTypeInfo
 
@@ -254,24 +275,24 @@ Addon.FrameInspector = FrameSmoothScroll
                 end
             end
 
-            self'.Parent#':Reset()
+            query(self, '.Parent#'):Reset()
             local previous = nil
             for i = 1, #parents do
                 local reference = parents[i][1]
 
-                self {
-                    FrameInspectorButton('.Parent' .. i)
-                        .data { inspector = self }
-                        :Reference(reference, slice(parents, i+1), parents[i][2])
-                        :FrameLevel(10)
-                        :ClearAllPoints()
-                    {
-                        Style'.Text'
-                            :Alpha(previous and 0.7 or 1)
-                            :Text(parents[i][2]),
-                        Style:Width(SELF.Text:GetStringWidth() + 20)
-                    }
+                FrameInspectorButton('.Parent' .. i)
+                    .data { inspector = self }
+                    :Reference(reference, slice(parents, i+1), parents[i][2])
+                    :FrameLevel(10)
+                    :ClearAllPoints()
+                {
+                    Style'.Text'
+                        :Alpha(previous and 0.7 or 1)
+                        :Text(parents[i][2]),
+                    Style:Width(SELF.Text:GetStringWidth() + 20)
                 }
+                    .apply(self)
+
                 local content = self['Parent' .. i]
                 if previous then
                     content:SetPoint('TOPRIGHT', previous, 'TOPLEFT', 10, 0)
@@ -282,35 +303,35 @@ Addon.FrameInspector = FrameSmoothScroll
             end
 
             previous = nil
-            self.Content'.Member#':Reset()
+            query(self.Content, '.Member#'):Reset()
             for i, obj in pairs(SortedChildren(selected)) do
                 local reference = obj[1]
                 local name = obj[2]
                 local attrName = obj[3]
 
-                self.Content {
-                    FrameInspectorButton('.Member' .. i)
-                        .data { inspector = self }
-                        :Reference(reference, parents, attrName)
-                        :Text(name)
-                        :Width(self:GetWidth() - 8)
-                        .TOPLEFT:TOPLEFT(self.Content, 10, 0)
-                    {
-                        Style'.Text'
-                            .LEFT:LEFT()
-                        .. function(self)
-                            if not self.is_gui then
-                                self:SetTextColor(0.5, 0.5, 0.5)
-                            elseif reference == selected then
-                                self:SetTextColor(1, 1, 0.5)
-                            elseif reference.IsShown and not reference:IsShown() then
-                                self:SetTextColor(0.7, 0.7, 0.7)
-                            else
-                                self:SetTextColor(1, 1, 1)
-                            end
+                FrameInspectorButton('.Member' .. i)
+                    .data { inspector = self }
+                    :Reference(reference, parents, attrName)
+                    :Text(name)
+                    :Width(self:GetWidth() - 8)
+                    .TOPLEFT:TOPLEFT(self.Content, 10, 0)
+                {
+                    Style'.Text'
+                        .LEFT:LEFT()
+                    .. function(self)
+                        if not self.is_gui then
+                            self:SetTextColor(0.5, 0.5, 0.5)
+                        elseif reference == selected then
+                            self:SetTextColor(1, 1, 0.5)
+                        elseif reference.IsShown and not reference:IsShown() then
+                            self:SetTextColor(0.7, 0.7, 0.7)
+                        else
+                            self:SetTextColor(1, 1, 1)
                         end
-                    }
+                    end
                 }
+                    .apply(self.Content)
+
                 local content = self.Content['Member' .. i]
                 if previous then
                     content:SetPoint('TOPLEFT', previous, 'BOTTOMLEFT')

@@ -1,7 +1,7 @@
 local _, namespace = ...
 local LQT = namespace.LQT
 
-local query, FrameProxyMt, ApplyFrameProxy = LQT.query, LQT.FrameProxyMt, LQT.ApplyFrameProxy
+local query, FrameProxyMt, ApplyFrameProxy, FrameExtensions = LQT.query, LQT.FrameProxyMt, LQT.ApplyFrameProxy, LQT.FrameExtensions
 
 
 local CALLMETHOD = 1
@@ -44,6 +44,18 @@ local function hasFrameProxy(...)
             return true
         end
     end
+end
+
+local function resolveFrameProxiesArray(object, table)
+    local result = {}
+    for i=1, #table do
+        if getmetatable(table[i]) == FrameProxyMt then
+            result[i] = ApplyFrameProxy(object, table[i])
+        else
+            result[i] = table[i]
+        end
+    end
+    return result
 end
 
 local function checkChildName(name)
@@ -256,7 +268,8 @@ end
 
 function StyleActions:reapply(arg1, arg2, arg3)
     local context = get_context(4)
-    local action = newaction(self, { [ACTION]=CALLMETHOD, [ARGS]={ 'RegisterReapply', { self.clear_name(), arg1, arg2, arg3 or function() end, context }, context } })
+    -- local action = newaction(self, { [ACTION]=CALLMETHOD, [ARGS]={ 'RegisterReapply', { self.clear_name(), arg1, arg2, arg3 or function() end, context }, context } })
+    local action = self:RegisterReapply(self.clear_name(), arg1, arg2, arg3 or function() end, context)
     if action[BOUND_FRAME] then
         run_single(action)
     end
@@ -267,14 +280,6 @@ function StyleActions:clear_name()
     local action = newaction(self, {})
     action[NAME] = nil
     return action
-end
-
-function StyleActions:Events(table)
-    return newaction(self, { [EVENTS] = table })
-end
-
-function StyleActions:Hooks(table)
-    return newaction(self, { [HOOKS] = table })
 end
 
 
@@ -324,33 +329,75 @@ function StyleChainMeta:__index(attr)
         return function(arg1, ...)
             if arg1 == self then -- called with :
                 local action
-                if hasFrameProxy(...) then
-                    action = newaction(self, { [ACTION]=CALLMETHOD_FRAMEPROXY_ARGS, [ARGS]={ attr, { ... }, get_context() } })
-                else
-                    local context = get_context():gsub('%[string "(@.*)"%]:(%d+).*', '%1:%2')
-                    local args = { ... }
-                    local callmethod_text = [[
-                        return function(self, ...)
-                            if self.Set%s then
-                                self:Set%s(...)
+                local context = get_context():gsub('%[string "(@.*)"%]:(%d+).*', '%1:%2')
+                local args = { ... }
+
+                local argsIn = ''
+                local argsOut = ''
+                local nextArg = 1
+
+                if isWithContext(attr) then
+                    table.insert(args, context)
+                end
+
+                for i=1, #args do
+                    local comma = nextArg > 1 and ', ' or ''
+                    argsIn = argsIn .. ', arg' .. nextArg
+                    if getmetatable(args[i]) == FrameProxyMt then
+                        argsOut = argsOut .. comma .. 'ApplyFrameProxy(self, arg' .. nextArg .. ')'
+                    else
+                        argsOut = argsOut .. comma .. 'arg' .. nextArg
+                    end
+                    nextArg = nextArg + 1
+                end
+
+                local callmethod_text
+                if FrameExtensions[attr] then
+                    callmethod_text = [[
+                        return function(self, ApplyFrameProxy, FrameExtensions{argsIn})
+                            if self.Set{Fn} then
+                                self:Set{Fn}({argsOut})
+                            elseif self.{Fn} then
+                                self:{Fn}({argsOut})
                             else
-                                self:%s(...)
+                                FrameExtensions.{Fn}(self{argsOutComma})
                             end
                         end
                     ]]
-                    local callmethod = assert(loadstring(callmethod_text:format(attr, attr, attr), context))()
-                    local wrapper
-                    if isWithContext(attr) then
-                        wrapper = function(obj)
-                            callmethod(obj, unpack(args), context)
+                else
+                    callmethod_text = [[
+                        return function(self, ApplyFrameProxy{argsIn})
+                            if self.Set{Fn} then
+                                self:Set{Fn}({argsOut})
+                            else
+                                self:{Fn}({argsOut})
+                            end
                         end
-                    else
-                        wrapper = function(obj)
-                            callmethod(obj, unpack(args))
-                        end
-                    end
-                    action = newaction(self, { [ACTION]=ACTION_COMPILED, [ARGS]=wrapper, [CONTEXT]=context })
+                    ]]
                 end
+                local callmethod = assert(
+                    loadstring(
+                        callmethod_text
+                            :gsub('{Fn}', attr)
+                            :gsub('{argsIn}', argsIn)
+                            :gsub('{argsOut}', argsOut)
+                            :gsub('{argsOutComma}', (#args > 0 and ', ' or '') .. argsOut),
+                        context
+                    )
+                )()
+
+                local wrapper
+                if FrameExtensions[attr] then
+                    wrapper = function(obj)
+                        callmethod(obj, ApplyFrameProxy, FrameExtensions, unpack(args))
+                    end
+                else
+                    wrapper = function(obj)
+                        callmethod(obj, ApplyFrameProxy, unpack(args))
+                    end
+                end
+
+                action = newaction(self, { [ACTION]=ACTION_COMPILED, [ARGS]=wrapper, [CONTEXT]=context })
                 if action[BOUND_FRAME] then
                     run_single(action)
                 end

@@ -311,22 +311,3 @@ end
 LQT.query = query
 LQT.matches = matches
 
-
-for v in values({
-    UIParent,
-    GossipGreetingScrollFrame,
-    QuestDetailScrollFrame,
-    QuestProgressItem1,
-    QuestRewardScrollFrameScrollBar,
-    ActionButton1,
-    Minimap,
-    PlayerFrameHealthBar,
-    CreateFrame('Cooldown'),
-    GameTooltip,
-    CreateFrame('SimpleHTML'),
-    CreateFrame('Frame'):CreateTexture(),
-}) do
-    getmetatable(v).__call = query
-    getmetatable(v).__index.has_lqt = true
-end
-

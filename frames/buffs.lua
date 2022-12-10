@@ -217,9 +217,9 @@ local BuffManager = Frame
             self.cacheBuffsTimed = sorted_timed
             
             if DebuffFrame then
-                self.cacheDebuffs = DebuffFrame'.AuraContainer.Button'.filter(function(self) return self:IsShown() end).all()
+                self.cacheDebuffs = query(DebuffFrame, '.AuraContainer.Button').filter(function(self) return self:IsShown() end).all()
             else
-                self.cacheDebuffs = BuffFrame'.DebuffButton#'.filter(function(self) return self:IsShown() end).all()
+                self.cacheDebuffs = query(BuffFrame, '.DebuffButton#').filter(function(self) return self:IsShown() end).all()
             end
         end,
         update = function(self, updatedAuras)

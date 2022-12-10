@@ -149,7 +149,7 @@ local StyleQuestInfoRewardsFrame = Style {
     function(self)
         if QuestInfoRewardsFrame:IsShown() then
             QuestFrameCompleteQuestButton:Show()
-            for btn in self'.Button'.filter(byVisible) do
+            for btn in query(self, '.Button').filter(byVisible) do
                 local show = btn.Icon and btn:GetNumPoints() > 0 -- don't ask me
                 if show then
                     QuestFrameCompleteQuestButton:Hide()
@@ -159,13 +159,13 @@ local StyleQuestInfoRewardsFrame = Style {
     end,
 
     function(self)
-        InlineListLayout(self'.*', 'Button', { left=0, inner=5, after=10 })
+        InlineListLayout(query(self, '.*'), 'Button', { left=0, inner=5, after=10 })
         -- if self.ItemReceiveText then
         --     for btn in self'.Button' do
         --         self.ItemReceiveText:SetPoints { TOPLEFT = btn:BOTTOMLEFT(0, -5 )}
         --     end
         -- end
-        self:FitToChildren()
+        Style(self):FitToChildren()
     end
 }
 
@@ -174,7 +174,6 @@ local function StyleAll()
 
     for window in query(UIParent, 'QuestFrame, GossipFrame, ItemTextFrame') -- QuestLogDetailFrame
         .filter(byVisible)
-        :Strip('Bg', 'Background', 'NineSlice', 'Inset', 'TopTileStreaks')
         :ClearAllPoints()
         :SetPoint('BOTTOM', UIParent, 'CENTER', 0, -250)
         :SetWidth(WIDTH)
@@ -183,7 +182,9 @@ local function StyleAll()
         local additionalHeight = 0
         local scale = window:GetEffectiveScale()
 
-        query(window, '.Button'):CornerOffset(5, 5)
+        for btn in query(window, '.Button') do
+            Style(btn):CornerOffset(5, 5)
+        end
 
         Style(window) {
             Style'.FriendshipStatusBar'
@@ -197,13 +198,13 @@ local function StyleAll()
         }
 
         local conversationBtnHeight = {}
-        for frame in window'.Frame'.filter(byVisible) do
-            for btn in frame'.Button' do
+        for frame in query(window, '.Frame').filter(byVisible) do
+            for btn in query(frame, '.Button') do
                 if btn:GetName() then
-                    btn:CornerOffset(10, 10)
+                    Style(btn):CornerOffset(10, 10)
                     conversationBtnHeight[btn] = btn:GetHeight()
                 elseif btn:IsVisible() and btn == frame.GoodbyeButton then
-                    btn:CornerOffset(10, 10)
+                    Style(btn):CornerOffset(10, 10)
                 elseif btn:IsVisible() then
                     btn:GetFontString():SetWidth(WIDTH-45)
                     btn:SetWidth(WIDTH-40)
@@ -214,6 +215,7 @@ local function StyleAll()
         end
 
         Style(window) {
+            :Strip('Bg', 'Background', 'NineSlice', 'Inset', 'TopTileStreaks')
 
             Style'.Texture:NONAME:NOATTR':Texture '',
             Style'.Texture:NOATTR:*Background*':Texture '',
@@ -238,7 +240,7 @@ local function StyleAll()
                 :TexCoord(0, 1, 0.11, 1)
                 .. function(self)
                     local parent = self:GetParent()
-                    local portrait = parent'.*FramePortrait, .PortraitContainer.portrait'[1]
+                    local portrait = query(parent, '.*FramePortrait, .PortraitContainer.portrait')[1]
                     self:ClearAllPoints()
                     self:SetPoint('TOPLEFT', portrait, 'TOPLEFT', -49, 4)
                     self:SetPoint('BOTTOMRIGHT', portrait, 'BOTTOMRIGHT', 10, -41)
@@ -307,7 +309,7 @@ local function StyleAll()
                     
                     function(self)
                         ListLayout(self)
-                        self:FitToChildren()
+                        Style(self):FitToChildren()
                         height = height + self:GetHeight()+20
                     end
                 },
@@ -325,9 +327,9 @@ local function StyleAll()
                 :Scripts {
                     OnMouseWheel = function(self, delta)
                         if delta > 0 then
-                            window'.ItemTextPrevPageButton':Click()
+                            query(window, '.ItemTextPrevPageButton'):Click()
                         else
-                            window'.ItemTextNextPageButton':Click()
+                            query(window, '.ItemTextNextPageButton'):Click()
                         end
                     end
                 }
@@ -394,9 +396,11 @@ local function StyleAll()
 
         for container in query(window, '.ScrollFrame, .*.ScrollFrame')
             .filter(byVisible)
-            :Strip('Top', 'Middle', 'Bottom')
             :SetWidth(WIDTH-10)
         do
+            Style(container)
+                :Strip('Top', 'Middle', 'Bottom')
+
             container:ClearAllPoints()
             container:SetPoint('TOPLEFT', window, 'TOPLEFT', 10, -40)
             query(container, '.Slider.Texture'):SetTexture '':SetAtlas ''
@@ -405,11 +409,12 @@ local function StyleAll()
             for content in query(container, '.Frame')
                 .filter(byVisible)
                 :SetWidth(WIDTH-20)
-                :SetScripts {
-                    OnSizeChanged = nil
-                }
             do
-                Style(content) {
+                Style(content)
+                    :Scripts {
+                        OnSizeChanged = nil
+                    }
+                {
                     Style'.QuestProgressItem#'
                         :Size(200, 20)
                     {
@@ -455,7 +460,7 @@ local function StyleAll()
                         subchild:SetWidth(WIDTH-40)
                     end
                 end
-                content:FitToChildren()
+                Style(content):FitToChildren()
                 
                 height = content:GetHeight()
             end

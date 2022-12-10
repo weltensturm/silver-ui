@@ -438,11 +438,10 @@ FrameBigBag = Frame
             for container = 0, 4 do
                 local bag = {}
                 table.insert(self.bags, bag)
-                self {
-                    Frame('.Bag' .. container)
-                        :AllPoints(self)
-                        :SetID(container)
-                }
+                Frame('.Bag' .. container)
+                    :AllPoints(self)
+                    :SetID(container)
+                    .apply(self)
                 for slot = 1, 36 do
                     -- local button = _G['ContainerFrame' .. (container+1) .. 'Item' .. slot]
                     local button = CreateFrame('ItemButton', nil, self['Bag' .. container], 'ContainerFrameItemButtonTemplate')
@@ -653,16 +652,16 @@ FrameBigBag = Frame
 
                 local rowFirstSlot = 'Slot' .. row .. '-1'
                 local slot = self.slots[rowFirstSlot]
-                self.SlotManager {
-                    ButtonRemoveRow('.Remover-' .. rowFirstSlot)
-                        .RIGHT:LEFT(slot, -4, 0)
-                        :Show()
-                        .data { row = row },
-                    ButtonAddRow('.Adder-' .. rowFirstSlot)
-                        .RIGHT:TOPLEFT(slot, -4, 0)
-                        :Show()
-                        .data { row = row }
-                }
+                ButtonRemoveRow('.Remover-' .. rowFirstSlot)
+                    .RIGHT:LEFT(slot, -4, 0)
+                    :Show()
+                    .data { row = row }
+                    .apply(self.SlotManager)
+                ButtonAddRow('.Adder-' .. rowFirstSlot)
+                    .RIGHT:TOPLEFT(slot, -4, 0)
+                    :Show()
+                    .data { row = row }
+                    .apply(self.SlotManager)
             else
                 for column = 1, db.columns do
                     local slot = self.slots['Slot' .. db.rows .. '-' .. column]

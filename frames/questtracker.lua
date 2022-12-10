@@ -1,5 +1,5 @@
 
-local Style, Frame, Texture, FontString = LQT.Style, LQT.Frame, LQT.Texture, LQT.FontString
+local query, Style, Frame, Texture, FontString = LQT.query, LQT.Style, LQT.Frame, LQT.Texture, LQT.FontString
 
 
 if WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE then return end
@@ -114,8 +114,8 @@ local StyleObjectiveTrackerFrame = Style {
 
 
 local function update_size(e)
-    frames_hide = ObjectiveTrackerFrame.BlocksFrame'.Frame'
-    buttons_hide = ObjectiveTrackerFrame.BlocksFrame'.Button'
+    frames_hide = query(ObjectiveTrackerFrame.BlocksFrame, '.Frame')
+    buttons_hide = query(ObjectiveTrackerFrame.BlocksFrame, '.Button')
     StyleObjectiveTrackerFrame(ObjectiveTrackerFrame)
 end
 

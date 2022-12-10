@@ -72,7 +72,9 @@ local MenuButton = Style
         :Texture 'Interface/GUILDFRAME/GuildLogoMask_L'
         :AllPoints(PARENT)
         .init(function(self, parent)
-            parent'.Texture':AddMaskTexture(self)
+            Style(parent) {
+                Style'.Texture':AddMaskTexture(self)
+            }
         end),
 
 }

@@ -4,6 +4,8 @@ local LQT = namespace.LQT
 LQT.FrameExtensions = {}
 local FrameExtensions = LQT.FrameExtensions
 
+local query = LQT.query
+
 local values = namespace.util.values
 
 local FrameProxyMt, ApplyFrameProxy = LQT.FrameProxyMt, LQT.ApplyFrameProxy
@@ -26,7 +28,7 @@ function FrameExtensions:FitToChildren()
     local height = 0
     local parent_top = self:GetTop()
     if parent_top then
-        for child in self'.*' do
+        for child in query(self, '.*') do
             if child:IsShown() and (child:GetObjectType() ~= "Frame" or child:GetChildren() or child:GetRegions()) then
                 local bottom = child:GetBottom()
                 if bottom and parent_top-bottom > height then
@@ -78,7 +80,7 @@ function FrameExtensions:CornerOffset(x, y)
 end
 
 
-function FrameExtensions:SetScripts(scripts)
+function FrameExtensions:Scripts(scripts)
     for k, fn in pairs(scripts) do
         self:SetScript(k, fn)
     end
@@ -120,10 +122,10 @@ local function TableHandleFrameProxies(frame, table)
 end
 
 
-function FrameExtensions:SetHooks(hooks, context)
+function FrameExtensions:Hooks(hooks, context)
     self.lqtHooks = self.lqtHooks or {}
     self.lqtHookLibrary = self.lqtHookLibrary or {}
-    self.lqtHookLibrary[context or get_context()] = hooks
+    self.lqtHookLibrary[context or get_context()] = TableHandleFrameProxies(self, hooks)
     for k, f in pairs(hooks) do
         if not self.lqtHooks[k] then
             local hooks = self.lqtHooks
@@ -151,7 +153,7 @@ function FrameExtensions:UnhookAll()
 end
 
 
-function FrameExtensions:SetEvents(handlers, context)
+function FrameExtensions:Events(handlers, context)
     self.lqtEvents = self.lqtEvents or {}
     self.lqtEventsLibrary = self.lqtEventsLibrary or {}
     self.lqtEventsLibrary[context or get_context()] = TableHandleFrameProxies(self, handlers)
@@ -176,7 +178,7 @@ function FrameExtensions:SetEvents(handlers, context)
 end
 
 
-function FrameExtensions:SetEventHooks(handlers, context)
+function FrameExtensions:EventHooks(handlers, context)
     if not self.lqtEventHooks then
         self.lqtEventHooks = self.lqtEventHooks or {}
         self:HookScript('OnEvent', function(self, event, ...)
@@ -204,7 +206,7 @@ function FrameExtensions:SetEventHooks(handlers, context)
 end
 
 
-function FrameExtensions:SetData(data)
+function FrameExtensions:Data(data)
     for k, v in pairs(TableHandleFrameProxies(self, data)) do
         self[k] = v
     end
@@ -278,7 +280,7 @@ function FrameExtensions:RegisterReapply(style, arg1, arg2, arg3, context)
             local hooks = prepareSecureHooks(self, name)
             hooks[context or get_context()] = callback
         elseif name == string.upper(name) then -- Event
-            self:SetEventHooks({ [name] = callback }, context)
+            FrameExtensions.EventHooks(self, { [name] = callback }, context)
         else
             assert(false)
         end
@@ -304,38 +306,3 @@ function FrameExtensions:Strip(...)
     end
 end
 
-
-for _, v in pairs({
-    CreateFrame('Frame'),
-    CreateFrame('ScrollFrame'),
-    CreateFrame('Button'),
-    CreateFrame('Slider'),
-    CreateFrame('StatusBar'),
-    CreateFrame('CheckButton'),
-    CreateFrame('EditBox'),
-    CreateFrame('Cooldown'),
-    CreateFrame('SimpleHTML'),
-    CreateFrame('OffScreenFrame'),
-    CreateFrame('Frame'):CreateTexture(),
-    CreateFrame('Frame'):CreateFontString(),
-    CreateFrame('Frame'):CreateMaskTexture(),
-    CreateFrame('Frame'):CreateAnimationGroup()
-}) do
-    if v.Hide then
-        v:Hide()
-    end
-    local meta = getmetatable(v)
-    for k_ext, v_ext in pairs(FrameExtensions) do
-        meta.__index[k_ext] = v_ext
-    end
-end
-
-for _, v in pairs {
-    Minimap,
-    GameTooltip
-} do
-    local mt = getmetatable(v)
-    for k_ext, v_ext in pairs(FrameExtensions) do
-        mt.__index[k_ext] = v_ext
-    end
-end

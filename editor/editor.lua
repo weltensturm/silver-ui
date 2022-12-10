@@ -1,9 +1,31 @@
 local ADDON, Addon = ...
 
-local     Style,     Frame,     Button,     Texture,     FontString,     EditBox,     ScrollFrame,
-          SELF,     PARENT,     ApplyFrameProxy,     FrameProxyMt
-    = LQT.Style, LQT.Frame, LQT.Button, LQT.Texture, LQT.FontString, LQT.EditBox, LQT.ScrollFrame,
-      LQT.SELF, LQT.PARENT, LQT.ApplyFrameProxy, LQT.FrameProxyMt
+local
+    query,
+    Style,
+    Frame,
+    Button,
+    Texture,
+    FontString,
+    EditBox,
+    ScrollFrame,
+    SELF,
+    PARENT,
+    ApplyFrameProxy,
+    FrameProxyMt
+    =   LQT.query,
+        LQT.Style,
+        LQT.Frame,
+        LQT.Button,
+        LQT.Texture,
+        LQT.FontString,
+        LQT.EditBox,
+        LQT.ScrollFrame,
+        LQT.SELF,
+        LQT.PARENT,
+        LQT.ApplyFrameProxy,
+        LQT.FrameProxyMt
+
 
 local TypeInfo, FillTypeInfo = Addon.TypeInfo, Addon.FillTypeInfo
 
@@ -232,20 +254,19 @@ local FrameAddonSection = Frame
             self.account = account
             self.settings = character
             self.Head:SetText(name)
-            self {
+            Style(self) {
                 Style'.Script#':Hide().TOP:TOP()
             }
             local height = 28
             local previous = self.Head
             for i, script in pairs(account.scripts) do
-                self {
-                    ButtonAddonScript('.Script' .. i)
-                        :Height(18)
-                        .TOPLEFT:BOTTOMLEFT(previous)
-                        .RIGHT:RIGHT()
-                        :Data(name, script, character.scripts[script.name])
-                        :Show()
-                }
+                ButtonAddonScript('.Script' .. i)
+                    :Height(18)
+                    .TOPLEFT:BOTTOMLEFT(previous)
+                    .RIGHT:RIGHT()
+                    :Data(name, script, character.scripts[script.name])
+                    :Show()
+                    .apply(self)
                 previous = self['Script' .. i]
                 height = height + previous:GetHeight()
             end
@@ -336,10 +357,9 @@ local FrameSettings = Frame
         .init(function(self, parent)
             local previous = nil
             for name, account, character in SilverUI.Addons() do
-                self.Content {
-                    FrameAddonSection('.' .. name)
-                        :Data(name, account, character)
-                }
+                FrameAddonSection('.' .. name)
+                    :Data(name, account, character)
+                    .apply(self.Content)
                 local content = self.Content[name]
                 if previous then
                     content:SetPoint('TOPLEFT', previous, 'BOTTOMLEFT')
@@ -382,7 +402,7 @@ local FrameEditor = Frame
             self.CodeEditor:Show()
             self.CodeEditor.Content.Editor.Save = function(code)
                 script.code = code
-                self.Settings.Sections.Content'.Frame':Update()
+                query(self.Settings.Sections.Content, '.Frame'):Update()
             end
             self.CodeEditor.Content.Editor:SetText(script.code)
             self.CodeEditor.Content.Editor:SetCursorPosition(0)
@@ -667,7 +687,10 @@ local function spawn()
 
     editorWindow:Show()
 
-    editorWindow'.*Corner, .*Edge':SetVertexColor(0.2, 0.2, 0.2, 0.5)
+    Style(editorWindow) {
+        Style'.*Corner, .*Edge'
+            :VertexColor(0.2, 0.2, 0.2, 0.5)
+    }
 end
 
 
