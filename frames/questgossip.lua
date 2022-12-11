@@ -214,8 +214,9 @@ local function StyleAll()
             end
         end
 
-        Style(window) {
+        Style(window)
             :Strip('Bg', 'Background', 'NineSlice', 'Inset', 'TopTileStreaks')
+        {
 
             Style'.Texture:NONAME:NOATTR':Texture '',
             Style'.Texture:NOATTR:*Background*':Texture '',

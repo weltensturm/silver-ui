@@ -294,15 +294,17 @@ function FrameExtensions:Strip(...)
         for v in values({...}) do
             local obj = self[v] or _G[name .. v]
             if obj and obj.GetChildren then
-                obj:Strip()
+                FrameExtensions.Strip(obj)
             elseif obj and obj:GetObjectType() == 'Texture' then
                 obj:SetTexture('')
                 obj:SetAtlas('')
             end
         end
     else
-        self'.Frame':Strip()
-        self'.Texture':SetTexture(''):SetAtlas('')
+        for frame in query(self, '.Frame') do
+            FrameExtensions.Strip(frame)
+        end
+        query(self, '.Texture'):SetTexture(''):SetAtlas('')
     end
 end
 
