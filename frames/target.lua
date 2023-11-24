@@ -1,11 +1,14 @@
+---@class Addon
+local Addon = select(2, ...)
 
+local LQT = Addon.LQT
 local Frame, Style, Texture, Cooldown = LQT.Frame, LQT.Style, LQT.Texture, LQT.Cooldown
 
 local PARENT = LQT.PARENT
 
 
 local StyleTargetFrameThreat = Style {
-    Style'.threatIndicator, .TargetFrameContainer.Flash'
+    ['.threatIndicator, .TargetFrameContainer.Flash'] = Style
         :DrawLayer 'BACKGROUND'
         :Alpha(0.1)
         :Texture 'Interface/Masks/CircleMaskScalable'
@@ -15,44 +18,53 @@ local StyleTargetFrameThreat = Style {
 }
 
 local StyleTargetFrameRetail = Style {
-    Style'.TargetFrameContainer' {
-        Style'.FrameTexture':Texture '':Alpha(0):Atlas '',
-        Style'.BossPortraitFrameTexture':Texture '':Alpha(0):Atlas '',
-        Style'.Portrait'
+    ['.TargetFrameContainer'] = Style {
+        ['.FrameTexture'] = Style:Texture '':Alpha(0):Atlas '',
+        ['.BossPortraitFrameTexture'] = Style:Texture '':Alpha(0):Atlas '',
+        ['.Portrait'] = Style
             :Show()
             :DrawLayer 'ARTWORK'
             .CENTER:CENTER()
             :Size(64, 64),
     },
-    Style'.TargetFrameContent' {
-        Style'.TargetFrameContentMain' {
-            Style'.LevelText'.TOP:TOP(),
-            Style'.Name':JustifyH 'MIDDLE'.BOTTOM:BOTTOM(0, 4),
-            Style'.ReputationColor':Texture '':Alpha(0),
+    ['.TargetFrameContent'] = Style {
+        ['.TargetFrameContentMain'] = Style {
+            ['.LevelText'] = Style.TOP:TOP(),
+            ['.Name'] = Style:JustifyH 'MIDDLE'.BOTTOM:BOTTOM(0, 4):Width(500),
+            ['.ReputationColor'] = Style:Texture '':Alpha(0),
         },
-        Style'.TargetFrameContentContextual' {
-            Style'.NumericalThreat' {
-                Style'.FontString':Alpha(0),
-                Style'.Texture':Alpha(0)
-            }
+        ['.TargetFrameContentContextual'] = Style {
+            ['.NumericalThreat'] = Style {
+                ['.FontString'] = Style:Alpha(0),
+                ['.Texture'] = Style:Alpha(0)
+            },
+            ['.BossIcon'] = Style
+                .LEFT:RIGHT(PARENT:GetParent().TargetFrameContentMain.LevelText)
         }
     },
-    Style'.totFrame' {
-        Style'.Texture':Hide(),
-        Style'.HealthBar'
+    ['.totFrame'] = Style {
+        ['.Texture'] = Style:Hide(),
+        ['.HealthBar'] = Style
             .TOPLEFT:TOPLEFT(0, -20)
             .BOTTOMRIGHT:TOPRIGHT(0, -22)
         {
-            Style'.HealthBarMask':Hide()
+            ['.HealthBarMask'] = Style:Hide()
         },
-        Style'.ManaBar':Hide(),
-        Style'.Name'
+        ['.ManaBar'] = Style:Hide(),
+        ['.Name'] = Style
             .TOPLEFT:TOPLEFT(0, -6)
             .BOTTOMRIGHT:TOPRIGHT(0, -19)
             :JustifyH 'MIDDLE'
-    }
+    },
+    ['.spellbar'] = Style
+        .TOP:BOTTOM()
 }
 
+
+local StyleTargetFrameClassic = Style {
+    ['.healthbar'] = Style:Alpha(0),
+    ['.manabar'] = Style:Alpha(0),
+}
 
 
 Frame
@@ -64,25 +76,26 @@ Frame
                 :HitRectInsets(0, 0, 0, 0)
             {
                 StyleTargetFrameRetail,
-                Style'.textureFrame' {
-                    Style'.Texture':Texture '',
-                    Style'.texture':Texture 'Interface/TARGETINGFRAME/UI-TARGETINGFRAME-MINUS',
-                    Style'.*LevelText'.BOTTOM:BOTTOM(0, 10),
-                    Style'.TargetFrameTextureFrameName'.TOP:TOP()
+                StyleTargetFrameClassic,
+                ['.textureFrame'] = Style {
+                    ['.Texture'] = Style:Texture '',
+                    ['.texture'] = Style:Texture 'Interface/TARGETINGFRAME/UI-TARGETINGFRAME-MINUS',
+                    ['.*LevelText'] = Style.BOTTOM:BOTTOM(0, 10),
+                    ['.TargetFrameTextureFrameName'] = Style.TOP:TOP()
                 },
-                Style'.nameBackground':Texture '',
-                Style'.Background':Texture '',
+                ['.nameBackground'] = Style:Texture '',
+                ['.Background'] = Style:Texture '',
 
-                Style'.portrait'
+                ['.portrait'] = Style
                     :DrawLayer 'ARTWORK'.CENTER:CENTER(),
 
-                Frame'.BgContainer'
+                BgContainer = Frame
                     :FrameStrata 'BACKGROUND'
                     :FrameLevel(0)
                     :Size(92, 92)
                     :AllPoints(PARENT)
                 {
-                    Texture'.BarCircularBgBlack'
+                    BarCircularBgBlack = Texture
                         :Texture('Interface/GUILDFRAME/GuildLogoMask_L')
                         :Size(88, 88)
                         :SetDrawLayer('BACKGROUND', 0)
@@ -97,7 +110,7 @@ Frame
                     --     .CENTER:CENTER()
                 },
 
-                Cooldown'.HealthBarCircular'
+                HealthBarCircular = Cooldown
                     :UseCircularEdge(true)
                     :SwipeTexture('Interface/GUILDFRAME/GuildLogoMask_L')
                     -- :SwipeTexture('Interface/Masks/CircleMaskScalable')
@@ -127,7 +140,7 @@ Frame
                         end
                     },
 
-                Cooldown'.PowerBarCircular'
+                PowerBarCircular = Cooldown
                     :UseCircularEdge(true)
                     :SwipeTexture('Interface/GUILDFRAME/GuildLogoMask_L')
                     -- :SwipeTexture('Interface/Masks/CircleMaskScalable')
@@ -160,12 +173,12 @@ Frame
                     },
 
 
-                Frame'.BgOverlay'
+                BgOverlay = Frame
                     :AllPoints(TargetFrame)
                     :FrameStrata 'BACKGROUND'
                     :FrameLevel(3)
                 {
-                    Texture'.BarCircularBg'
+                    BarCircularBg = Texture
                         .CENTER:CENTER()
                         -- :Texture('Interface/GUILDFRAME/GuildLogoMask_L')
                         :Texture 'Interface/Masks/CircleMaskScalable'
@@ -173,7 +186,7 @@ Frame
                         :SetDrawLayer('BORDER', 1)
                         :VertexColor(0, 0, 0, 0.4),
 
-                    Texture'.HealthBarCircularBgInner'
+                    HealthBarCircularBgInner = Texture
                         .CENTER:CENTER()
                         :Texture('Interface/GUILDFRAME/GuildLogoMask_L')
                         :Size(82, 82)
@@ -184,7 +197,7 @@ Frame
                 }
 
             }
-            
+
             -- TargetFrame.nameBackground:SetColorTexture(0.2,0.2,0.2,1)
         end,
 
@@ -192,19 +205,19 @@ Frame
             Style(TargetFrame) {
                 StyleTargetFrameThreat,
                 StyleTargetFrameRetail,
-                Style'.textureFrame' {
-                    Style'.*LevelText'
-                        .BOTTOM:BOTTOM(TargetFrame),
-                    Style'.*DeadText'.BOTTOM:BOTTOM(TargetFrame, 0, 18),
-                    Style'.texture':Texture '':Alpha(0),
+                StyleTargetFrameClassic,
+                ['.textureFrame'] = Style {
+                    ['.*LevelText'] = Style.BOTTOM:BOTTOM(TargetFrame),
+                    ['.*DeadText'] = Style.BOTTOM:BOTTOM(TargetFrame, 0, 18),
+                    ['.texture'] = Style:Texture '':Alpha(0),
                 },
-                Style'.TargetFrameContent.TargetFrameContentMain' {
-                    Style'.ManaBar':Alpha(0),
-                    Style'.HealthBar':Alpha(0),
-                    Style'.healthbar':Alpha(0),
-                    Style'.spellbarAnchor'.TOP:BOTTOM(TargetFrame),
-                    Style'.TargetFrameDebuff#':Alpha(0),
-                    Style'.TargetFrameBuff#':Alpha(0),
+                ['.TargetFrameContent.TargetFrameContentMain'] = Style {
+                    ['.ManaBar'] = Style:Alpha(0),
+                    ['.HealthBar'] = Style:Alpha(0),
+                    ['.healthbar'] = Style:Alpha(0),
+                    ['.spellbarAnchor'] = Style.TOP:BOTTOM(TargetFrame),
+                    ['.TargetFrameDebuff#'] = Style:Alpha(0),
+                    ['.TargetFrameBuff#'] = Style:Alpha(0),
                 }
             }
 

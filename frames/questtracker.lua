@@ -1,8 +1,53 @@
+---@class Addon
+local Addon = select(2, ...)
 
-local query, Style, Frame, Texture, FontString = LQT.query, LQT.Style, LQT.Frame, LQT.Texture, LQT.FontString
+local LQT = Addon.LQT
+local query = LQT.query
+local Event = LQT.Event
+local Script = LQT.Script
+local Style = LQT.Style
+local Frame = LQT.Frame
+local Texture = LQT.Texture
+local FontString = LQT.FontString
+local CheckButton = LQT.CheckButton
 
 
 if WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE then return end
+
+
+local db
+local load
+
+
+SilverUI.Storage {
+    name = 'Quest Tracker',
+    character = {
+        enabled = true
+    },
+    onload = function(account, character)
+        db = character
+        if character.enabled then
+            load()
+        end
+    end
+}
+
+
+SilverUI.Settings 'Quest Tracker' {
+
+    Frame:Size(4, 4),
+
+    FontString
+        :Font('Fonts/FRIZQT__.ttf', 16, '')
+        :TextColor(1, 0.8196, 0)
+        :Text 'Quest Tracker',
+
+    Addon.CheckBox
+        :Label 'Enable'
+        :Get(function(self) return db.enabled end)
+        :Set(function(self, value) db.enabled = value end),
+
+}
 
 
 -- ObjectiveTrackerFrame.IsUserPlaced = function() return true end
@@ -29,11 +74,11 @@ local buttons_hide = {}
 
 local TextStyle = Style {
     function(self)
-        -- self:SetWidth(440)
+        self:SetWidth(440)
         if self.GetStringWidth then
-            self:SetWidth(self:GetStringWidth())
+            -- self:SetWidth(self:GetStringWidth())
         else
-            self:SetWidth(self:GetTextWidth())
+            -- self:SetWidth(self:GetTextWidth())
         end
     end
 }
@@ -46,23 +91,20 @@ local SectionStyle = Style {
     --         self.module.fromModuleOffsetY = 0
     --     end
     -- end,
-    Style'.rightButton'
+    ['.rightButton'] = Style
         .TOPLEFT:TOPRIGHT()
         :Hooks(hooks),
-    TextStyle'.HeaderText',
-    TextStyle'.HeaderButton':FrameLevel(3):Hooks(hooks),
-    TextStyle'.Text',
-    Style'.Frame' {
-        TextStyle'.Text',
-        Style'.Dash':Text '',
-        Style'.Check':Hide(),
-        
-        Style'.Bar'
-            .LEFT:LEFT()
-        {
-            Style'.Label'
-                .TOPLEFT:TOPLEFT(),
-            Style'.Texture':Texture ''
+    ['.HeaderText'] = TextStyle,
+    ['.HeaderButton'] = TextStyle:FrameLevel(3):Hooks(hooks),
+    ['.Text'] = TextStyle,
+    ['.Frame'] = Style {
+        ['.Text'] = TextStyle,
+        ['.Dash'] = Style:Text '',
+        ['.Check'] = Style:Hide(),
+
+        ['.Bar'] = Style.LEFT:LEFT() {
+            ['.Label'] = Style.TOPLEFT:TOPLEFT(),
+            ['.Texture'] = Style:Texture ''
         }
 
         -- Style'.Bar' {
@@ -86,25 +128,24 @@ local SectionStyle = Style {
 
 
 local StyleObjectiveTrackerFrame = Style {
-    Frame'.HoverBg'
+    HoverBg = Frame
         :AllPoints(ObjectiveTrackerFrame)
         :Hooks(hooks),
-        
-    Style'.BlocksFrame' {
-        Style'.Button':Hooks(hooks):Alpha(0),
-        Style'.ScrollFrame' {
-            SectionStyle'.ScrollContents',
-            Style'.ScrollContents' {
-                Style'.Frame' {
-                    Style'.Icon':Hide(),
-                    Style'.Bar' {
-                        Style'.Label'
+
+    ['.BlocksFrame'] = Style {
+        ['.Button'] = Style:Hooks(hooks):Alpha(0),
+        ['.ScrollFrame'] = Style {
+            ['.ScrollContents'] = SectionStyle {
+                ['.Frame'] = Style {
+                    ['.Icon'] = Style:Hide(),
+                    ['.Bar'] = Style {
+                        ['.Label'] = Style
                             .LEFT:LEFT(20, 5)
                     }
                 }
             }
         },
-        Style'.Frame' {
+        ['.Frame'] = Style {
             SectionStyle,
             -- Style:FitToChildren(),
         },
@@ -119,15 +160,15 @@ local function update_size(e)
     StyleObjectiveTrackerFrame(ObjectiveTrackerFrame)
 end
 
-local addon = Frame
-    :Hooks {
-        OnUpdate = function(self, dt)
+
+load = function()
+    Frame {
+        [Script.OnUpdate] = function(self, dt)
             if trackerHeaderAlphaTarget ~= trackerHeaderAlpha then
                 local sign = trackerHeaderAlpha >= trackerHeaderAlphaTarget and -1 or 1
                 trackerHeaderAlpha = math.min(1, math.max(0, trackerHeaderAlpha + sign * dt*5))
                 local anim = math.sqrt(trackerHeaderAlpha)
 
-                
                 ObjectiveTrackerFrame:SetAlpha(0.5 + trackerHeaderAlpha/2)
                 -- ObjectiveTrackerFrame.Bg:SetAlpha(anim)
                 ObjectiveTrackerFrame.HeaderMenu:SetAlpha(anim)
@@ -141,55 +182,54 @@ local addon = Frame
                     btn:SetAlpha(anim)
                 end
             end
-        end
+        end,
+
+        [Event.PLAYER_ENTERING_WORLD] = update_size,
+        -- [Event.QUEST_WATCH_LIST_CHANGED] = update_size, -- called way too often, bad performance
+        [Event.QUEST_WATCH_UPDATE] = update_size,
+        [Event.QUEST_LOG_UPDATE] = update_size,
+        [Event.SUPER_TRACKING_CHANGED] = update_size
     }
-    
-    :EventHooks {
-        PLAYER_ENTERING_WORLD = update_size,
-        -- QUEST_WATCH_LIST_CHANGED = update_size, -- called way too often, bad performance
-        QUEST_WATCH_UPDATE = update_size,
-        QUEST_LOG_UPDATE = update_size,
-        SUPER_TRACKING_CHANGED = update_size
-    }
-
-    .new()
+        .new()
 
 
-Style(ObjectiveTrackerFrame) {
-    Style'.HeaderMenu' {
-        Style'.Button':Hooks(hooks),
-        Frame'.HoverFrame'
-            :FrameStrata('BACKGROUND', -1)
-            .TOPLEFT:TOPLEFT(ObjectiveTrackerFrame)
-            .TOPRIGHT:TOPRIGHT(ObjectiveTrackerFrame)
-            :Hooks(hooks)
-            :Hooks {
-                OnMouseDown = function(self)
-                    self:GetParent().MinimizeButton:Click()
-                end
-            }
-    },
-    
-    Style'.BlocksFrame' {
-        Style'.Frame'
-            .filter(function(self) return self.MinimizeButton and self.Background end)
-        {
-            Style'.MinimizeButton'
-                :Hooks(hooks)
-                :Hooks {
-                    OnClick = update_size
-                },
-            Style'.Background':Hide(),
-            Frame'.TitleClickBackground'
-                -- :FrameStrata 'BACKGROUND'
+    Style(ObjectiveTrackerFrame) {
+        ['.HeaderMenu'] = Style {
+            ['.Button'] = Style:Hooks(hooks),
+            HoverFrame = Frame
+                :FrameStrata('BACKGROUND', -1)
+                .TOPLEFT:TOPLEFT(ObjectiveTrackerFrame)
+                .TOPRIGHT:TOPRIGHT(ObjectiveTrackerFrame)
                 :Hooks(hooks)
                 :Hooks {
                     OnMouseDown = function(self)
                         self:GetParent().MinimizeButton:Click()
                     end
                 }
-                .init(function(self, parent) self:SetAllPoints(parent) end)
+        },
+
+        ['.BlocksFrame'] = Style {
+            ['.Frame'] = Style
+                .filter(function(self) return self.MinimizeButton and self.Background end)
+            {
+                ['.MinimizeButton'] = Style
+                    :Hooks(hooks)
+                    :Hooks {
+                        OnClick = update_size
+                    },
+                ['.Background'] = Style:Hide(),
+                TitleClickBackground = Frame
+                    -- :FrameStrata 'BACKGROUND'
+                    :AllPoints()
+                    :Hooks(hooks)
+                    :Hooks {
+                        OnMouseDown = function(self)
+                            self:GetParent().MinimizeButton:Click()
+                        end
+                    }
+            }
         }
+
     }
 
-}
+end

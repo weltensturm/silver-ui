@@ -1,4 +1,7 @@
+---@class Addon
+local Addon = select(2, ...)
 
+local LQT = Addon.LQT
 local Style, Frame = LQT.Style, LQT.Frame
 
 
@@ -53,6 +56,16 @@ local buttons = {
     ChatFrame8.buttonFrame,
     ChatFrame9.buttonFrame,
     ChatFrame10.buttonFrame,
+    ChatFrame1.ScrollBar,
+    ChatFrame2.ScrollBar,
+    ChatFrame3.ScrollBar,
+    ChatFrame4.ScrollBar,
+    ChatFrame5.ScrollBar,
+    ChatFrame6.ScrollBar,
+    ChatFrame7.ScrollBar,
+    ChatFrame8.ScrollBar,
+    ChatFrame9.ScrollBar,
+    ChatFrame10.ScrollBar,
 }
 
 
@@ -100,9 +113,16 @@ Frame
             for i = 1, 10 do
                 Hooks(_G['ChatFrame'..i])
                 Hooks(_G['ChatFrame'..i].buttonFrame) {
-                    Hooks'.Button'
+                    ['.Button'] = Hooks
                 }
                 Hooks(_G['ChatFrame'..i..'Tab'])
+            end
+            
+            if CombatLogQuickButtonFrameButton1 then
+                Hooks(CombatLogQuickButtonFrameButton1)
+            end
+            if CombatLogQuickButtonFrameButton2 then
+                Hooks(CombatLogQuickButtonFrameButton2)
             end
         end,
     }
@@ -112,12 +132,13 @@ Frame
                 local sign = alpha >= alphaTarget and -1 or 1
                 alpha = math.min(1, math.max(0, alpha + sign * dt*5))
                 alphaAnim = alpha^3
-                
-                for _, v in pairs(buttons) do
-                    v.noMouseAlpha = alpha^2
-                    v:SetAlpha(alpha^2)
-                end
             end
+            
+            for _, v in pairs(buttons) do
+                v.noMouseAlpha = alphaAnim
+                v:SetAlpha(alphaAnim)
+            end
+            -- end
         end
     }
     .new()

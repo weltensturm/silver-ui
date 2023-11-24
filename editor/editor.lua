@@ -1,52 +1,53 @@
-local ADDON, Addon = ...
+---@class Addon
+local Addon = select(2, ...)
 
-local
-    query,
-    Style,
-    Frame,
-    Button,
-    Texture,
-    FontString,
-    EditBox,
-    ScrollFrame,
-    SELF,
-    PARENT,
-    ApplyFrameProxy,
-    FrameProxyMt
-    =   LQT.query,
-        LQT.Style,
-        LQT.Frame,
-        LQT.Button,
-        LQT.Texture,
-        LQT.FontString,
-        LQT.EditBox,
-        LQT.ScrollFrame,
-        LQT.SELF,
-        LQT.PARENT,
-        LQT.ApplyFrameProxy,
-        LQT.FrameProxyMt
+local LQT = Addon.LQT
+local query = LQT.query
+local Hook = LQT.Hook
+local Script = LQT.Script
+local Style = LQT.Style
+local Frame = LQT.Frame
+local Button = LQT.Button
+local Texture = LQT.Texture
+local FontString = LQT.FontString
+local EditBox = LQT.EditBox
+local ScrollFrame = LQT.ScrollFrame
+local SELF = LQT.SELF
+local PARENT = LQT.PARENT
+local ApplyFrameProxy = LQT.ApplyFrameProxy
+local FrameProxyMt = LQT.FrameProxyMt
 
+local TypeInfo = Addon.TypeInfo
+local FillTypeInfo = Addon.FillTypeInfo
 
-local TypeInfo, FillTypeInfo = Addon.TypeInfo, Addon.FillTypeInfo
+local FrameSmoothScroll = Addon.FrameSmoothScroll
+local CodeEditor = Addon.CodeEditor
+local BoxShadow = Addon.BoxShadow
+local ContextMenu = Addon.ContextMenu
+local ContextMenuButton = Addon.ContextMenuButton
+local FrameTraceWindow = Addon.FrameTraceWindow
+local RenameBox = Addon.RenameBox
+local FrameInspector = Addon.FrameInspector
+local PixelAnchor = Addon.Templates.PixelAnchor
+local PixelSizex2 = Addon.Templates.PixelSizex2
+local Event = Addon.Event
 
-local
-    FrameSmoothScroll,
-    CodeEditor,
-    BoxShadow,
-    ContextMenu,
-    ContextMenuButton,
-    FrameTraceWindow,
-    FrameInspector
-    = Addon.FrameSmoothScroll,
-      Addon.CodeEditor,
-      Addon.BoxShadow,
-      Addon.ContextMenu,
-      Addon.ContextMenuButton,
-      Addon.FrameTraceWindow,
-      Addon.FrameInspector
+local TraceReceived = Addon.TraceReceived
+local SidebarEnter = Event()
+local SidebarLeave = Event()
+local SidebarAnim = Event()
+local OnPage = Event()
 
 
 local editorWindow = nil
+
+
+
+local CubicInOut = function(x)
+    return x < 0.5
+        and 4 * x^3
+         or 1 - (-2 * x + 2)^3 / 2;
+end
 
 
 local function GetUIParentChildren()
@@ -64,613 +65,1062 @@ local function GetUIParentChildren()
 end
 
 
+local Bubble = setmetatable(
+    {},
+    {
+        __index = function(bubble, ev)
+            if not rawget(bubble, ev) then
+
+                bubble[ev] = Style {
+                    function(widget, parent)
+                        if widget:HasScript(ev) then
+                            widget:HookScript(ev, function(self, ...)
+                                parent:GetScript(ev)(parent, ...)
+                            end)
+                        elseif widget[ev] then
+                            hooksecurefunc(widget[ev], function(self, ...)
+                                parent[ev](parent, ...)
+                            end)
+                        else
+                            assert(false, 'Cannot bubble ' .. ev)
+                        end
+                    end
+                }
+
+            end
+            return rawget(bubble, ev)
+        end
+    }
+)
+
+
+local BubbleHover = Bubble.OnEnter .. Bubble.OnLeave
+
+
 local SortedChildren = nil
 
 
-local Btn = Button
-    :Hooks {
-        OnEnter = function(self)
-            self.hoverBg:Show()
-        end,
-        OnLeave = function(self)
-            self.hoverBg:Hide()
-        end
-    }
-    .data {
-        SetText = function(self, ...)
-            self.Text:SetText(...)
-        end
-    }
+local SidebarMouseHooks = Style {
+    [Script.OnEnter] = function(self)
+        SidebarEnter('mouse')
+    end,
+    [Script.OnLeave] = function(self)
+        SidebarLeave('mouse')
+    end,
+}
+
+
+local ExpandDownButton = Button .. BubbleHover
+    :RegisterForClicks('LeftButtonUp', 'LeftButtonDown')
+    :Height(16)
 {
-    FontString'.Text'
-        :SetFont('Fonts/FRIZQT__.ttf', 12)
-        :AllPoints(PARENT),
-    Texture'.hoverBg'
+    function(self, parent)
+        -- table.insert(parent.buttons, self)
+        self.menu = parent
+        self.menu:AddButton(self)
+    end,
+    SetText = function(self, ...)
+        self.Text:SetText(...)
+    end,
+    SetClick = function(self, fn)
+        self.Click = fn
+    end,
+
+    [Script.OnEnter] = function(self)
+        self.hoverBg:Show()
+    end,
+    [Script.OnLeave] = function(self)
+        self.hoverBg:Hide()
+    end,
+
+    [Script.OnClick] = function(self, button, down)
+        if down then
+            self.menu.ClickTracker:SetFocus()
+        else
+            self.menu:Close()
+            if self.Click then
+                self.Click(self.menu:GetParent())
+            end
+        end
+    end,
+
+    Text = FontString
+        :SetFont('Fonts/ARIALN.ttf', 12)
+        .LEFT:LEFT(12, 0)
+        :JustifyH 'LEFT',
+    hoverBg = Texture
         -- :ColorTexture(0.3, 0.3, 0.3)
         :Texture 'Interface/BUTTONS/UI-Listbox-Highlight2'
         :BlendMode 'ADD'
         :VertexColor(1,1,1,0.2)
         :Hide()
         :AllPoints(PARENT),
-    Style:SetSize(20, 20)
-}
-
-local NOOP = function() end
-
-local gui_types = {
-    { 'UIObject', setmetatable({}, { __index = { GetName = NOOP, GetObjectType = NOOP, IsObjectType = NOOP, } }) },
-    { 'ParentedObject', setmetatable({}, { __index = { GetDebugName = NOOP, GetParent = NOOP, IsForbidden = NOOP, SetForbidden = NOOP, } }) },
-    { 'ScriptObject', setmetatable({}, { __index = { GetScript = NOOP, SetScript = NOOP, HookScript = NOOP, HasScript = NOOP, } }) },
-    { 'Region', setmetatable({}, { __index = { GetSourceLocation = NOOP, SetParent = NOOP, IsDragging = NOOP, IsMouseOver = NOOP,
-                                               IsObjectLoaded = NOOP, IsProtected = NOOP, CanChangeProtectedState = NOOP, GetPoint = NOOP,
-                                               SetPoint = NOOP, SetAllPoints = NOOP, ClearAllPoints = NOOP, GetNumPoints = NOOP,
-                                               IsAnchoringRestricted = NOOP, GetPointByName = NOOP, ClearPointByName = NOOP,
-                                               AdjustPointsOffset = NOOP, ClearPointsOffset = NOOP, GetLeft = NOOP, GetRight = NOOP,
-                                               GetTop = NOOP, GetBottom = NOOP, GetCenter = NOOP, GetRect = NOOP, GetScaledRect = NOOP,
-                                               IsRectValid = NOOP, GetWidth = NOOP, SetWidth = NOOP, GetHeight = NOOP, SetHeight = NOOP,
-                                               GetSize = NOOP, SetSize = NOOP, GetScale = NOOP, SetScale = NOOP, GetEffectiveScale = NOOP,
-                                               SetIgnoreParentScale = NOOP, IsIgnoringParentScale = NOOP, Show = NOOP, Hide = NOOP,
-                                               SetShown = NOOP, IsShown = NOOP, IsVisible = NOOP, GetAlpha = NOOP, SetAlpha = NOOP,
-                                               SetIgnoreParentAlpha = NOOP, IsIgnoringParentAlpha = NOOP, CreateAnimationGroup = NOOP,
-                                               GetAnimationGroups = NOOP, StopAnimating = NOOP, } }) },
-    { 'LayeredRegion', setmetatable({}, { __index = { GetDrawLayer = NOOP, SetDrawLayer = NOOP, SetVertexColor = NOOP, } }) },
-    { 'FontInstance', setmetatable({}, { __index = { GetFont = NOOP, GetFontObject = NOOP, SetFont = NOOP, SetFontObject = NOOP,
-                                                     GetIndentedWordWrap = NOOP, GetJustifyH = NOOP, GetJustifyV = NOOP,
-                                                     GetSpacing = NOOP, SetIndentedWordWrap = NOOP, SetJustifyH = NOOP,
-                                                     SetJustifyV = NOOP, SetSpacing = NOOP, GetShadowColor = NOOP,
-                                                     GetShadowOffset = NOOP, GetTextColor = NOOP, SetShadowColor = NOOP,
-                                                     SetShadowOffset = NOOP, SetTextColor = NOOP, } }) },
 }
 
 
-do
-    local gui_types_creatable = {
-        { 'FontString', UIParent:CreateFontString() },
-        { 'Frame', CreateFrame('Frame') },
-        { 'ScrollFrame', CreateFrame('ScrollFrame') },
-        { 'Button', CreateFrame('Button') },
-        { 'Slider', CreateFrame('Slider') },
-        { 'CheckButton', CreateFrame('CheckButton') },
-        { 'EditBox', CreateFrame('EditBox') }
-    }
+local ExpandDownMenu = ScrollFrame .. BubbleHover
+    .TOPLEFT:BOTTOMLEFT()
+    .TOPRIGHT:BOTTOMRIGHT()
+    :Height(1)
+{
+    buttons = {},
 
-    for _, v in ipairs(gui_types_creatable) do
-        v[2]:Hide()
-        table.insert(gui_types, v)
-    end
+    function(self, parent)
+        self:SetScrollChild(self.Container)
+    end,
 
-    local uiext_t = {}
-    setmetatable(uiext_t, { __index=LQT.FrameExtensions })
-    table.insert(gui_types, 1, { 'UIEXT', uiext_t })
-end
+    AddButton = function(self, button)
+        button:SetParent(self.Container)
+        table.insert(self.buttons, button)
+    end,
 
-
-local ButtonAddonScript = Btn
-    .init {
-        Update = function(self)
-            if self.settings.enabled then
-                self.ContextMenu.Toggle:SetText('Disable')
-                self.Text:SetTextColor(1, 1, 1, 1)
+    MenuOpen = function(self)
+        self.ClickTracker:SetFocus()
+        SidebarEnter('dropdown')
+        local previous = nil
+        local width = 1
+        local height = 0
+        for _, btn in pairs(self.buttons) do
+            btn:SetPoint('RIGHT', self, 'RIGHT')
+            if previous then
+                btn:SetPoint('TOPLEFT', previous, 'BOTTOMLEFT')
             else
-                self.ContextMenu.Toggle:SetText('Enable')
-                self.Text:SetTextColor(0.5, 0.5, 0.5, 1)
+                btn:SetPoint('TOPLEFT', self, 'TOPLEFT', 0, -1)
             end
-            if self.script.code == self.script.code_original or not self.script.code_original or not self.script.imported then
-                self.Edited:Hide()
-                self.ContextMenu.ResetScript:Disable()
-                self.ContextMenu.ResetScript.Text:SetTextColor(0.5, 0.5, 0.5)
-            else
-                self.Edited:Show()
-                self.ContextMenu.ResetScript:Enable()
-                self.ContextMenu.ResetScript.Text:SetTextColor(1, 1, 1)
-            end
-        end,
-        SetData = function(self, name, script, settings)
-            self.Text:SetText(script.name)
-            self.name = name
-            self.script = script
-            self.settings = settings
-            self:Update()
-        end,
-        Copy = function(self)
-            local name = SilverUI.CopyScript(self.name, self.script, self.settings)
-            local parent = self:GetParent()
-            parent:Update()
-            for scriptFrame in parent'.Script#' do
-                if scriptFrame.script.name == name then
-                    scriptFrame:Edit()
-                    editorWindow.EditorHead.ScriptName:SetFocus()
-                    editorWindow.EditorHead.ScriptName:HighlightText()
-                    break
-                end
-            end
-        end,
-        Delete = function(self)
-            SilverUI.DeleteScript(self.name, self.script)
-            self:GetParent():Update()
-        end,
-        Reset = function(self)
-            self.script.code = self.script.code_original
-            self:Update()
-        end,
-        Toggle = function(self)
-            self.settings.enabled = not self.settings.enabled
-            self:Update()
-            editorWindow:NotifyReloadRequired()
-        end,
-        Edit = function(self)
-            editorWindow:EditScript(self.name, self.script)
-        end,
-        ResetScript = function(self)
-            SilverUI.ResetScript(self.name, self.script)
-            self:Update()
-        end,
-        Run = function(self)
-            SilverUI.ExecuteScript(self.name, self.script.name, self.script.code)
+            height = height + btn:GetHeight()
+            previous = btn
         end
-    }
-    :RegisterForClicks('LeftButtonUp', 'RightButtonUp')
-    :Hooks {
-        OnClick = function(self, button)
+        -- self:SetSize(width+24, height+12)
+        self.targetHeight = height + 1
+        self.animTarget = 1
+    end,
+
+    MenuClose = function(self)
+        SidebarLeave('dropdown')
+        self.animTarget = 0
+    end,
+
+    MenuToggle = function(self)
+        if self.animTarget == 1 then
+            self:MenuClose()
+        else
+            self:MenuOpen()
+        end
+    end,
+
+    [Script.OnHide] = function(self)
+        self.anim = 0
+        self:SetHeight(1)
+    end,
+
+    Container = Frame .. BubbleHover
+        :AllPoints(PARENT),
+
+    ClickTracker = EditBox
+        :AutoFocus(false)
+        :Alpha(0)
+        .BOTTOM:TOP(UIParent)
+        :PropagateKeyboardInput(true)
+    {
+        [Script.OnEditFocusLost] = function(self)
+            self:GetParent():MenuClose()
+        end,
+        [Script.OnEditFocusGained] = function(self)
+            self:GetParent():MenuOpen()
+        end
+    },
+
+    background = Texture
+        .TOPLEFT:TOPLEFT(0, -1)
+        .BOTTOMRIGHT:BOTTOMRIGHT()
+        :ColorTexture(0, 0, 0, 0.5),
+
+    anim = 0,
+    animTarget = 0,
+    [Script.OnUpdate] = function(self, dt)
+        if self.anim ~= self.animTarget then
+            local sign = self.anim >= self.animTarget and -1 or 1
+            local new = math.max(sign > 0 and 0 or self.animTarget,
+                                 math.min(sign > 0 and self.animTarget or 1,
+                                          self.anim + sign * dt*5))
+            self.anim = new
+            self:SetHeight(1 + self.targetHeight * CubicInOut(self.anim))
+        end
+    end,
+
+}
+
+
+
+local StyledButton = Button {
+    Style:SetSize(20, 20),
+
+    [Script.OnEnter] = function(self)
+        self.hoverBg:Show()
+    end,
+
+    [Script.OnLeave] = function(self)
+        self.hoverBg:Hide()
+    end,
+
+    SetText = function(self, ...)
+        self.Text:SetText(...)
+    end,
+
+    SetFont = function(self, font, size, flags)
+        self.Text:SetFont(font, size, flags)
+        if self.textSized then
+            self:ToTextSize()
+        end
+    end,
+
+    ToTextSize = function(self)
+        self.Text:ClearAllPoints()
+        self.Text:SetPoint('LEFT', self, 'LEFT')
+        self.Text:SetWidth(0)
+        self:SetSize(self.Text:GetSize())
+        self.textSized = true
+    end,
+
+    Text = FontString
+        :SetFont('Fonts/FRIZQT__.ttf', 12)
+        :AllPoints(PARENT),
+
+    hoverBg = Texture
+        -- :ColorTexture(0.3, 0.3, 0.3)
+        :Texture 'Interface/BUTTONS/UI-Listbox-Highlight2'
+        :BlendMode 'ADD'
+        :VertexColor(1,1,1,0.1)
+        :Hide()
+        :AllPoints(PARENT)
+}
+
+
+
+local ScriptEntry = Frame .. SidebarMouseHooks {
+    Update = function(self)
+        if self.settings.enabled then
+            self.ContextMenu.Toggle:SetText('Disable')
+            self.Disabled:Hide()
+            self.Enabled:Show()
+        else
+            self.ContextMenu.Toggle:SetText('Run automatically')
+            self.Disabled:Show()
+            self.Enabled:Hide()
+        end
+        if self.script.code == self.script.code_original or not self.script.code_original or not self.script.imported then
+            self.ContextMenu.ResetScript:Disable()
+            self.ContextMenu.ResetScript.Text:SetTextColor(0.5, 0.5, 0.5)
+        else
+            self.ContextMenu.ResetScript:Enable()
+            self.ContextMenu.ResetScript.Text:SetTextColor(1, 1, 1)
+        end
+    end,
+    SetData = function(self, name, script, settings)
+        self.Button:SetText(script.name)
+        self.Button.Name:SetText(script.name)
+        self.Button.Name:SetCursorPosition(0)
+        self.name = name
+        self.script = script
+        self.settings = settings or { enabled=false }
+        self:Update()
+    end,
+    Reset = function(self)
+        self.script.code = self.script.code_original
+        self:Update()
+    end,
+    Edit = function(self)
+        editorWindow:EditScript(self.name, self.script)
+    end,
+    ResetScript = function(self)
+        SilverUI.ResetScript(self.name, self.script)
+        self:Update()
+    end,
+    SetName = function(self, name)
+        self.script.name = name
+    end,
+    Rename = function(self)
+        self.Button.Name:Edit()
+    end,
+
+    [SidebarAnim] = function(self, state)
+        self.Button.Name:SetAlpha(state)
+        self.ContextMenu:SetAlpha(state)
+        self.ActiveBg:SetAlpha(state*0.2)
+    end,
+
+    [OnPage] = function(self, page, script)
+        local show = page == 'script' and self.script == script
+        self.Selected:SetShown(show)
+        self.ActiveBg:SetShown(show)
+    end,
+
+    Button = StyledButton .. BubbleHover
+        :AllPoints()
+        :RegisterForClicks('AnyUp')
+    {
+        ['.Text'] = Style:Alpha(0),
+
+        Name = RenameBox .. BubbleHover
+            .TOPLEFT:TOPLEFT(10, 0)
+            .BOTTOMRIGHT:BOTTOMRIGHT()
+            :EnableMouse(false)
+        {
+            [SELF.Edit] = function(self)
+                SidebarEnter('keyboard')
+            end,
+            [SELF.Save] = function(self)
+                self:GetParent():GetParent():SetName(self:GetText())
+                self:GetParent():GetParent():Edit()
+                SidebarLeave('keyboard')
+            end,
+            [SELF.Cancel] = function(self)
+                SidebarLeave('keyboard')
+            end,
+        },
+
+        [Script.OnClick] = function(self, button)
             if button == 'LeftButton' then
                 -- editorWindow.CodeEditor.Content.Editor:SetText(self.script.code)
                 -- editorWindow.CodeEditor.Content.Editor:SetCursorPosition(0)
+                self:GetParent():Edit()
             elseif button == 'RightButton' then
-                if self.ContextMenu:IsShown() then
-                    self.ContextMenu:Hide()
-                else
-                    self.ContextMenu:Show()
-                end
+                self:GetParent().ContextMenu:MenuToggle()
             end
-        end
-    }
-{
-    Style'.Text'
-        :JustifyH 'LEFT'
-        .TOPLEFT:TOPLEFT(10, 0)
-        .BOTTOMRIGHT:BOTTOMRIGHT(-10, 0),
-    Texture'.Edited'
-        .RIGHT:RIGHT(-4,0)
-        :Texture 'Interface/BUTTONS/UI-GuildButton-OfficerNote-Disabled'
-        :Size(16, 16),
-    ContextMenu'.ContextMenu' {
-        ContextMenuButton'.Run':Text 'Run':Click(function(script) script:Run() end),
-        ContextMenuButton'.Edit':Text 'Edit script':Click(function(script) script:Edit() end),
-        ContextMenuButton'.Copy':Text 'Copy':Click(function(script) script:Copy() end),
-        ContextMenuButton'.Toggle':Text 'Disable':Click(function(script) script:Toggle() end),
-        ContextMenuButton'.Reset':Text 'Reset settings':Click(function(script) script:Reset() end),
-        ContextMenuButton'.ResetScript':Text 'Reset script':Click(function(script) script:ResetScript() end),
-        ContextMenuButton'.Delete':Text 'Delete':Click(function(script) script:Delete() end),
-        ContextMenuButton'.Cancel':Text 'Cancel'
+        end,
+    },
+
+    ActiveBg = Texture
+        -- :ColorTexture(0.3, 0.3, 0.3)
+        :Texture 'Interface/BUTTONS/UI-Listbox-Highlight2'
+        :BlendMode 'ADD'
+        :VertexColor(1,1,1,0.2)
+        :Hide()
+        :AllPoints(PARENT),
+
+    Enabled = Texture
+        .LEFT:LEFT(3.5, 0)
+        :Size(14, 14)
+        :Texture 'Interface/AddOns/silver-ui/art/icons/dot'
+        :VertexColor(1, 1, 1, 0.5)
+        :Hide(),
+
+    Disabled = Texture
+        .LEFT:LEFT(3.5, 0)
+        :Size(14, 14)
+        :Texture 'Interface/AddOns/silver-ui/art/icons/dot-split'
+        :VertexColor(1, 1, 1, 0.5)
+        :Hide(),
+
+    Selected = Texture
+        .LEFT:LEFT(3.5, 0)
+        :Size(14, 14)
+        :Texture 'Interface/AddOns/silver-ui/art/icons/circle'
+        :Hide(),
+
+    ContextMenu = ExpandDownMenu {
+        Run = ExpandDownButton
+            :Text 'Run'
+            :Click(function(parent)
+                SilverUI.ExecuteScript(parent.name, parent.script.name, parent.script.code)
+            end),
+        Rename = ExpandDownButton
+            :Text 'Rename'
+            :Click(function(parent)
+                parent.Button.Name:Edit()
+            end),
+        Copy = ExpandDownButton
+            :Text 'Copy'
+            :Click(function(parent)
+                local name, script = SilverUI.CopyScript(parent.name, parent.script, parent.settings)
+                parent:GetParent():Update()
+                editorWindow:EditScript(name, script)
+            end),
+        Toggle = ExpandDownButton
+            :Text 'Disable'
+            :Click(function(parent)
+                parent.settings.enabled = not parent.settings.enabled
+                parent:Update()
+            end),
+        ResetScript = ExpandDownButton:Text 'Reset script':Click(function(script) script:ResetScript() end),
+        Delete = ExpandDownButton
+            :Text 'Delete'
+            :Click(function(parent)
+                SilverUI.DeleteScript(parent.name, parent.script)
+                parent:GetParent():Update()
+            end),
     }
 }
 
 
 local FrameAddonSection = Frame
     :Height(28)
-    .init {
-        SetData = function(self, name, account, character)
-            self.name = name
-            self.account = account
-            self.settings = character
-            self.Head:SetText(name)
-            Style(self) {
-                Style'.Script#':Hide().TOP:TOP()
-            }
-            local height = 28
-            local previous = self.Head
-            for i, script in pairs(account.scripts) do
-                ButtonAddonScript('.Script' .. i)
+{
+    scriptButtons = {},
+    SetData = function(self, name, account, character)
+        self.name = name
+        self.account = account
+        self.settings = character
+        for _, button in pairs(self.scriptButtons) do
+            button:Hide()
+            button:SetPoint('TOP', self, 'TOP')
+        end
+        local height = 28
+        local previous
+        for i, script in pairs(account.scripts) do
+            if not self.scriptButtons[i] then
+                self.scriptButtons[i] = ScriptEntry
                     :Height(18)
-                    .TOPLEFT:BOTTOMLEFT(previous)
                     .RIGHT:RIGHT()
-                    :Data(name, script, character.scripts[script.name])
-                    :Show()
-                    .apply(self)
-                previous = self['Script' .. i]
-                height = height + previous:GetHeight()
+                    .new(self)
             end
-            if self.settings.enabled then
-                self.Head.Disabled:Hide()
-                self.Head.ContextMenu.Toggle:SetText('Disable')
+            local button = self.scriptButtons[i]
+            if previous then
+                button:SetPoint('TOPLEFT', previous.ContextMenu, 'BOTTOMLEFT', 0, -1)
             else
-                self.Head.Disabled:Show()
-                self.Head.ContextMenu.Toggle:SetText('Enable')
+                button:SetPoint('TOPLEFT', self, 'TOPLEFT')
             end
-            self:SetHeight(height)
-        end,
-        Update = function(self)
-            self:SetData(self.name, self.account, self.settings)
-        end,
-        NewScript = function(self)
-            local script = SilverUI.NewScript(self.name)
-            self:Update()
-            for scriptFrame in self'.Script#' do
-                if scriptFrame.script.name == script then
-                    scriptFrame:Edit()
-                    editorWindow.EditorHead.ScriptName:SetFocus()
-                    editorWindow.EditorHead.ScriptName:HighlightText()
-                    break
-                end
-            end
-        end,
-        Toggle = function(self)
-            self.settings.enabled = not self.settings.enabled
-            editorWindow:NotifyReloadRequired()
+            button:SetData(name, script, character.scripts[script.name])
+            button:Show()
+            height = height + button:GetHeight()
+            previous = button
         end
-    }
-    :Hooks {
-        OnShow = function(self)
-            self:Update()
-        end
-    }
-{
-    Btn'.Head'
-        .TOPLEFT:TOPLEFT()
-        .RIGHT:RIGHT()
-        :Height(28)
-        :RegisterForClicks('LeftButtonUp', 'RightButtonUp')
-        :Hooks {
-            OnClick = function(self, button)
-                if button == 'RightButton' then
-                    if self.ContextMenu:IsShown() then
-                        self.ContextMenu:Hide()
-                    else
-                        self.ContextMenu:Show()
-                    end
-                end
+        self:SetHeight(height)
+    end,
+    Update = function(self)
+        self:SetData(self.name, self.account, self.settings)
+    end,
+    NewScript = function(self)
+        local script = SilverUI.NewScript(self.name)
+        self:Update()
+        for _, button in pairs(self.scriptButtons) do
+            if button.script.name == script then
+                button:Rename()
+                break
             end
-        }
-    {
-        Texture'.Disabled'
-            .RIGHT:RIGHT(-4, 0)
-            :Texture 'Interface/BUTTONS/UI-GROUPLOOT-PASS-DOWN'
-            -- :Desaturated(true)
-            :BlendMode 'BLEND'
-            :Size(16, 16),
+        end
+    end,
+    Toggle = function(self)
+        self.settings.enabled = not self.settings.enabled
+    end,
 
-        Style'.Text'
-            :JustifyH 'LEFT'
-            .TOPLEFT:TOPLEFT(10, 0)
-            .BOTTOMRIGHT:BOTTOMRIGHT(-10, 0),
-        Texture'.Bg'
-            -- :Texture 'Interface/BUTTONS/GreyscaleRamp64'
-            -- :BlendMode 'ADD'
-            :ColorTexture(0.3, 0.3, 0.3, 0.5)
-            -- :VertexColor(1,1,1,0.2)
-            :AllPoints(PARENT),
-            
-        ContextMenu'.ContextMenu' {
-            ContextMenuButton'.NewScript':Text 'New script':Click(function(head) head:GetParent():NewScript() end),
-            ContextMenuButton'.Toggle':Text 'Disable':Click(function(head) head:GetParent():Toggle() end),
-            ContextMenuButton'.Cancel':Text 'Cancel'
-        }
-    },
+    [Script.OnShow] = function(self)
+        self:Update()
+    end,
+
 }
 
 
-local FrameSettings = Frame
-{
-    FrameSmoothScroll'.Sections'
-        .TOPLEFT:TOPLEFT()
-        .BOTTOMRIGHT:BOTTOMLEFT(200, 0)
-        .init(function(self, parent)
-            local previous = nil
-            for name, account, character in SilverUI.Addons() do
-                FrameAddonSection('.' .. name)
-                    :Data(name, account, character)
-                    .apply(self.Content)
-                local content = self.Content[name]
-                if previous then
-                    content:SetPoint('TOPLEFT', previous, 'BOTTOMLEFT')
-                else
-                    content:SetPoint('TOPLEFT', self.Content, 'TOPLEFT')
-                end
-                content:SetPoint('RIGHT', self.Content, 'RIGHT')
-                previous = content
-            end
-        end)
+local SidebarButton = StyledButton .. SidebarMouseHooks {
+
+    Selected = Texture
+        .LEFT:LEFT(3.5, 0)
+        :Size(14, 14)
+        :Texture 'Interface/AddOns/silver-ui/art/icons/circle'
+        :Hide(),
+
+    [SidebarAnim] = function(self, state)
+        self.Text:SetAlpha(state)
+    end,
+
+    ['.Text'] = Style
+        :JustifyH 'LEFT'
+        :ClearAllPoints()
+        :Font('Fonts/ARIALN.TTF', 12, '')
+        .TOPLEFT:TOPLEFT(21, 0)
+        .BOTTOMLEFT:BOTTOMLEFT(21, 0),
 }
 
 
-local FrameEditor = Frame
-    :Width(1000)
-    :Height(600)
-    :FrameStrata 'HIGH'
+local Sidebar = FrameSmoothScroll
     :EnableMouse(true)
-    :Point('CENTER', 0, 0)
-    -- :ClampedToScreen(true)
-    :ResizeBounds(520, 210)
-    .init {
-        buttons = {},
-        scriptEditing = nil,
-        scriptEditingAddon = nil,
-        ShowSettings = function(self)
-            self:HideAll()
-            self.Settings:Show()
-            self.enterPlaygroundBtn:Show()
-            self.enterTraceBtn:Show()
-        end,
-        EditScript = function(self, addonName, script)
-            self:HideAll()
-            self.scriptEditing = script
-            self.scriptEditingAddon = addonName
-            self.EditorHead.AddonName:SetText(addonName .. '/')
-            self.EditorHead.ScriptName:SetText(script.name)
-            self.EditorHead.ScriptName:Show()
-            self.EditorHead:Show()
-            self.CodeEditor:Show()
-            self.CodeEditor.Content.Editor.Save = function(code)
-                script.code = code
-                query(self.Settings.Sections.Content, '.Frame'):Update()
-            end
-            self.CodeEditor.Content.Editor:SetText(script.code)
-            self.CodeEditor.Content.Editor:SetCursorPosition(0)
-            self.CodeEditor.Content.Editor:SetFocus()
-            self.CodeEditor:SetVerticalScroll(0)
-        end,
-        RenameScript = function(self, name)
-            if not self.scriptEditing then return end
-            local oldName = self.scriptEditing.name
-            if oldName ~= name then
-                local addonName = self.scriptEditingAddon
-                if SilverUI.HasScript(addonName, name) then
-                    self.EditorHead.ScriptName:SetTextColor(1, 0.2, 0.2)
-                else
-                    self.EditorHead.ScriptName:SetTextColor(1, 1, 1)
-                    local settings = SilverUISavedVariablesCharacter.addons[addonName]
-                    settings.scripts[name] = settings.scripts[oldName]
-                    settings.scripts[oldName] = nil
-                    self.scriptEditing.name = name
-                end
-            end
-        end,
-        NotifyReloadRequired = function(self)
-
-        end,
-        EnterPlayground = function(self)
-            self:HideAll()
-            self.EditorHead.AddonName:SetText('Playground')
-            self.EditorHead.ScriptName:Hide()
-            self.EditorHead:Show()
-            self.CodeEditor:Show()
-            self.CodeEditor.Content.Editor.Save = function(code)
-                SilverUISavedVariablesCharacter.playground = code
-            end
-            self.CodeEditor.Content.Editor:SetText(SilverUISavedVariablesCharacter.playground or '\n\n')
-            self.CodeEditor.Content.Editor:SetCursorPosition(0)
-            self.CodeEditor.Content.Editor:SetFocus()
-            self.CodeEditor:SetVerticalScroll(0)
-        end,
-        EnterTrace = function(self)
-            self:HideAll()
-            self.Tracer:Show()
-            self.TracerHead:Show()
-        end,
-        HideAll = function(self)
-            self.scriptEditing = nil
-            self.scriptEditingAddon = nil
-            self.EditorHead:Hide()
-            self.CodeEditor:Hide()
-            self.CodeEditor.Content.Editor:SetText('')
-            self.Tracer:Hide()
-            self.TracerHead:Hide()
-            self.Settings:Hide()
-            self.enterPlaygroundBtn:Hide()
-            self.enterTraceBtn:Hide()
-        end
-    }
-    :Scripts {
-        OnKeyDown = function(self, key)
-            if key == 'ESCAPE' then
-                self:SetPropagateKeyboardInput(false)
-                self:Hide()
-                collectgarbage()
-            else
-                self:SetPropagateKeyboardInput(true)
-            end
-        end
-    }
 {
-    BoxShadow'.Shadow':Alpha(0.5),
+    anim = 1,
+    animTarget = 0,
+    entered = {},
 
-    Texture'.TitleBg'
-        :Height(24)
-        :ColorTexture(0.2, 0.2, 0.2, 0.7)
-        :DrawLayer('BACKGROUND', -6)
-        .TOPLEFT:TOPLEFT(0, -5)
-        .RIGHT:RIGHT(),
+    Expand = function(self)
+        self.animTarget = 1
+    end,
 
-    Frame'.TitleMoveHandler'
-        :Height(29)
-        -- :FrameLevel(5)
-        .TOPLEFT:TOPLEFT()
-        .TOPRIGHT:TOPRIGHT()
-        :Scripts {
-            OnMouseDown = function(self, button)
-                if button == 'LeftButton' then
-                    self.dragging = true
-                    local x, y = GetCursorPosition()
-                    local _, _, _, px, py = self:GetParent():GetPoint()
-                    local scale = self:GetEffectiveScale()
-                    self.dragOffset = { x/scale - px, y/scale - py }
+    Contract = function(self)
+        self.animTarget = 0
+    end,
+
+    [SidebarEnter] = function(self, obj)
+        self.entered[obj] = true
+        self:Expand()
+    end,
+
+    [SidebarLeave] = function(self, obj)
+        self.entered[obj] = nil
+        if not next(self.entered) then
+            self:Contract()
+        end
+    end,
+
+    [Script.OnUpdate] = function(self, dt)
+        if self.anim ~= self.animTarget then
+            local sign = self.anim >= self.animTarget and -1 or 1
+            local new = math.max(sign > 0 and 0 or self.animTarget,
+                                 math.min(sign > 0 and self.animTarget or 1,
+                                          self.anim + sign * dt*5))
+            self.anim = new
+            self:SetWidth(20 + 130 * CubicInOut(self.anim))
+            SidebarAnim(self.anim)
+        end
+    end,
+
+    ['.Content'] = Style .. SidebarMouseHooks {
+
+        EnterTrace = StyledButton .. BubbleHover
+            .TOPLEFT:TOPLEFT(0, -6)
+            .TOPRIGHT:TOPRIGHT(0, -6)
+            :Height(20)
+            :Text 'Tracers'
+        {
+            [Script.OnClick] = function(self)
+                editorWindow:EnterTrace()
+            end,
+
+            [SidebarAnim] = function(self, state)
+                self.Text:SetAlpha(state)
+                self.ActiveBg:SetAlpha(state*0.2)
+            end,
+
+            [OnPage] = function(self, page)
+                self.Selected:SetShown(page == 'tracer')
+                self.ActiveBg:SetShown(page == 'tracer')
+            end,
+
+            ActiveBg = Texture
+                :Texture 'Interface/BUTTONS/UI-Listbox-Highlight2'
+                :BlendMode 'ADD'
+                :VertexColor(1,1,1,0.2)
+                :Hide()
+                :AllPoints(PARENT),
+
+            Crosshair = Texture
+                .LEFT:LEFT(3.5, 0)
+                :Size(14, 14)
+                :Texture 'Interface/AddOns/silver-ui/art/icons/crosshair'
+                :Alpha(0.5),
+
+            HitMarker = Texture
+                .LEFT:LEFT(3.5, 0)
+                :Size(14, 14)
+                :Texture 'Interface/AddOns/silver-ui/art/icons/hitmarker'
+                :VertexColor(1, 1, 0)
+                :Alpha(0)
+            {
+                [TraceReceived] = function(self)
+                    self:SetAlpha(1)
+                end
+            },
+            [Script.OnUpdate] = function(self, dt)
+                local current = self.HitMarker:GetAlpha()
+                if current > 0 then
+                    self.HitMarker:SetAlpha(math.max(current - dt*2, 0))
                 end
             end,
-            OnMouseUp = function(self, button)
-                if button == 'LeftButton' then
-                    self.dragging = false
-                end
+
+            Selected = Texture
+                .LEFT:LEFT(3.5, 0)
+                :Size(14, 14)
+                :Texture 'Interface/AddOns/silver-ui/art/icons/circle'
+                :Hide(),
+
+            ['.Text'] = Style
+                :JustifyH 'LEFT'
+                :ClearAllPoints()
+                :Font('Fonts/ARIALN.TTF', 12, '')
+                .TOPLEFT:TOPLEFT(21, 0)
+                .BOTTOMLEFT:BOTTOMLEFT(21, 0),
+        },
+
+        ScriptLabel = FontString
+            .TOPLEFT:BOTTOMLEFT(PARENT.EnterTrace, 10, 0)
+            -- .RIGHT:RIGHT()
+            :Height(25)
+            :JustifyH 'LEFT'
+            :Font('Fonts/FRIZQT__.ttf', 12)
+            :Text 'Scripts'
+            :TextColor(0.6, 0.6, 0.6),
+        ScriptAdd = Button .. SidebarMouseHooks
+            .LEFT:RIGHT(PARENT.ScriptLabel, 2, 0)
+            :Size(14, 14)
+            :NormalTexture 'Interface/AddOns/silver-ui/art/icons/plus'
+        {
+            [Script.OnClick] = function(self)
+                editorWindow:NewScript()
             end,
-            OnUpdate = function(self, dt)
-                if self.dragging then
-                    local x, y = GetCursorPosition()
-                    local from, frame, to, _, _ = self:GetParent():GetPoint()
-                    local scale = self:GetEffectiveScale()
-                    self:GetParent():SetPoint(from, frame, to, x/scale - self.dragOffset[1], y/scale - self.dragOffset[2])
-                end
+        },
+        [SidebarAnim] = function(self, state)
+            self.ScriptLabel:SetAlpha(state)
+            self.ScriptAdd:SetAlpha(state)
+        end,
+
+        Scratchpad = SidebarButton
+            .TOPLEFT:BOTTOMLEFT(PARENT.ScriptLabel, -10, 0)
+            .RIGHT:RIGHT()
+            :Text 'Scratchpad'
+        {
+            Smile = Texture
+                .LEFT:LEFT(3.5, 0)
+                :Size(14, 14)
+                :Texture 'Interface/AddOns/silver-ui/art/icons/smile'
+                :VertexColor(1, 1, 1, 0.5),
+            ActiveBg = Texture
+                :Texture 'Interface/BUTTONS/UI-Listbox-Highlight2'
+                :BlendMode 'ADD'
+                :VertexColor(1,1,1,0.2)
+                :Hide()
+                :AllPoints(PARENT),
+            [Script.OnClick] = function(self)
+                editorWindow:EditScratchpad()
+            end,
+            [OnPage] = function(self, page)
+                self.Selected:SetShown(page == 'scratchpad')
+                self.ActiveBg:SetShown(page == 'scratchpad')
+            end,
+            [SidebarAnim] = function(self, state)
+                self.ActiveBg:SetAlpha(0.2*state)
             end
         },
 
-    Frame'.Resizer'
-        :Size(16, 16)
-        .BOTTOMRIGHT:BOTTOMRIGHT()
-        :Scripts {
-            OnMouseDown = function(self, button)
-                self:GetParent():StartSizing('bottomright')
+        Scripts = Frame
+            .TOPLEFT:BOTTOMLEFT(PARENT.Scratchpad)
+            .RIGHT:RIGHT()
+        {
+            function(self, parent)
+                local previous = nil
+                local height = 0
+                for name, account, character in SilverUI.Addons() do
+                    Style(self){
+                        [name] = FrameAddonSection
+                            :Data(name, account, character)
+                    }
+                    local content = self[name]
+                    if previous then
+                        content:SetPoint('TOPLEFT', previous, 'BOTTOMLEFT')
+                    else
+                        content:SetPoint('TOPLEFT', self, 'TOPLEFT')
+                    end
+                    content:SetPoint('RIGHT', self, 'RIGHT')
+                    height = height + content:GetHeight()
+                    previous = content
+                end
+                self:SetHeight(height)
             end,
-            OnMouseUp = function(self, button)
-                self:GetParent():StopMovingOrSizing()
+
+            Update = function(self)
+                for script in query(self, '.*') do
+                    script:Update()
+                end
             end
-        }
-    {
-        Texture'.Texture'
-            :AllPoints(PARENT)
-            :ColorTexture(1,1,1)
+        },
     },
 
-    Texture'.Bg'
+}
+
+
+local PageMain = FrameSmoothScroll {
+
+    bg = Texture
+        :AllPoints()
+        :ColorTexture(0.2, 0.2, 0.2, 0.5),
+
+    shadow = BoxShadow
+        :EdgeSize(4)
+        :Alpha(0.5),
+
+    ['.Content'] = Style {
+
+        [Script.OnMouseDown] = function(self)
+            local editor = self.CodeEditor.Editor
+            editor:SetFocus()
+            editor:SetCursorPosition(#editor:OrigGetText())
+        end,
+
+        EditorHead = Frame
+            .TOPLEFT:TOPLEFT()
+            .RIGHT:RIGHT()
+            :Height(20)
+        {
+            bg = Texture
+                .BOTTOMLEFT:BOTTOMLEFT()
+                .BOTTOMRIGHT:BOTTOMRIGHT()
+                :Height(2)
+                :ColorTexture(0.3, 0.3, 0.3, 0.5),
+
+            label = FontString
+                :Font('Fonts/ARIALN.ttf', 12, '')
+                :Height(20-2)
+                .BOTTOMLEFT:BOTTOMLEFT(25, 0)
+                :TextColor(0.7, 0.7, 0.7),
+
+            [OnPage] = function(self, page, script)
+                if page == 'script' then
+                    self.label:SetText(script.name)
+                elseif page == 'scratchpad' then
+                    self.label:SetText('Scratchpad')
+                end
+            end,
+        },
+
+        CodeEditor = CodeEditor
+            .TOPLEFT:BOTTOMLEFT(PARENT.EditorHead)
+            .RIGHT:RIGHT()
+        {
+            [SELF.CtrlEnter] = function(self, code)
+                local func = assert(loadstring('return function(inspect, trace, this, Addon) ' .. code .. '\n end', "silver editor"))
+                local ok, error = pcall(
+                    func(),
+                    function(frame) editorWindow.FrameInspector:SetFrameStack(frame) end,
+                    function(...) editorWindow.Tracer:StartTrace(...) end,
+                    editorWindow.FrameInspector.selected,
+                    Addon
+                )
+                if not ok then
+                    self:GetParent().Error:SetText(error)
+                    self:GetParent().Red:Show()
+                    self:GetParent().Error:Show()
+                end
+            end,
+
+            [SELF.OnError] = function(self, error)
+                local parent = self:GetParent()
+                if error then
+                    parent.Error:SetText(error)
+                    parent.Error:Show()
+                    parent.Red:Show()
+                else
+                    parent.Error:Hide()
+                    parent.Red:Hide()
+                end
+            end,
+
+            ['.Editor'] = Style
+                :AutoFocus(false),
+            paddingBottom = Frame
+                .TOP:BOTTOM(PARENT.Editor)
+                :Size(1, 50)
+        },
+
+        Error = FontString
+            :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11, '')
+            :JustifyH 'LEFT'
+            :Hide()
+            .BOTTOMLEFT:BOTTOMLEFT(PARENT:GetParent():GetParent(), 2, 2)
+            .BOTTOMRIGHT:BOTTOMRIGHT(PARENT:GetParent():GetParent(), -2, 2),
+
+        Red = Texture
+            :ColorTexture(0.3, 0, 0, 0.9)
+            .TOPLEFT:TOPLEFT(PARENT.Error, -2, 2)
+            .BOTTOMRIGHT:BOTTOMRIGHT(PARENT.Error, 2, -2),
+
+    }
+}
+
+
+
+local PageSettings = FrameSmoothScroll {
+
+    function(self, parent)
+        self.Content.editor = parent
+    end,
+
+    ['.Content'] = Style {
+
+        backButton = StyledButton
+            .TOPLEFT:TOPLEFT(10, -3)
+            :Text '< Back'
+            :ToTextSize()
+            :Font('Fonts/FRIZQT__.ttf', 12, '')
+        {
+            [Script.OnClick] = function(self)
+                self:GetParent().editor:ShowMain()
+            end,
+            ['.Text'] = Style
+                :TextColor(0.7, 0.7, 0.7)
+        },
+        label = FontString
+            .TOPLEFT:BOTTOMLEFT(PARENT.backButton)
+            :Font('Fonts/FRIZQT__.ttf', 16, '')
+            :Text 'Settings',
+
+    }
+
+}
+
+
+local FrameDTT = Frame .. PixelAnchor .. PixelSizex2
+    :Width(1000)
+    :Height(600)
+    .TOPLEFT:TOPLEFT(300, -200)
+    :FrameStrata 'HIGH'
+    :EnableMouse(true)
+{
+    function(self)
+        self.editor = self.PageMain.Content.CodeEditor.Editor
+        self.scripts = self.SideBar.Content.Scripts
+    end,
+    buttons = {},
+    scriptEditing = nil,
+    ShowMain = function(self)
+        self:HideAll()
+        self.PageMain:Show()
+        self.FrameInspector:Show()
+    end,
+    EditScript = function(self, name, script)
+        self:ShowMain()
+        self.scriptEditing = script
+        -- self.CodeEditor:Show()
+        self.editor.Save = function(code)
+            if code ~= script.code then
+                script.code = code
+                self.scripts:Update()
+            end
+        end
+        self.editor:ClearHistory()
+        self.editor:SetText(script.code)
+        self.editor:SetCursorPosition(0)
+        self.editor:SetFocus()
+        self.PageMain:SetVerticalScroll(0)
+        OnPage('script', script)
+    end,
+    RenameScript = function(self, name)
+    end,
+    NewScript = function(self)
+        self.scripts['Silver UI']:NewScript()
+    end,
+    EditScratchpad = function(self)
+        self:ShowMain()
+        self.scriptEditing = 'scratchpad'
+        self.editor.Save = function(code)
+            SilverUISavedVariablesCharacter.playground = code
+        end
+        self.editor:ClearHistory()
+        self.editor:SetText(SilverUISavedVariablesCharacter.playground or '\n\n')
+        self.editor:SetCursorPosition(0)
+        self.editor:SetFocus()
+        self.PageMain:SetVerticalScroll(0)
+        OnPage('scratchpad')
+    end,
+    EnterTrace = function(self)
+        self:HideAll()
+        self.Tracer:Show()
+        OnPage('tracer')
+    end,
+    HideAll = function(self)
+        self.scriptEditing = nil
+        self.Tracer:Hide()
+        self.PageMain:Hide()
+        self.PageSettings:Hide()
+    end,
+    EnterSettings = function(self)
+        self:HideAll()
+        self.FrameInspector:Hide()
+        self.PageSettings:Show()
+    end,
+    NextPage = function(self)
+        local scriptButtons = self.scripts['Silver UI'].scriptButtons
+        if self.Tracer:IsShown() then
+            self:EditScratchpad()
+        elseif self.scriptEditing == 'scratchpad' then
+            if #scriptButtons > 0 then
+                self:EditScript('Silver UI', scriptButtons[1].script)
+            end
+        else
+            local nextScript
+            for i=1, #scriptButtons do
+                local b = scriptButtons[i]
+                if b.script == self.scriptEditing then
+                    nextScript = i+1
+                    break
+                end
+            end
+            if nextScript and nextScript <= #scriptButtons and scriptButtons[nextScript]:IsShown() then
+                self:EditScript('', scriptButtons[nextScript].script)
+            end
+        end
+    end,
+    PreviousPage = function(self)
+        if self.scriptEditing == 'scratchpad' then
+            self:EnterTrace()
+        elseif not self.Tracer:IsShown() then
+            local previousScript
+            for i=1, #self.scripts['Silver UI'].scriptButtons do
+                local b = self.scripts['Silver UI'].scriptButtons[i]
+                if b.script == self.scriptEditing then
+                    previousScript = i-1
+                    break
+                end
+            end
+            if previousScript then
+                if previousScript == 0 then
+                    self:EditScratchpad()
+                else
+                    self:EditScript('', self.scripts['Silver UI'].scriptButtons[previousScript].script)
+                end
+            end
+        end
+    end,
+
+    [Script.OnKeyDown] = function(self, key)
+        if key == 'ESCAPE' then
+            self:SetPropagateKeyboardInput(false)
+            self:Hide()
+        elseif key == 'TAB' then
+            if IsControlKeyDown() then
+                self:SetPropagateKeyboardInput(false)
+                if IsShiftKeyDown() then
+                    self:PreviousPage()
+                else
+                    self:NextPage()
+                end
+            end
+        else
+            self:SetPropagateKeyboardInput(true)
+        end
+    end,
+
+    Shadow = BoxShadow,
+
+    Title = FontString
+        .TOPLEFT:TOPLEFT(8, -4)
+        :Height(19)
+        :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 14, '')
+        :Text 'dtt',
+
+    TitleMoveHandler = Frame
+        :Height(25)
+        -- :FrameLevel(5)
+        .TOPLEFT:TOPLEFT()
+        .TOPRIGHT:TOPRIGHT()
+    {
+        [Script.OnMouseDown] = function(self, button)
+            if button == 'LeftButton' then
+                local x, y = GetCursorPosition()
+                local _, _, _, px, py = self:GetParent():GetPoint()
+                local scale = self:GetEffectiveScale()
+                self.dragOffset = { x/scale - px, y/scale - py }
+                self:SetScript('OnUpdate', self.OnUpdate)
+            end
+        end,
+        [Script.OnMouseUp] = function(self, button)
+            if button == 'LeftButton' then
+                self:SetScript('OnUpdate', nil)
+            end
+        end,
+        OnUpdate = function(self, dt)
+            local x, y = GetCursorPosition()
+            local from, frame, to, _, _ = self:GetParent():GetPoint()
+            local scale = self:GetEffectiveScale()
+            self:GetParent():SetPoint(from, frame, to, x/scale - self.dragOffset[1], y/scale - self.dragOffset[2])
+        end
+    },
+
+    Resizer = Frame
+        .BOTTOMRIGHT:BOTTOMRIGHT()
+        :Size(16, 16)
+        :FrameLevel(20)
+    {
+        [Script.OnMouseDown] = function(self, button)
+            if button == 'LeftButton' then
+                local x, y = GetCursorPosition()
+                self.mouseStart = { x, y }
+                local parent = self:GetParent()
+                self.startSize = { parent:GetWidth(), parent:GetHeight() }
+                self:SetScript('OnUpdate', self.OnUpdate)
+            end
+        end,
+        [Script.OnMouseUp] = function(self, button)
+            if button == 'LeftButton' then
+                self:SetScript('OnUpdate', nil)
+            end
+        end,
+        OnUpdate = function(self)
+            local x, y = GetCursorPosition()
+            local scale = self:GetEffectiveScale()
+            self:GetParent():SetSize(
+                math.max(self.startSize[1] + (x - self.mouseStart[1])/scale, 510),
+                math.max(self.startSize[2] + (self.mouseStart[2] - y)/scale, 210)
+            )
+            -- PixelUtil.SetSize(
+            --     self:GetParent(),
+            --     self.startSize[1] + (x - self.mouseStart[1])/scale,
+            --     self.startSize[2] + (self.mouseStart[2] - y)/scale
+            -- )
+        end,
+        [Script.OnEnter] = function(self)
+            SetCursor('Interface/CURSOR/UI-Cursor-SizeRight')
+        end,
+        [Script.OnLeave] = function(self)
+            SetCursor(nil)
+        end,
+        Texture = Texture
+            :AllPoints(PARENT)
+            :Texture 'Interface/AddOns/silver-ui/art/icons/resize'
+    },
+
+    Bg = Texture
         :ColorTexture(0.05,0.05,0.05,0.8)
         :AllPoints(PARENT)
         :DrawLayer('BACKGROUND', -7),
 
-    Btn'.closeBtn'
-        :SetText('X')
+    ButtonClose = StyledButton
         :FrameLevel(10)
-        :Scripts { OnClick = function(self) self:GetParent():Hide() end }
-        .TOPRIGHT:TOPRIGHT(-6, -6),
-    
-    Btn'.reloadBtn'
-        :Size(16, 16)
-        :NormalTexture 'Interface/BUTTONS/UI-RefreshButton'
-        :FrameLevel(10)
-        :Scripts { OnClick = function(self) ReloadUI() end }
-        .RIGHT:LEFT(PARENT.closeBtn),
-    
-    Button'.pickFrameBtn'
-        :NormalTexture 'Interface/CURSOR/UnableCrosshairs'
-        :HighlightTexture 'Interface/CURSOR/Crosshairs'
-        :FrameLevel(10)
-        :Size(16, 16)
-        .RIGHT:LEFT(PARENT.reloadBtn, -5, 0)
-        :Scripts {
-            OnClick = function(self, button)
-                editorWindow.FrameInspector:PickFrame()
-            end
-        },
-
-    Btn'.enterPlaygroundBtn'
-        :Height(24)
-        :Text 'Playground'
-        :Width(SELF.Text:GetWidth()+20)
-        :FrameLevel(10)
-        .TOPLEFT:TOPLEFT(15, -5)
-        :Scripts {
-            OnClick = function(self) self:GetParent():EnterPlayground() end
-        }
+        .TOPRIGHT:TOPRIGHT(-3, -5)
+        :Size(20, 20)
+        :Alpha(0.75)
+        :NormalTexture 'Interface/AddOns/silver-ui/art/icons/cross'
     {
-        Style'.Text':TextColor(0.7, 0.7, 0.7)
+        [Script.OnClick] = PARENT.Hide
     },
 
-    Btn'.enterTraceBtn'
-        :Height(24)
-        :Text 'Trace'
-        :Width(SELF.Text:GetWidth()+20)
+    ButtonReload = StyledButton
+        :Size(20, 20)
+        :NormalTexture 'Interface/AddOns/silver-ui/art/icons/reload'
         :FrameLevel(10)
-        .TOPLEFT:TOPRIGHT(PARENT.enterPlaygroundBtn, 3, 0)
-        :Scripts {
-            OnClick = function(self) self:GetParent():EnterTrace() end
-        }
+        -- .RIGHT:LEFT(PARENT.settingsBtn)
+        .RIGHT:LEFT(PARENT.ButtonClose)
     {
-        Style'.Text':TextColor(0.7, 0.7, 0.7)
+        [Script.OnClick] = ReloadUI
     },
 
-    Frame'.TracerHead'
-        .TOPLEFT:TOPLEFT(3, -17)
-        .TOPRIGHT:TOPRIGHT(3, -17)
-        :Height(25)
-        :Hide()
+    ButtonPickFrame = StyledButton
+        :NormalTexture 'Interface/AddOns/silver-ui/art/icons/framepicker'
+        :FrameLevel(10)
+        :Size(20, 20)
+        .RIGHT:LEFT(PARENT.ButtonReload)
     {
-        Btn'.BackButton'
-            .LEFT:TOPLEFT(5, 0)
-            :Text '<'
-            :Hooks {
-                OnClick = function(self)
-                    editorWindow:ShowSettings()
-                end
-            },
-        FontString'.Name'
-            :Font('Fonts/FRIZQT__.ttf', 12, '')
-            .LEFT:RIGHT(PARENT.BackButton, 10, 0)
-            :Text 'Trace',
+        [Script.OnClick] = PARENT.FrameInspector.PickFrame
     },
 
-    Frame'.EditorHead'
-        .TOPLEFT:TOPLEFT(3, -17)
-        .TOPRIGHT:TOPRIGHT(3, -17)
-        :Height(25)
-        :Hide()
-    {
-        Btn'.BackButton'
-            .LEFT:TOPLEFT(5, 0)
-            :Text '<'
-            :Hooks {
-                OnClick = function(self)
-                    editorWindow:ShowSettings()
-                end
-            },
-        FontString'.AddonName'
-            :Font('Fonts/FRIZQT__.ttf', 12, '')
-            .LEFT:RIGHT(PARENT.BackButton, 10, 0),
-        EditBox'.ScriptName'
-            :Font('Fonts/FRIZQT__.ttf', 12, '')
-            :Size(200, 16)
-            .LEFT:RIGHT(PARENT.AddonName)
-            :Hooks {
-                OnTextChanged = function(self, text)
-                    editorWindow:RenameScript(self:GetText())
-                end,
-                OnEnterPressed = function(self)
-                    editorWindow.CodeEditor.Content.Editor:SetFocus()
-                end
-            }
-        {
-            Texture'.ScriptNameBorder'
-                :ColorTexture(0.5, 0.5, 0.5, 0.7)
-                .TOPLEFT:BOTTOMLEFT()
-                .TOPRIGHT:BOTTOMRIGHT()
-                :Height(1)
-        }
-    },
+    SideBar = Sidebar
+        .TOPLEFT:TOPLEFT(0, -25)
+        .BOTTOMLEFT:BOTTOMLEFT()
+        :Width(20),
 
-    CodeEditor'.CodeEditor'
-        .TOPLEFT:BOTTOMLEFT(PARENT.TitleBg)
-        .BOTTOMRIGHT:BOTTOMRIGHT(-330, 0)
-        :Hide()
-        .data {
-            CtrlEnter = function(self, code)
-                local func = assert(loadstring('return function(inspect, trace) ' .. code .. '\n end', "silver editor"))
-                local result = { func()(
-                    function(frame) editorWindow.FrameInspector:SetFrameStack(frame) end,
-                    function(...) editorWindow.Tracer:StartTrace(...) end
-                ) }
-                if #result > 0 then
-                    print(unpack(result))
-                end
-            end
-        },
+    PageMain = PageMain
+        -- .TOPLEFT:TOPLEFT(0, -25)
+        .TOPLEFT:TOPRIGHT(PARENT.SideBar)
+        .BOTTOMRIGHT:BOTTOMRIGHT(-330, 0),
 
-    FrameSettings'.Settings'
+    PageSettings = PageSettings
         .TOPLEFT:TOPLEFT(0, -30)
-        .BOTTOMRIGHT:BOTTOMRIGHT(-330, 15),
-
-    FrameTraceWindow'.Tracer'
-        .TOPLEFT:TOPLEFT(0, -30)
-        .BOTTOMRIGHT:BOTTOMRIGHT(-330, 15)
+        .BOTTOMRIGHT:BOTTOMRIGHT(-30, 0)
         :Hide(),
 
-    FrameInspector'.FrameInspector'
-        .TOPLEFT:TOPRIGHT(PARENT.CodeEditor, 5, 0)
-        .BOTTOMRIGHT:BOTTOMRIGHT(-10, 10)
+    Tracer = FrameTraceWindow
+        .TOPLEFT:TOPRIGHT(PARENT.SideBar)
+        .BOTTOMRIGHT:BOTTOMRIGHT(-330, 0)
+        :Hide(),
+
+    FrameInspector = FrameInspector
+        .TOPLEFT:TOPRIGHT(PARENT.PageMain)
+        .BOTTOMRIGHT:BOTTOMRIGHT(-10, 0)
         :ClickFunction(function(self, frame, functionName) self:GetParent().Tracer:StartTrace(frame, functionName) end),
 
 }
@@ -680,27 +1130,21 @@ local function spawn()
 
     FillTypeInfo()
 
-    editorWindow = FrameEditor.new('BackdropTemplate')
+    editorWindow = FrameDTT.new(nil, 'DTT')
+    editorWindow:EditScratchpad()
     SilverUI.Editor = editorWindow
-
-    local lastSelected = nil
 
     editorWindow:Show()
 
-    Style(editorWindow) {
-        Style'.*Corner, .*Edge'
-            :VertexColor(0.2, 0.2, 0.2, 0.5)
-    }
 end
 
 
 
 
-SLASH_GUITREE1 = '/guitree'
-SLASH_GUITREE2 = '/gt'
+SLASH_DTT1 = '/dtt'
 
-SlashCmdList['GUITREE'] = function(msg, editbox)
-    
+SlashCmdList['DTT'] = function(msg, editbox)
+
     if editorWindow then
         if editorWindow:IsShown() then
             editorWindow:Hide()

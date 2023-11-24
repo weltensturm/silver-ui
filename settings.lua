@@ -1,29 +1,84 @@
-local ADDON, Addon = ...
+---@class Addon
+local Addon = select(2, ...)
 
-
--- local OptionsPanel = CreateFrame('Frame')
-local OptionsPanel = Addon.FrameSmoothScroll.new()
-OptionsPanel.name = "Silver UI"
-OptionsPanel.lastOption = nil
-SilverUI.OptionsPanel = OptionsPanel
-
-InterfaceOptions_AddCategory(OptionsPanel)
+local Event, Script = Addon.LQT.Event, Addon.LQT.Script
 
 
 local settingsLoaded = false
-local settings = {}
 
 
-function SilverUI.Storage(table)
-    if not settingsLoaded then
-        settings[table.name] = { table.account or {}, table.character or {}, table.onload }
-    else
-        SilverUISavedVariablesAccount[table.name] = SilverUISavedVariablesAccount[table.name] or table.account or {}
-        SilverUISavedVariablesCharacter[table.name] = SilverUISavedVariablesCharacter[table.name] or table.character or {}
-        if settings.onload then
-            settings.onload(SilverUISavedVariablesAccount[table.name], SilverUISavedVariablesCharacter[table.name])
+local Module = CreateFrame("Frame")
+Module:RegisterEvent("ADDON_LOADED")
+
+Module:SetScript("OnEvent", function(self, event, addon)
+    if event == "ADDON_LOADED" and addon == "silver-ui" then
+        settingsLoaded = true
+        if not SilverUISavedVariablesAccount then
+            SilverUISavedVariablesAccount = {}
+        end
+        if not SilverUISavedVariablesCharacter then
+            SilverUISavedVariablesCharacter = {}
         end
     end
+end)
+
+
+local function FillUnsetDefaults(settings, defaults)
+    for k, v in pairs(defaults) do
+        if settings[k] == nil then
+            settings[k] = v
+        end
+        if type(settings[k]) == 'table' then
+            FillUnsetDefaults(settings[k], defaults[k])
+        end
+    end
+end
+
+
+---@param table table
+---@return table, table
+function SilverUI.Storage(table)
+    if settingsLoaded then
+        error('Storage needs to be declared in module root')
+    end
+
+    Module:HookScript('OnEvent', function(self, event, addon)
+        if event == "ADDON_LOADED" and addon == "silver-ui" then
+            local account = SilverUISavedVariablesAccount
+            local character = SilverUISavedVariablesCharacter
+            account[table.name] = account[table.name] or {}
+            FillUnsetDefaults(account[table.name], table.account or {})
+            character[table.name] = character[table.name] or {}
+            FillUnsetDefaults(character[table.name], table.character or {})
+            if table.onload then
+                table.onload(account[table.name], character[table.name])
+            end
+        end
+    end)
+
+    local name = table.name;
+    local db_wrapper = {
+        __index = function(self, index)
+            local t = _G[rawget(self, '__target')]
+            if not t then
+                error('Addon is not yet loaded, cannot access db.')
+            end
+            return t[name][index]
+        end,
+        __newindex = function(self, index, value)
+            local t = _G[rawget(self, '__target')]
+            if not t then
+                error('Addon is not yet loaded, cannot access db.')
+            end
+            t[name][index] = value
+        end
+    }
+    return
+        setmetatable({ __target='SilverUISavedVariablesAccount' }, db_wrapper),
+        setmetatable({ __target='SilverUISavedVariablesCharacter' }, db_wrapper)
+end
+function Addon:Storage(table)
+    return SilverUI.Storage(table)
 end
 
 
@@ -35,26 +90,38 @@ function SilverUI.Settings(name)
         table.insert(settingGuis, { name, settings })
     end
 end
+function Addon:Settings(name)
+    return SilverUI.Settings(name)
+end
 
 
-local function buildSettings()
-    for setting=1, #settingGuis do
-        local name = settingGuis[setting][1]
-        local settings = settingGuis[setting][2]
-        local lastOption = OptionsPanel.lastOption
-        for i=1, #settings do
-            local Entry = settings[i]
-            local entry = Entry:Parent(OptionsPanel.Content).new()
-            if lastOption then
-                entry:SetPoint('TOPLEFT', lastOption, 'BOTTOMLEFT', 0, -10)
-            else
-                entry:SetPoint('TOPLEFT', OptionsPanel.Content, 'TOPLEFT', 10, -10)
+SilverUI.OptionsPanel = Addon.FrameSmoothScroll {
+    [Script.OnShow] = function(self)
+        if not self.loaded then
+            for setting=1, #settingGuis do
+                local name = settingGuis[setting][1]
+                local settings = settingGuis[setting][2]
+                local lastOption = self.lastOption
+                for i=1, #settings do
+                    local WidgetDefinition = settings[i]
+                    local widget = WidgetDefinition:Parent(self.Content).new()
+                    if lastOption then
+                        widget:SetPoint('TOPLEFT', lastOption, 'BOTTOMLEFT', 0, -10)
+                    else
+                        widget:SetPoint('TOPLEFT', self.Content, 'TOPLEFT', 10, -10)
+                    end
+                    lastOption = widget
+                    self.lastOption = widget
+                end
             end
-            lastOption = entry
-            OptionsPanel.lastOption = entry
+            self.loaded = true
         end
     end
-end
+}
+    .new()
+
+local category = Settings.RegisterCanvasLayoutCategory(SilverUI.OptionsPanel, "Silver UI")
+Settings.RegisterAddOnCategory(category)
 
 
 local defaultScripts = {}
@@ -78,8 +145,8 @@ function SilverUI.Addons()
 end
 
 function SilverUI.ExecuteScript(addon, script, code)
-    local func = assert(loadstring('return function() ' .. code .. '\n end', addon .. '/' .. script))
-    func()()
+    local func = assert(loadstring('return function(Addon) ' .. code .. '\n end', addon .. '/' .. script))
+    func()(Addon)
 end
 
 function SilverUI.ResetScript(addon, script)
@@ -103,7 +170,7 @@ function SilverUI.NewScript(addon)
             code_original = ''
         }
     )
-    SilverUISavedVariablesCharacter.addons[addon].scripts[name] = { enabled = true }
+    SilverUISavedVariablesCharacter.addons[addon].scripts[name] = { enabled = false }
     return name
 end
 
@@ -114,16 +181,14 @@ function SilverUI.CopyScript(addon, script, settings)
         index = index + 1
         name = script.name .. ' ' .. index
     end
-    table.insert(
-        SilverUISavedVariablesAccount.addons[addon].scripts,
-        {
-            name = name,
-            code = script.code,
-            code_original = script.code
-        }
-    )
+    local newScript = {
+        name = name,
+        code = script.code,
+        code_original = script.code
+    }
+    table.insert(SilverUISavedVariablesAccount.addons[addon].scripts, newScript)
     SilverUISavedVariablesCharacter.addons[addon].scripts[name] = { enabled = settings.enabled }
-    return name
+    return name, newScript
 end
 
 function SilverUI.HasScript(addon, name)
@@ -153,31 +218,12 @@ function SilverUI.DeleteAllScripts()
 end
 
 
-local frame = CreateFrame("Frame")
-frame:RegisterEvent("ADDON_LOADED")
-
-frame:SetScript("OnEvent", function(self, event, addon)
+Module:HookScript('OnEvent', function(self, event, addon)
     if event == "ADDON_LOADED" and addon == "silver-ui" then
-        settingsLoaded = true
-        if not SilverUISavedVariablesAccount then
-            SilverUISavedVariablesAccount = {}
-        end
-        if not SilverUISavedVariablesCharacter then
-            SilverUISavedVariablesCharacter = {}
-        end
-        for name, s in pairs(settings) do
-            local defaultAccount, defaultCharacter, callback = s[1], s[2], s[3]
-            SilverUISavedVariablesAccount[name] = SilverUISavedVariablesAccount[name] or defaultAccount
-            SilverUISavedVariablesCharacter[name] = SilverUISavedVariablesCharacter[name] or defaultCharacter
-            if callback then
-                callback(SilverUISavedVariablesAccount[name], SilverUISavedVariablesCharacter[name])
-            end
-        end
-
-        buildSettings()
 
         local account = SilverUISavedVariablesAccount
         local character = SilverUISavedVariablesCharacter
+
         SilverUI.db = {
             account = account,
             character = character
@@ -214,13 +260,13 @@ frame:SetScript("OnEvent", function(self, event, addon)
             character.addons['Silver UI'].scripts[name] = character.addons['Silver UI'].scripts[name] or settings
         end
 
-        for name, account, character in SilverUI.Addons() do
-            if character.enabled then
-                for _, script in pairs(account.scripts) do
-                    if not character.scripts[script.name] then
-                        character.scripts[script.name] = { enabled = true }
+        for name, addonAccount, addonCharacter in SilverUI.Addons() do
+            if addonCharacter.enabled then
+                for _, script in pairs(addonAccount.scripts) do
+                    if not addonCharacter.scripts[script.name] then
+                        addonCharacter.scripts[script.name] = { enabled = true }
                     end
-                    if character.scripts[script.name].enabled then
+                    if addonCharacter.scripts[script.name].enabled then
                         SilverUI.ExecuteScript(name, script.name, script.code)
                     end
                 end

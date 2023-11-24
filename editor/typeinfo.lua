@@ -1,5 +1,7 @@
-local ADDON, Addon = ...
+---@class Addon
+local Addon = select(2, ...)
 
+local LQT = Addon.LQT
 
 local TypeInfo = {
     { 'Silver UI' },
@@ -63,12 +65,25 @@ local TypeInfo = {
 }
 
 
+local MixinInfo = {}
+
+
 local function FillTypeInfo()
 
     if TypeInfo[1][2] then return end
 
     TypeInfo[1][2] = LQT.FrameExtensions
-    
+
+    for name, mixin in pairs(_G) do
+        if name:match('Mixin$') and type(mixin) == 'table' then
+            for fnName, fn in pairs(mixin) do
+                if type(fn) == 'function' then
+                    MixinInfo[fn] = { name, mixin, fnName }
+                end
+            end
+        end
+    end
+
     LoadAddOn('Blizzard_APIDocumentationGenerated')
 
     for _, typeinfo in pairs(TypeInfo) do
@@ -85,4 +100,5 @@ local function FillTypeInfo()
 end
 
 Addon.TypeInfo = TypeInfo
+Addon.MixinInfo = MixinInfo
 Addon.FillTypeInfo = FillTypeInfo

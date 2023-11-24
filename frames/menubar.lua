@@ -1,5 +1,43 @@
+---@class Addon
+local Addon = select(2, ...)
 
+local LQT = Addon.LQT
+local query = LQT.query
 local PARENT, Style, Frame, Texture, MaskTexture, FontString = LQT.PARENT, LQT.Style, LQT.Frame, LQT.Texture, LQT.MaskTexture, LQT.FontString
+
+
+local load
+
+local _, db = SilverUI.Storage {
+    name = 'Menu Bar',
+    character = {
+        enabled = true
+    },
+    onload = function(account, character)
+        if character.enabled then
+            load()
+        end
+    end
+}
+
+
+SilverUI.Settings 'Menu Bar' {
+
+    Frame:Size(4, 4),
+
+    FontString
+        :Font('Fonts/FRIZQT__.ttf', 16, '')
+        :TextColor(1, 0.8196, 0)
+        :Text 'Menu Bar',
+
+    Addon.CheckBox
+        :Label 'Enable'
+        :Get(function(self) return db.enabled end)
+        :Set(function(self, value) db.enabled = value end),
+
+}
+
+
 
 
 local addon = Frame.new()
@@ -23,7 +61,7 @@ local TopMenu = Frame
     :Hooks(alpha_listeners)
     :FrameStrata 'MEDIUM'
 {
-    Texture'.Bg'
+    Bg = Texture
         .TOPLEFT:TOPLEFT()
         .TOPRIGHT:TOPRIGHT()
         :DrawLayer 'ARTWORK'
@@ -54,28 +92,29 @@ local MenuButton = Style
         end
     }
 {
-    Style'.Texture'
+    ['.Texture'] = Style
         .CENTER:CENTER()
         :Size(ICON_SIZE, ICON_SIZE),
-    Style'.Texture'
         -- :TexCoord(0.1, 0.9, 0.1, 0.9),
-,
-    Frame'.Hover' {
+
+    Hover = Frame {
         function(self) self:SetAllPoints(self:GetParent()) end,
-        Texture'.Bg'
+        Bg = Texture
             :ColorTexture(1, 1, 1, 0.1)
             :Hide()
             { function(self) self:SetAllPoints(self:GetParent()) end },
     },
 
-    MaskTexture'.Mask'
+    Mask = MaskTexture
         :Texture 'Interface/GUILDFRAME/GuildLogoMask_L'
         :AllPoints(PARENT)
-        .init(function(self, parent)
-            Style(parent) {
-                Style'.Texture':AddMaskTexture(self)
-            }
-        end),
+    {
+        function(self, parent)
+            if parent then
+                query(parent, '.Texture'):AddMaskTexture(self)
+            end
+        end
+    },
 
 }
 
@@ -141,7 +180,7 @@ end
 local style = function()
 
     Style(MainMenuBar) {
-        Style'.MicroButtonAndBagsBar':Hide()
+        ['.MicroButtonAndBagsBar'] = Style:Hide()
     }
 
     Style(QuestLogMicroButton)
@@ -155,23 +194,21 @@ local style = function()
         :Parent(TopMenu)
         :Hooks(alpha_listeners)
         {
-            Style'.Texture'
+            ['.Texture'] = Style
                 .TOPLEFT:TOPLEFT(1, -1)
                 :Size(24, 28)
                 :SetTexCoord(0.1, 0.5, 0.05, 0.5),
-            FontString'.ButtonText'
+            ButtonText = FontString
                 .LEFT:LEFT(24, 0)
                 :Font('FONTS/FRIZQT__.ttf', 12)
-                .init(function(self, parent)
-                    self:SetText(parent.tooltipText)
-                end),
+                :Text(PARENT.tooltipText),
             function(self)
                 self:SetWidth(self.ButtonText:GetRight() - self:GetLeft() + 10)
             end
         }
 
-    MenuButton(CharacterMicroButton) {        
-        Texture'.BgLeft'
+    MenuButton(CharacterMicroButton) {
+        BgLeft = Texture
             :ColorTexture(0.2, 0.2, 0.2)
             .TOPLEFT:TOPLEFT(-5, 0)
             .BOTTOMLEFT:BOTTOMLEFT(-5, 0)
@@ -179,94 +216,119 @@ local style = function()
     }
 
     MenuButton(TalentMicroButton) {
-        Style'.Texture':SetTexCoord(0.1, 0.9, 0.4, 1)
+        ['.Texture'] = Style:SetTexCoord(0.1, 0.9, 0.4, 1)
     }
 
     MenuButton(SpellbookMicroButton)
 
-    MenuButton(AchievementMicroButton) {  
-        Texture'.BgLeft'
-            :ColorTexture(0.2, 0.2, 0.2)
-            .TOPLEFT:TOPLEFT(-5, 0)
-            .BOTTOMLEFT:BOTTOMLEFT(-5, 0)
-            :Width(0.75/scale),
-    }
+    if AchievementMicroButton then
+        MenuButton(AchievementMicroButton) {
+            ['.BgLeft'] = Texture
+                :ColorTexture(0.2, 0.2, 0.2)
+                .TOPLEFT:TOPLEFT(-5, 0)
+                .BOTTOMLEFT:BOTTOMLEFT(-5, 0)
+                :Width(0.75/scale),
+        }
+    end
 
-    MenuButton(CollectionsMicroButton)
+    if CollectionsMicroButton then
+        MenuButton(CollectionsMicroButton)
+    end
 
-    MenuButton(EJMicroButton) {
-        Style'.Texture':TexCoord(0.1, 0.9, 0.2, 0.8)
-    }
+    if EJMicroButton then
+        MenuButton(EJMicroButton) {
+            ['.Texture'] = Style:TexCoord(0.1, 0.9, 0.2, 0.8)
+        }
+    end
 
-    MenuButton(LFDMicroButton) {
-        Style'.Texture':TexCoord(0.1, 0.9, 0.2, 0.8)
-    }
+    if LFDMicroButton then
+        MenuButton(LFDMicroButton) {
+            ['.Texture'] = Style:TexCoord(0.1, 0.9, 0.2, 0.8)
+        }
+    end
 
-    MenuButton(LFGMicroButton) {
-        Style'.Texture':SetTexCoord(0.1, 0.9, 0.45, 0.9)
-    }
+    if LFGMicroButton then
+        MenuButton(LFGMicroButton) {
+            ['.Texture'] = Style:SetTexCoord(0.1, 0.9, 0.45, 0.9)
+        }
+    end
 
-    MenuButton(GuildMicroButton) {
-        Style'.Texture':TexCoord(0.1, 0.9, 0.2, 0.8)
-    }
+    if GuildMicroButton then
+        MenuButton(GuildMicroButton) {
+            ['.Texture'] = Style:TexCoord(0.1, 0.9, 0.2, 0.8)
+        }
+    end
 
     MenuButton(QuickJoinToastButton or SocialsMicroButton) {
-        Style'.Texture':TexCoord(0.1, 0.9, 0.1, 0.9):Texture(FriendsFrameIcon:GetTexture())
+        ['.Texture'] = Style:TexCoord(0.1, 0.9, 0.1, 0.9):Texture(FriendsFrameIcon:GetTexture())
     }
 
-    MenuButton(PVPMicroButton) {
-        Style'.texture':TexCoord(0.03,0.64,0,0.6)
-    }
+    if PVPMicroButton then
+        MenuButton(PVPMicroButton) {
+            ['.texture'] = Style:TexCoord(0.03,0.64,0,0.6)
+        }
+    end
 
     MenuButton(MainMenuMicroButton)
 
     MenuButton(GameTimeFrame)
 
-    MenuButton(KeyRingButton)
+    if KeyRingButton then
+        MenuButton(KeyRingButton)
+    end
 
-    Style(StoreMicroButton)
-        .BOTTOMLEFT:TOPLEFT(UIParent)
+    if StoreMicroButton then
+        Style(StoreMicroButton)
+            .BOTTOMLEFT:TOPLEFT(UIParent)
+    end
+
+    MenuButton(MainMenuBarBackpackButton) {
+        ['.*NormalTexture'] = Style:Texture ''
+    }
+
+    Style(MainMenuBarArtFrame or BagsBar) {
+        ['.CharacterBag#Slot, .CharacterReagentBag0Slot'] = MenuButton {
+            ['.NormalTexture, .*NormalTexture'] = Style
+                :Texture ''
+                :Hide()
+                :Alpha(0),
+        },
+        ['.BagBarExpandToggle'] = Style:Hide()
+    }
 
     layout()
 
 end
 
 
-local doUpdate = false
+load = function()
+    local doUpdate = false
 
 
-hooksecurefunc('MoveMicroButtons', function() doUpdate = true end)
+    if BagsBar then
+        hooksecurefunc(BagsBar, 'Layout', function() doUpdate = true end)
+    end
 
-Frame
-    :Events {
-        PLAYER_ENTERING_WORLD = function()    
-            MenuButton(MainMenuBarBackpackButton) {
-                Style'.*NormalTexture':Texture ''
-            }
-            
-            Style(MainMenuBarArtFrame or MicroButtonAndBagsBar) {
-                MenuButton'.CharacterBag#Slot, .CharacterReagentBag0Slot' {
-                    Style'.*NormalTexture':Texture ''
-                },
-                Style'.BagBarExpandToggle':Hide()
-            }
-
-            doUpdate = true
-        end
-    }
-    :Hooks {
-        OnUpdate = function(self, dt)
-            if doUpdate then
-                doUpdate = false
-                style()
+    Frame
+        :Events {
+            PLAYER_ENTERING_WORLD = function()
+                doUpdate = true
             end
-            
-            if alpha ~= alphaTarget then
-                local sign = alpha >= alphaTarget and -1 or 1
-                alpha = math.min(1, math.max(0, alpha + sign * dt*5))
-                local anim = math.sqrt(alpha)
-                TopMenu:SetAlpha(anim)
+        }
+        :Hooks {
+            OnUpdate = function(self, dt)
+                if doUpdate then
+                    doUpdate = false
+                    style()
+                end
+                
+                if alpha ~= alphaTarget then
+                    local sign = alpha >= alphaTarget and -1 or 1
+                    alpha = math.min(1, math.max(0, alpha + sign * dt*5))
+                    local anim = math.sqrt(alpha)
+                    TopMenu:SetAlpha(anim)
+                end
             end
-        end
-    }
-    .new()
+        }
+        .new()
+end

@@ -12,40 +12,64 @@ indent.lua
 #-# base
 __init__.lua
 util.lua
-lqt/__init__.lua
-lqt/frameproxy.lua
-lqt/query.lua
-lqt/style.lua
-lqt/frame_extensions.lua
-lqt/__finalize__.lua
 
-templates/animation.lua
-templates/box_shadow.lua
-templates/context_menu.lua
-templates/smoothscroll.lua
-templates/code_editor.lua
+#-# lqt
+libs/LQT/LQT.xml
+
+templates/Animation.lua
+templates/BoxShadow.lua
+templates/CheckBox.lua
+templates/ContextMenu.lua
+templates/SmoothScroll.lua
+templates/SmoothScrollSparse.lua
+templates/CodeEditor.lua
+templates/UnitButton.lua
+templates/ActionButton.lua
+templates/PixelAlign.lua
+templates/PixelSize.lua
+templates/PixelAnchor.lua
+templates/SettingsWidgets.lua
+templates/AuraTracker.lua
 
 settings.lua
 
-editor/trace.lua
-editor/typeinfo.lua
-editor/frame_inspector.lua
-editor/editor.lua
+editor/RenameBox.lua
+editor/Event.lua
+editor/Trace.lua
+editor/TypeInfo.lua
+editor/FrameInspector.lua
+editor/Editor.lua
 
 #-# skins
 frames/questgossip.lua
-frames/bars.lua
-frames/bars_wotlk.lua
+frames/ActionBars.lua
 frames/menubar.lua
 frames/chat.lua
 frames/buffs.lua
 frames/minimap.lua
-frames/target.lua
 frames/questtracker.lua
-frames/questtracker_wotlk.lua
-frames/player.lua
-frames/player_wotlk.lua
+frames/units/HealthBar.lua
+frames/units/HealthLoss.lua
+frames/units/Shield.lua
+frames/units/CastBar.lua
+frames/units/GCD.lua
+frames/units/PowerBar.lua
+frames/units/SecondaryPower.lua
+frames/units/Auras.lua
+frames/units/Player.lua
+frames/units/Target.lua
 frames/tooltip.lua
 frames/raidframe.lua
 frames/bigbag.lua
-frames/nameplates.lua
+frames/WorldMap.lua
+frames/ChatBubbles.lua
+
+frames/nameplates/castbar.lua
+frames/nameplates/healthbar.lua
+frames/nameplates/healthdiamond.lua
+frames/nameplates/name.lua
+frames/nameplates/target.lua
+frames/nameplates/auras.lua
+frames/nameplates/nameplates.lua
+
+debugtaint.lua

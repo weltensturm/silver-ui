@@ -1,4 +1,7 @@
+---@class Addon
+local Addon = select(2, ...)
 
+local LQT = Addon.LQT
 local query, Style, Frame = LQT.query, LQT.Style, LQT.Frame
 
 
@@ -17,7 +20,7 @@ for slice in query(GameTooltip, '.NineSlice.Texture') do
 end
 
 
-local StyleCenter = Style(center)
+local StyleCenter = Style
     .TOPLEFT:TOPLEFT(GameTooltip, 0, -2)
     .BOTTOMRIGHT:BOTTOMRIGHT(GameTooltip)
 
@@ -31,7 +34,7 @@ Style(GameTooltipStatusBar)
 Frame
     :Events {
         UPDATE_MOUSEOVER_UNIT = function()
-            StyleCenter()
+            StyleCenter(center)
         end
     }
     .new()
