@@ -6,14 +6,11 @@
 ## SavedVariablesPerCharacter: SilverUISavedVariablesCharacter
 ## X-silver-ui: silver-ui
 
-#-# libraries
-indent.lua
+libs/indent.lua
 
-#-# base
 __init__.lua
 util.lua
 
-#-# lqt
 libs/LQT/LQT.xml
 
 templates/Animation.lua
