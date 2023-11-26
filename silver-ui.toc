@@ -27,6 +27,7 @@ templates/PixelSize.lua
 templates/PixelAnchor.lua
 templates/SettingsWidgets.lua
 templates/AuraTracker.lua
+templates/BarShaped.lua
 
 settings.lua
 

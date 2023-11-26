@@ -11,19 +11,7 @@ local Frame = LQT.Frame
 local Texture = LQT.Texture
 
 
-local color
-do
-    local colorSelect = CreateFrame('ColorSelect') -- Convert RGB <-> HSV (:
-    color = function(r, g, b, hue, saturation, value)
-        colorSelect:SetColorRGB(r, g, b)
-        local h, s, v = colorSelect:GetColorHSV()
-        h = h * hue
-        s = s * saturation
-        v = v * value
-        colorSelect:SetColorHSV(h, s, v)
-        return colorSelect:GetColorRGB()
-    end
-end
+local color = Addon.util.color
 
 
 local SecondaryPowerPip = Frame {

@@ -104,7 +104,7 @@ Addon.Units.CastBar = Frame {
         Bar = Texture
             :AllPoints()
             :AddMaskTexture(PARENT:GetParent().Mask)
-            :Texture'Interface/AddOns/silver-ui/art/healthbar'
+            :Texture'Interface/AddOns/silver-ui/art/bar'
             :TexCoord(0, 0.5, 0, 1),
             -- :Texture 'Interface/TARGETINGFRAME/UI-StatusBar',
 

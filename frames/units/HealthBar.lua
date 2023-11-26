@@ -6,6 +6,7 @@ Addon.Units = Addon.Units or {}
 local LQT = Addon.LQT
 local Event = LQT.Event
 local UnitEvent = LQT.UnitEvent
+local Hook = LQT.Hook
 local Script = LQT.Script
 local SELF = LQT.SELF
 local PARENT = LQT.PARENT
@@ -58,12 +59,25 @@ Addon.Units.HealthBar = Frame {
         -- :Texture 'Interface/BUTTONS/UI-Listbox-Highlight2'
         -- :Texture 'Interface/TARGETINGFRAME/UI-StatusBar'
 
-        :Texture 'Interface/AddOns/silver-ui/art/UI-StatusBar'
+        :Texture 'Interface/AddOns/silver-ui/art/bar-bright'
         :VertexColor(0.3, 0.7, 0.1, 1)
 
-        -- :Texture 'Interface/AddOns/silver-ui/art/healthbar'
+        -- :Texture 'Interface/AddOns/silver-ui/art/bar'
         -- :VertexColor(0.3, 0.7, 0.1, 1)
 
         :AddMaskTexture(PARENT.MaskLeft)
         :AddMaskTexture(PARENT.MaskRight)
+}
+
+
+Addon.Units.HealthBarShaped = Addon.Templates.BarShaped {
+    [Hook.SetEventUnit] = function(self, unit)
+        self.unit = unit
+    end,
+    Update = function(self)
+        self:SetValue(UnitHealth(self.unit), UnitHealthMax(self.unit))
+    end,
+    [UnitEvent.UNIT_HEALTH] = SELF.Update,
+    [UnitEvent.UNIT_MAXHEALTH] = SELF.Update,
+    [Event.PLAYER_ENTERING_WORLD] = SELF.Update,
 }

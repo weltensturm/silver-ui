@@ -88,9 +88,8 @@ Addon.Units.PowerBar = Frame {
         -- :Texture 'Interface/BUTTONS/GreyscaleRamp64'
         -- :Texture 'Interface/TARGETINGFRAME/UI-StatusBar-Glow'
         -- :Texture 'Interface/BUTTONS/UI-Listbox-Highlight2'
-        -- :Texture 'Interface/AddOns/silver-ui/art/powerbar'
-        -- :Texture 'Interface/AddOns/silver-ui/art/healthbar'
-        :Texture 'Interface/AddOns/silver-ui/art/UI-StatusBar'
+        -- :Texture 'Interface/AddOns/silver-ui/art/bar'
+        :Texture 'Interface/AddOns/silver-ui/art/bar-bright'
         -- :Texture 'Interface/TARGETINGFRAME/UI-StatusBar'
         :AddMaskTexture(PARENT.MaskLeft)
         :AddMaskTexture(PARENT.MaskRight)

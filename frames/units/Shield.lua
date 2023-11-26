@@ -56,11 +56,11 @@ Addon.Units.Shield = Frame {
         -- :Texture 'Interface/BUTTONS/UI-Listbox-Highlight2'
         -- :Texture 'Interface/TARGETINGFRAME/UI-StatusBar'
 
-        :Texture 'Interface/AddOns/silver-ui/art/healthbar-shield'
+        :Texture 'Interface/AddOns/silver-ui/art/bar-absorb'
         :VertexColor(0.5, 0.5, 1, 0.8)
         :BlendMode 'ADD'
 
-        -- :Texture 'Interface/AddOns/silver-ui/art/healthbar'
+        -- :Texture 'Interface/AddOns/silver-ui/art/bar'
         -- :VertexColor(0.3, 0.7, 0.1, 1)
 
         :AddMaskTexture(PARENT.MaskLeft)

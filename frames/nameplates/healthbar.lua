@@ -4,12 +4,13 @@ local Addon = select(2, ...)
 Addon.Nameplates = Addon.Nameplates or {}
 
 local LQT = Addon.LQT
-local Override = LQT.Override
+local Hook = LQT.Hook
 local Event = LQT.Event
 local UnitEvent = LQT.UnitEvent
 local Script = LQT.Script
 local SELF = LQT.SELF
 local PARENT = LQT.PARENT
+local Style = LQT.Style
 local Frame = LQT.Frame
 local Texture = LQT.Texture
 local MaskTexture = LQT.MaskTexture
@@ -23,38 +24,20 @@ local HealthDynamicScale = Addon.util.HealthDynamicScale
 local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 
 
-local function Pixel2Align(widget, size)
-    local pixelFactor = PixelUtil.GetPixelToUIUnitFactor()
-    local pixels = math.floor(size * widget:GetEffectiveScale() / pixelFactor)
-    if pixels % 2 ~= 0 then
-        pixels = pixels + 1
-    end
-    return pixels / widget:GetEffectiveScale() * pixelFactor
-end
-
-
-Addon.Nameplates.FrameHealthBar = Frame
-    .BOTTOM:BOTTOM()
-    :Size(128, 16)
-    :FlattensRenderLayers(true)
-    :IsFrameBuffer(true)
-{
+Addon.Nameplates.HealthBar = Frame .. Addon.Templates.PixelSizex2 {
     parent = PARENT,
     animations = {}, -- { { lost health, start, duration }, }
     health = 0,
     healthMax = 0,
 
-    [Override.SetEventUnit] = function(self, orig, unit, _)
+    [Hook.SetEventUnit] = function(self, unit)
         self.unit = unit
         self.animations = {}
         self.health = UnitHealth(unit)
         self.healthMax = 0
         self.healthCombat = UnitHealth(unit)
         self:SetValue(UnitHealth(unit), UnitHealthMax(unit))
-        self.MaskAnimLeft:SetPoint('LEFT', self.MaskLeft, 'LEFT')
-        self.MaskAnimRight:SetPoint('RIGHT', self.MaskRight, 'RIGHT')
         self:UpdateColor()
-        orig(self, unit)
     end,
 
     UpdateColor = function(self)
@@ -77,20 +60,12 @@ Addon.Nameplates.FrameHealthBar = Frame
         else
             r, g, b = color(r+1/3, g+1/3, b+1/3, 1, 1, 1)
         end
-        self.Textures.Bar:SetVertexColor(r, g, b)
+        self.Bar.Bar:SetVertexColor(r, g, b)
     end,
     [Event.PLAYER_REGEN_DISABLED] = SELF.UpdateColor,
     [Event.PLAYER_REGEN_ENABLED] = SELF.UpdateColor,
     [UnitEvent.UNIT_FACTION] = SELF.UpdateColor,
     [UnitEvent.UNIT_THREAT_LIST_UPDATE] = SELF.UpdateColor,
-
-    -- [Event.PLAYER_TARGET_CHANGED] = function(self)
-    --     if UnitIsUnit(self.unit, 'target') or UnitAffectingCombat(self.unit) then
-    --         self:Show()
-    --     else
-    --         self:Hide()
-    --     end
-    -- end,
 
     SetValue = function(self, value, max)
         local width = self:GetWidth()
@@ -102,42 +77,24 @@ Addon.Nameplates.FrameHealthBar = Frame
                     GetTime(),
                     0.2 + (max-self.healthMax)/max*0.5
                 })
-                self.Textures.BarAnimation:Show()
+                self.Animation:Show()
             end
 
             local scale = HealthDynamicScale(self.unit)
 
-            self:SetSize(Pixel2Align(self, 4+100/2*scale), Pixel2Align(self, 5))
+            self:SetSize(4+100/2*scale, 5)
 
             width = self:GetWidth()
             local height = self:GetHeight()
 
             local MASK_WIDTH_RATIO = 4096 / 64
             local huge_width = math.max(0.01, self:GetHeight()) * MASK_WIDTH_RATIO
-            for _, v in pairs { self.MaskLeft, self.MaskRight, self.MaskBgLeft, self.MaskBgRight,
-                                self.MaskAnimLeft, self.MaskAnimRight } do
-                PixelUtil.SetWidth(v, huge_width)
-            end
-            PixelUtil.SetSize(self.Textures.ShadowLeft, width/2+height*0.35, height*2)
-            PixelUtil.SetSize(self.Textures.ShadowRight, width/2+height*0.35, height*2)
-            self.Textures.ShadowLeft:SetTexCoord(0, width/2/huge_width, 0, 1)
-            self.Textures.ShadowRight:SetTexCoord(1 - width/2/huge_width, 1, 0, 1)
-
-            self.endcapWidth = height/2
-            self.endcapHP = max/(self.endcapWidth*height + width*height)*self.endcapWidth*height
+            PixelUtil.SetSize(self.Shadow.Left, width/2+height*0.35, height*2)
+            PixelUtil.SetSize(self.Shadow.Right, width/2+height*0.35, height*2)
+            self.Shadow.Left:SetTexCoord(0, width/2/huge_width, 0, 1)
+            self.Shadow.Right:SetTexCoord(1 - width/2/huge_width, 1, 0, 1)
         end
-
-        local shapeWidth = 0
-        if value > self.endcapHP*2 then
-            shapeWidth = self.endcapWidth*2 + (value-self.endcapHP*2)
-                                                /(max-self.endcapHP*2)*(width-self.endcapWidth*2)
-        else
-            shapeWidth = math.sqrt(value/self.endcapHP/2) * self.endcapWidth*2
-        end
-        local offset = PixelUtil.GetNearestPixelSize((width-shapeWidth)/2, self:GetEffectiveScale())
-        self.MaskLeft:SetPoint('LEFT', self, 'LEFT', offset, 0)
-        self.MaskRight:SetPoint('RIGHT', self, 'RIGHT', -offset, 0)
-
+        self.Bar:SetValue(value, max)
     end,
 
     [UnitEvent.UNIT_HEALTH] = function(self, unit)
@@ -155,7 +112,7 @@ Addon.Nameplates.FrameHealthBar = Frame
                 GetTime(),
                 0.2 + (self.health-health)/healthMax*0.5
             })
-            self.Textures.BarAnimation:Show()
+            self.Animation:Show()
         end
 
         self.health = health
@@ -172,7 +129,7 @@ Addon.Nameplates.FrameHealthBar = Frame
                 GetTime(),
                 0.2 + damage/UnitHealthMax(self.unit)*0.5
             })
-            self.Textures.BarAnimation:Show()
+            self.Animation:Show()
         end
     end,
 
@@ -188,105 +145,40 @@ Addon.Nameplates.FrameHealthBar = Frame
                 loss = loss + anim[1] * (1-progress^2)
             end
         end
-
         if loss == 0 then
-            self.Textures.BarAnimation:Hide()
+            self.Animation:Hide()
         else
-            local width = self:GetWidth()
-            local healthMax = self.healthMax
-            local endcapHP = self.endcapHP
-            local endcapWidth = self.endcapWidth
-
-            local shapeWidth = 0
-            local health = self.health+loss
-            if health > endcapHP*2 then
-                shapeWidth = endcapWidth*2 + (health-endcapHP*2)/(healthMax-endcapHP*2)*(width-endcapWidth*2)
-            else
-                shapeWidth = math.sqrt(health/endcapHP/2) * endcapWidth*2
-            end
-            local offset = PixelUtil.GetNearestPixelSize((width-shapeWidth)/2, self:GetEffectiveScale())
-            self.MaskAnimLeft:SetPoint('LEFT', self, 'LEFT', offset, 0)
-            self.MaskAnimRight:SetPoint('RIGHT', self, 'RIGHT', -offset, 0)
+            self.Animation:SetValue(self.health+loss, self.healthMax)
         end
     end,
 
-    MaskLeft = MaskTexture
-        .TOP:TOP()
-        .BOTTOM:BOTTOM()
-        .LEFT:LEFT()
-        :Texture('Interface/AddOns/silver-ui/art/hp-sharp', 'CLAMPTOBLACKADDITIVE', 'CLAMPTOBLACKADDITIVE'),
+    Background = Addon.Templates.BarShaped
+        :AllPoints()
+        :Texture 'Interface/RAIDFRAME/Raid-Bar-Hp-Fill'
+        :Value(1, 1)
+        :FrameLevel(0)
+    {
+        ['.Bar'] = Style
+            :VertexColor(0.1, 0.1, 0.1, 0.7)
+    },
 
-    MaskRight = MaskTexture
-        .TOP:TOP()
-        .BOTTOM:BOTTOM()
-        .RIGHT:RIGHT()
-        :Texture('Interface/AddOns/silver-ui/art/hp-sharp', 'CLAMPTOBLACKADDITIVE', 'CLAMPTOBLACKADDITIVE'),
+    Animation = Addon.Templates.BarShaped
+        :AllPoints(),
 
-    MaskAnimLeft = MaskTexture
-        .TOP:TOP()
-        .BOTTOM:BOTTOM()
-        .LEFT:LEFT()
-        :Texture('Interface/AddOns/silver-ui/art/hp-sharp-solid-anim', 'CLAMPTOBLACKADDITIVE', 'CLAMPTOBLACKADDITIVE'),
+    Bar = Addon.Templates.BarShaped
+        :AllPoints()
+        :Texture 'Interface/AddOns/silver-ui/art/bar-bright',
 
-    MaskAnimRight = MaskTexture
-        .TOP:TOP()
-        .BOTTOM:BOTTOM()
-        .RIGHT:RIGHT()
-        :Texture('Interface/AddOns/silver-ui/art/hp-sharp-solid-anim', 'CLAMPTOBLACKADDITIVE', 'CLAMPTOBLACKADDITIVE'),
-
-    MaskBgLeft = MaskTexture
-        .TOPLEFT:TOPLEFT()
-        .BOTTOMLEFT:BOTTOMLEFT()
-        :Texture('Interface/AddOns/silver-ui/art/hp-sharp-solid', 'CLAMPTOBLACKADDITIVE', 'CLAMPTOBLACKADDITIVE'),
-
-    MaskBgRight = MaskTexture
-        .TOPRIGHT:TOPRIGHT()
-        .BOTTOMRIGHT:BOTTOMRIGHT()
-        :Texture('Interface/AddOns/silver-ui/art/hp-sharp-solid', 'CLAMPTOBLACKADDITIVE', 'CLAMPTOBLACKADDITIVE'),
-
-    Textures = Frame:AllPoints(PARENT) { -- for whatever reason framebuffer children need another container
-        ShadowLeft = Texture
+    Shadow = Frame:AllPoints() { -- framebuffer children need a container
+        Left = Texture
             .RIGHT:CENTER()
             :Texture 'Interface/AddOns/silver-ui/art/hp-sharp-shadow'
             :Alpha(0.8),
 
-        ShadowRight = Texture
+        Right = Texture
             .LEFT:CENTER()
             :Texture 'Interface/AddOns/silver-ui/art/hp-sharp-shadow'
             :Alpha(0.7),
-
-        Bar = Texture
-            -- .TOPLEFT:TOPLEFT(-4, 0)
-            -- .BOTTOMRIGHT:BOTTOMRIGHT(4, 0)
-            -- .TOP:TOP()
-            -- .BOTTOM:BOTTOM()
-            :AllPoints(PARENT)
-            -- :ColorTexture(1, 0, 0, 1)
-            -- :Texture 'Interface/BUTTONS/GreyscaleRamp64'
-            -- :Texture 'Interface/TARGETINGFRAME/UI-StatusBar'
-            -- :Texture 'Interface/BUTTONS/UI-Listbox-Highlight2'
-            -- :Texture 'Interface/AddOns/silver-ui/art/healthbar'
-            :Texture 'Interface/AddOns/silver-ui/art/UI-StatusBar'
-            :TexCoord(0.3, 0.7, 0.1, 0.9)
-            :DrawLayer('ARTWORK', 2)
-            :AddMaskTexture(PARENT:GetParent().MaskLeft)
-            :AddMaskTexture(PARENT:GetParent().MaskRight),
-
-        BarAnimation = Texture
-            :AllPoints(PARENT)
-            :ColorTexture(1, 1, 1, 1)
-            :DrawLayer('BORDER')
-            :AddMaskTexture(PARENT:GetParent().MaskAnimLeft)
-            :AddMaskTexture(PARENT:GetParent().MaskAnimRight),
-
-        Background = Texture
-            :AllPoints(PARENT)
-            :Texture 'Interface/RAIDFRAME/Raid-Bar-Hp-Fill'
-            -- :Texture 'Interface/TARGETINGFRAME/UI-StatusBar-Glow'
-            :VertexColor(0.1, 0.1, 0.1, 0.7)
-            :DrawLayer 'BACKGROUND'
-            :AddMaskTexture(PARENT:GetParent().MaskBgLeft)
-            :AddMaskTexture(PARENT:GetParent().MaskBgRight),
     },
 
 }

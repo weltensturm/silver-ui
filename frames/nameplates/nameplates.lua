@@ -69,11 +69,12 @@ local StyleNameplate = Style {
 
     SilverUINamePlate = Frame
         :AllPoints(PARENT)
+        :FlattensRenderLayers(true)
+        :IsFrameBuffer(true)
     {
 
-        [Override.SetEventUnit] = function(self, oldfn, unit, _)
+        SetEventUnit = function(self, unit)
             self.unit = unit
-            oldfn(self, unit, true)
             self:UpdateAlpha()
             for frame in query(self, '.Frame') do
                 if frame.SetEventUnit then
@@ -98,11 +99,18 @@ local StyleNameplate = Style {
             :ColorTexture(0, 0, 0, 0),
 
         -- Health = Addon.Nameplates.FrameHealthDiamond,
-        Health = Addon.Nameplates.FrameHealthBar,
+        Health = Addon.Nameplates.HealthBar
+            .BOTTOM:BOTTOM()
+            :Size(128, 16),
 
-        Name = Addon.Nameplates.FrameUnitName,
+        Name = Addon.Nameplates.FrameUnitName
+            .TOP:TOP()
+            :Size(200, 10),
 
-        Target = Addon.Nameplates.FrameTarget,
+        Target = Addon.Nameplates.FrameTarget
+            .BOTTOMLEFT:TOPLEFT(PARENT.Health.Animation.Bar, 2, 0)
+            .BOTTOMRIGHT:TOPRIGHT(PARENT.Health.Animation.Bar, -2, 0)
+            :Height(24),
 
         CastBar = Addon.Nameplates.FrameCastBar
             :AllPoints(PARENT.Health),

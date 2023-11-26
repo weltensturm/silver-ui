@@ -16,9 +16,7 @@ local FontString = LQT.FontString
 local PixelSizex2 = Addon.Templates.PixelSizex2
 
 
-Addon.Nameplates.FrameUnitName = Frame
-    :AllPoints(PARENT)
-{
+Addon.Nameplates.FrameUnitName = Frame .. PixelSizex2 {
 
     [Override.SetEventUnit] = function(self, oldfn, unit, ...)
         self.unit = unit
@@ -51,7 +49,7 @@ Addon.Nameplates.FrameUnitName = Frame
     end,
 
     Name = FontString .. PixelSizex2
-        .TOP:TOP()
+        :AllPoints()
         :Font('Fonts/FRIZQT__.ttf', 8.5, '')
         :TextColor(0.9, 0.9, 0.9, 0)
         :ShadowColor(0, 0, 0, 0.7)
