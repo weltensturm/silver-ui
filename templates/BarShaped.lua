@@ -47,6 +47,7 @@ Addon.Templates.BarShaped = Frame {
         local width = self:GetWidth()
 
         if max ~= self.valueMax then
+            self.valueMax = max
             self.endcapWidth, self.endcapValue = self:GetEndcap()
         end
 

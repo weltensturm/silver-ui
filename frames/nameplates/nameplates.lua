@@ -113,13 +113,15 @@ local StyleNameplate = Style {
             :Height(24),
 
         CastBar = Addon.Nameplates.FrameCastBar
-            :AllPoints(PARENT.Health),
+            :AllPoints(PARENT.Health)
+            :FrameLevel(4),
 
         Auras = Addon.Nameplates.Auras
             :AllPoints(PARENT.Health),
 
         Absorb = Addon.Units.Shield
-            :AllPoints(PARENT.Health),
+            :AllPoints(PARENT.Health)
+            :FrameLevel(4),
 
         -- Bg = Texture
         --     :ColorTexture(0, 0, 0, 0.5)
