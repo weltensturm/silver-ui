@@ -28,7 +28,7 @@ local function IsUIObject(table)
     return
         type(table) == 'table'
         and table.GetObjectType
-        and pcall(table.GetObjectType, table)
+        and type(select(2, pcall(table.GetObjectType, table))) == 'string'
         -- and not table:IsForbidden()
     -- if type(table) ~= 'table' then return end
     -- if type(table[0]) ~= 'userdata' then return end
