@@ -25,7 +25,8 @@ local function CheckUnitAuras(self, unit)
         local i = 1 ---@type integer?
         while i do
             local
-                name, icon, count, dispelType, duration, expirationTime, source, isStealable
+                name, icon, count, dispelType, duration, expirationTime, source, isStealable, nameplateShowPersonal,
+                spellId, canApplyAura, isBossDebuff, castByPlayer, nameplateShowAll, timeMod
                     = UnitAura(unit, i, filter)
             if name then
                 local instance = string.format('%s/%s/%s/%i/%s', unit, filter, name, icon, source or '')
@@ -59,6 +60,8 @@ local function CheckUnitAuras(self, unit)
                         applications=count or 0,
                         duration=duration,
                         expirationTime=expirationTime,
+                        spellId=spellId,
+
                         index=i,
                         filter=filter,
                     }
