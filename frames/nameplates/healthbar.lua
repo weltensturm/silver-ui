@@ -24,15 +24,11 @@ local HealthDynamicScale = Addon.util.HealthDynamicScale
 local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 
 
-Addon.Nameplates.HealthBar = Frame .. Addon.Templates.PixelSizex2 {
-    parent = PARENT,
-    animations = {}, -- { { lost health, start, duration }, }
-    health = 0,
+Addon.Nameplates.HealthScaledBar = Frame .. Addon.Templates.PixelSizex2 {
     healthMax = 0,
 
     [Hook.SetEventUnit] = function(self, unit)
         self.unit = unit
-        self.animations = {}
         self.health = UnitHealth(unit)
         self.healthMax = 0
         self.healthCombat = UnitHealth(unit)
@@ -71,15 +67,6 @@ Addon.Nameplates.HealthBar = Frame .. Addon.Templates.PixelSizex2 {
         local width = self:GetWidth()
 
         if max ~= self.healthMax then
-            if max < self.healthMax then
-                table.insert(self.animations, {
-                    max - self.healthMax,
-                    GetTime(),
-                    0.2 + (max-self.healthMax)/max*0.5
-                })
-                self.Animation:Show()
-            end
-
             local scale = HealthDynamicScale(self.unit)
 
             self:SetSize(4+100/2*scale, 5)
@@ -99,57 +86,8 @@ Addon.Nameplates.HealthBar = Frame .. Addon.Templates.PixelSizex2 {
 
     [UnitEvent.UNIT_HEALTH] = function(self, unit)
         if not self:IsVisible() then return end
-        assert(unit == self.unit, self.unit .. ' ' .. unit)
-        local health = UnitHealth(self.unit)
-        local healthMax = UnitHealthMax(self.unit)
-
-        self:SetValue(health, healthMax)
-        -- print(self.unit, 'UNIT_HEALTH', health - self.health, health)
-
-        if IsRetail and health < self.health and (self.health - health)/healthMax > 0.005 then
-            table.insert(self.animations, {
-                self.health - health,
-                GetTime(),
-                0.2 + (self.health-health)/healthMax*0.5
-            })
-            self.Animation:Show()
-        end
-
-        self.health = health
-        self.healthMax = healthMax
-    end,
-
-    [UnitEvent.UNIT_COMBAT] = function(self, unit, type, crit, damage, class)
-        if not self:IsVisible() then return end
-        if not IsRetail and type == 'WOUND' then
-            self.healthCombat = self.healthCombat - damage
-            -- self:SetValue(self.healthCombat, self.healthMax) -- sync healthbar in classic with player animation? inconsistent values and event order though
-            table.insert(self.animations, {
-                damage,
-                GetTime(),
-                0.2 + damage/UnitHealthMax(self.unit)*0.5
-            })
-            self.Animation:Show()
-        end
-    end,
-
-    [Script.OnUpdate] = function(self, dt)
-        local time = GetTime()
-        local loss = 0
-        for i=#self.animations, 1, -1 do
-            local anim = self.animations[i]
-            if anim[2]+anim[3] < time then
-                table.remove(self.animations, i)
-            else
-                local progress = (time - anim[2])/anim[3]
-                loss = loss + anim[1] * (1-progress^2)
-            end
-        end
-        if loss == 0 then
-            self.Animation:Hide()
-        else
-            self.Animation:SetValue(self.health+loss, self.healthMax)
-        end
+        self.healthMax = UnitHealthMax(unit)
+        self:SetValue(UnitHealth(unit), self.healthMax)
     end,
 
     Background = Addon.Templates.BarShaped
@@ -161,9 +99,6 @@ Addon.Nameplates.HealthBar = Frame .. Addon.Templates.PixelSizex2 {
         ['.Bar'] = Style
             :VertexColor(0.1, 0.1, 0.1, 0.7)
     },
-
-    Animation = Addon.Templates.BarShaped
-        :AllPoints(),
 
     Bar = Addon.Templates.BarShaped
         :AllPoints()

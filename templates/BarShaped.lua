@@ -14,7 +14,6 @@ local MaskTexture = LQT.MaskTexture
 
 
 Addon.Templates.BarShaped = Frame {
-    parent = PARENT,
     value = 0,
     valueMax = 0,
     maskAspect = 4096 / 64,

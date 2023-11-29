@@ -63,6 +63,7 @@ frames/WorldMap.lua
 frames/ChatBubbles.lua
 
 frames/nameplates/castbar.lua
+frames/nameplates/HealthLoss.lua
 frames/nameplates/healthbar.lua
 frames/nameplates/healthdiamond.lua
 frames/nameplates/name.lua

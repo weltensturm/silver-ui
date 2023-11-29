@@ -86,10 +86,8 @@ local StyleNameplate = Style {
         UpdateAlpha = function(self)
             if UnitIsUnit(self.unit, 'target') then
                 self:SetAlpha(1)
-                self.Health:SetAlpha(1) -- thanks blizzard
             else
                 self:SetAlpha(0.7)
-                self.Health:SetAlpha(0.7) -- thanks blizzard
             end
         end,
         [Event.PLAYER_TARGET_CHANGED] = SELF.UpdateAlpha,
@@ -99,17 +97,20 @@ local StyleNameplate = Style {
             :ColorTexture(0, 0, 0, 0),
 
         -- Health = Addon.Nameplates.FrameHealthDiamond,
-        Health = Addon.Nameplates.HealthBar
+        Health = Addon.Nameplates.HealthScaledBar
             .BOTTOM:BOTTOM()
             :Size(128, 16),
+
+        HealthLoss = Addon.Nameplates.HealthLoss
+            :AllPoints(PARENT.Health),
 
         Name = Addon.Nameplates.FrameUnitName
             .TOP:TOP()
             :Size(200, 10),
 
         Target = Addon.Nameplates.FrameTarget
-            .BOTTOMLEFT:TOPLEFT(PARENT.Health.Animation.Bar, 2, 0)
-            .BOTTOMRIGHT:TOPRIGHT(PARENT.Health.Animation.Bar, -2, 0)
+            .BOTTOMLEFT:TOPLEFT(PARENT.Health.Bar, 2, 0)
+            .BOTTOMRIGHT:TOPRIGHT(PARENT.Health.Bar, -2, 0)
             :Height(24),
 
         CastBar = Addon.Nameplates.FrameCastBar
