@@ -1,17 +1,15 @@
 ## Interface: 100002
 ## Title: Silver UI
 ## Author: weltensturm
-## OptionalDeps: 
+## RequiredDeps: LQT-1.0
 ## SavedVariables: SilverUISavedVariablesAccount
 ## SavedVariablesPerCharacter: SilverUISavedVariablesCharacter
-## X-silver-ui: silver-ui
-
-libs/indent.lua
 
 __init__.lua
 util.lua
 
-libs/LQT/LQT.xml
+libs/LQT.lua
+libs/indent.lua
 
 templates/Animation.lua
 templates/BoxShadow.lua
@@ -70,5 +68,3 @@ frames/nameplates/name.lua
 frames/nameplates/target.lua
 frames/nameplates/auras.lua
 frames/nameplates/nameplates.lua
-
-debugtaint.lua
