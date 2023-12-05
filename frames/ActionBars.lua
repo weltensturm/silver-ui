@@ -805,7 +805,7 @@ load = function()
 
     GlobalFadeSystem.new()
 
-    local size = UIParent:GetWidth()/3
+    local size = 600
 
     local ActionBar1 = ActionBarFrame
         :ButtonTemplate(StyledActionBarButton)
