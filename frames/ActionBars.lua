@@ -693,8 +693,8 @@ local ActionBarFrame = Frame {
             self['Button' .. i].bar = self
         end
     end,
-    UpdateSpellFlyoutDirection = ActionBarMixin.UpdateSpellFlyoutDirection,
-    GetSpellFlyoutDirection = ActionBarMixin.GetSpellFlyoutDirection,
+    -- UpdateSpellFlyoutDirection = ActionBarMixin.UpdateSpellFlyoutDirection,
+    -- GetSpellFlyoutDirection = ActionBarMixin.GetSpellFlyoutDirection,
     actionButtons = {},
 
     [Script.OnSizeChanged] = function(self, width, height)
