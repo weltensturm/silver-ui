@@ -913,7 +913,11 @@ FrameBigBag = Frame
         .TOPRIGHT:TOPRIGHT(-6, -5)
         :SetText('X')
         -- :FrameLevel(6)
-        :Scripts { OnClick = function(self) CloseAllBags() end },
+    {
+        [Script.OnClick] = function(self)
+            CloseAllBags()
+        end
+    },
 
     TitleBg = Texture
         .TOPLEFT:TOPLEFT(3, -3)
@@ -927,20 +931,20 @@ FrameBigBag = Frame
         .TOPRIGHT:TOPRIGHT(3, -3)
         :Height(25)
         -- :FrameLevel(5)
-        :Scripts {
-            OnMouseDown = function(self, button)
-                if button == 'LeftButton' then
-                    AnchorFrame:StartMoving()
-                end
-            end,
-            OnMouseUp = function(self, button)
-                if button == 'LeftButton' then
-                    AnchorFrame:StopMovingOrSizing()
-                    local from, _, to, x, y = AnchorFrame:GetPoint()
-                    db.anchor = { from, to, x, y }
-                end
-            end,
-        },
+    {
+        [Script.OnMouseDown] = function(self, button)
+            if button == 'LeftButton' then
+                AnchorFrame:StartMoving()
+            end
+        end,
+        [Script.OnMouseUp] = function(self, button)
+            if button == 'LeftButton' then
+                AnchorFrame:StopMovingOrSizing()
+                local from, _, to, x, y = AnchorFrame:GetPoint()
+                db.anchor = { from, to, x, y }
+            end
+        end,
+    },
 
     Money = MoneyFrame
         .TOPLEFT:TOPLEFT(15, -5)

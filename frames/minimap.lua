@@ -2,29 +2,16 @@
 local Addon = select(2, ...)
 
 local LQT = Addon.LQT
-local
-    Event,
-    Script,
-    PARENT,
-    Style,
-    Frame,
-    Cooldown,
-    CheckButton,
-    Texture,
-    FontString,
-    MaskTexture
-    =
-    LQT.Event,
-    LQT.Script,
-    LQT.PARENT,
-    LQT.Style,
-    LQT.Frame,
-    LQT.Cooldown,
-    LQT.CheckButton,
-    LQT.Texture,
-    LQT.FontString,
-    LQT.MaskTexture
-
+local Event = LQT.Event
+local Script = LQT.Script
+local PARENT = LQT.PARENT
+local Style = LQT.Style
+local Frame = LQT.Frame
+local Cooldown = LQT.Cooldown
+local CheckButton = LQT.CheckButton
+local Texture = LQT.Texture
+local FontString = LQT.FontString
+local MaskTexture = LQT.MaskTexture
 
 local load
 
@@ -85,9 +72,9 @@ local alpha = 1
 local alphaTarget = 0
 
 
-local alphaHooks = {
-    OnEnter = function() alphaTarget = 1 end,
-    OnLeave = function() alphaTarget = 0 end
+local AlphaHooks = Style {
+    [Script.OnEnter] = function() alphaTarget = 1 end,
+    [Script.OnLeave] = function() alphaTarget = 0 end
 }
 
 
@@ -101,11 +88,10 @@ local StyleMinimapCluster = Style:Size(200, 200) {
     ['.BorderTop'] = Style.TOP:TOP(MinimapCluster, 0, -17) {
         ['.Texture'] = Hide
     },
-    ['.ZoneTextButton'] = Style
+    ['.ZoneTextButton'] = Style .. AlphaHooks
         .TOP:TOP(Minimap, 0, -8-MAP_INSET)
         :FrameStrata('HIGH')
         :Width(150)
-        :Hooks(alphaHooks)
     {
         ['.FontString'] = Style
             :JustifyH 'CENTER'
@@ -114,7 +100,7 @@ local StyleMinimapCluster = Style:Size(200, 200) {
     ['.Tracking'] = Style
         .CENTER:LEFT(Minimap, 5, -5)
     {
-        ['.Frame, .Button'] = Style:Hooks(alphaHooks)
+        ['.Frame, .Button'] =  AlphaHooks
     },
     ['.TimeManagerClockButton'] = Style
         .BOTTOM:BOTTOM(Minimap, 0, MAP_INSET)
@@ -127,10 +113,9 @@ local StyleMinimapCluster = Style:Size(200, 200) {
     ['.MinimapContainer'] = Style
         :AllPoints(PARENT),
 
-    ['.MinimapContainer.Minimap, .Minimap'] = Style
+    ['.MinimapContainer.Minimap, .Minimap'] = Style .. AlphaHooks
         :Size(195, 195)
         :MaskTexture 'Interface/AddOns/silver-ui/art/circle'
-        :Hooks(alphaHooks)
     {
         IsRetail and Style.CENTER:CENTER() or Style.TOPRIGHT:TOPRIGHT(-20, -20),
 
@@ -149,7 +134,7 @@ local StyleMinimapCluster = Style:Size(200, 200) {
             end
         end,
 
-        ['.Button'] = Style:Hooks(alphaHooks),
+        ['.Button'] = AlphaHooks,
 
         ['.MinimapBackdrop'] = Style:AllPoints(Minimap) {
             ['.MinimapZoomIn'] = Hide,
@@ -158,8 +143,8 @@ local StyleMinimapCluster = Style:Size(200, 200) {
             ['.MiniMapWorldMapButton'] = Hide,
             ['.MinimapCompassTexture'] = Hide,
             ['.MinimapBorder'] = Hide,
-            ['.Button'] = Style:Hooks(alphaHooks),
-            ['.*.Button'] = Style:Hooks(alphaHooks),
+            ['.Button'] = AlphaHooks,
+            ['.*.Button'] = AlphaHooks,
         },
 
         ['.TimeManagerClockButton'] = Style {
@@ -338,8 +323,7 @@ load = function()
                 for k, v in pairs(LibStub.libs) do
                     if k:find('^LibDBIcon-') then
                         for name, button in pairs(v.objects) do
-                            Style(button)
-                                :Hooks(alphaHooks)
+                            AlphaHooks(button)
                             table.insert(libDbIcons, button)
                         end
                     end

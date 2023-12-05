@@ -60,14 +60,12 @@ Addon:Settings 'Player Frame' {
         :CheckedTexture 'Interface/Buttons/UI-CheckBox-Check'
         :DisabledCheckedTexture 'Interface/Buttons/UI-CheckBox-Check-Disabled'
         :HitRectInsets(-4, -100, -4, -4)
-        :Hooks {
-            OnClick = function(self)
-                db.enabled = self:GetChecked()
-            end
-        }
     {
         function(self)
             self:SetChecked(db.enabled)
+        end,
+        [Script.OnClick] = function(self)
+            db.enabled = self:GetChecked()
         end,
         Label = FontString
             .LEFT:RIGHT()

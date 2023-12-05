@@ -68,6 +68,17 @@ local hooks = {
     end
 }
 
+
+local AlphaHooks = Style {
+    [Script.OnEnter] = function()
+        trackerHeaderAlphaTarget = 1
+    end,
+    [Script.OnLeave] = function()
+        trackerHeaderAlphaTarget = 0
+    end
+}
+
+
 local frames_hide = {}
 local buttons_hide = {}
 
@@ -91,11 +102,10 @@ local SectionStyle = Style {
     --         self.module.fromModuleOffsetY = 0
     --     end
     -- end,
-    ['.rightButton'] = Style
-        .TOPLEFT:TOPRIGHT()
-        :Hooks(hooks),
+    ['.rightButton'] = Style .. AlphaHooks
+        .TOPLEFT:TOPRIGHT(),
     ['.HeaderText'] = TextStyle,
-    ['.HeaderButton'] = TextStyle:FrameLevel(3):Hooks(hooks),
+    ['.HeaderButton'] = TextStyle:FrameLevel(3) .. AlphaHooks,
     ['.Text'] = TextStyle,
     ['.Frame'] = Style {
         ['.Text'] = TextStyle,
@@ -128,12 +138,11 @@ local SectionStyle = Style {
 
 
 local StyleObjectiveTrackerFrame = Style {
-    HoverBg = Frame
-        :AllPoints(ObjectiveTrackerFrame)
-        :Hooks(hooks),
+    HoverBg = Frame .. AlphaHooks
+        :AllPoints(ObjectiveTrackerFrame),
 
     ['.BlocksFrame'] = Style {
-        ['.Button'] = Style:Hooks(hooks):Alpha(0),
+        ['.Button'] = Style:Alpha(0) .. AlphaHooks,
         ['.ScrollFrame'] = Style {
             ['.ScrollContents'] = SectionStyle {
                 ['.Frame'] = Style {
@@ -195,38 +204,34 @@ load = function()
 
     Style(ObjectiveTrackerFrame) {
         ['.HeaderMenu'] = Style {
-            ['.Button'] = Style:Hooks(hooks),
-            HoverFrame = Frame
+            ['.Button'] =  AlphaHooks,
+            HoverFrame = Frame .. AlphaHooks
                 :FrameStrata('BACKGROUND', -1)
                 .TOPLEFT:TOPLEFT(ObjectiveTrackerFrame)
                 .TOPRIGHT:TOPRIGHT(ObjectiveTrackerFrame)
-                :Hooks(hooks)
-                :Hooks {
-                    OnMouseDown = function(self)
-                        self:GetParent().MinimizeButton:Click()
-                    end
-                }
+            {
+                [Script.OnMouseDown] = function(self)
+                    self:GetParent().MinimizeButton:Click()
+                end
+            }
         },
 
         ['.BlocksFrame'] = Style {
             ['.Frame'] = Style
                 .filter(function(self) return self.MinimizeButton and self.Background end)
             {
-                ['.MinimizeButton'] = Style
-                    :Hooks(hooks)
-                    :Hooks {
-                        OnClick = update_size
-                    },
+                ['.MinimizeButton'] = Style .. AlphaHooks {
+                    [Script.OnClick] = update_size
+                },
                 ['.Background'] = Style:Hide(),
-                TitleClickBackground = Frame
+                TitleClickBackground = Frame .. AlphaHooks
                     -- :FrameStrata 'BACKGROUND'
                     :AllPoints()
-                    :Hooks(hooks)
-                    :Hooks {
-                        OnMouseDown = function(self)
-                            self:GetParent().MinimizeButton:Click()
-                        end
-                    }
+                {
+                    [Script.OnMouseDown] = function(self)
+                        self:GetParent().MinimizeButton:Click()
+                    end
+                }
             }
         }
 

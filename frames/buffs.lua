@@ -4,6 +4,7 @@ local Addon = select(2, ...)
 local LQT = Addon.LQT
 local query = LQT.query
 local Event = LQT.Event
+local Script = LQT.Script
 local SELF = LQT.SELF
 local PARENT = LQT.PARENT
 local Frame = LQT.Frame
@@ -132,12 +133,11 @@ local StyleLfgButton = Style
 
 local StyleBuffIcon = Style
     ..Size(32, 32)
-    :Hooks {
-        OnUpdate = function(self)
-            self:SetAlpha(1.0);
-        end
-    }
 {
+    [Script.OnUpdate] = function(self)
+        self:SetAlpha(1.0);
+    end,
+
     ['.Icon'] = Style
         .CENTER:CENTER()
         ..Size(30, 30),

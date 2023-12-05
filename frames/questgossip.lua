@@ -4,7 +4,14 @@ local Addon = select(2, ...)
 local LQT = Addon.LQT
 local matches = LQT.matches
 
-local query, SELF, PARENT, Style, Texture, Frame = LQT.query, LQT.SELF, LQT.PARENT, LQT.Style, LQT.Texture, LQT.Frame
+local query = LQT.query
+local SELF = LQT.SELF
+local PARENT = LQT.PARENT
+local Script = LQT.Script
+local Event = LQT.Event
+local Style = LQT.Style
+local Texture = LQT.Texture
+local Frame = LQT.Frame
 
 
 local WIDTH = 420
@@ -86,26 +93,26 @@ local StyleQuestInfoRewardsFrame = Style {
         .filter(function(self) return not self.PortraitFrame end)
         :Size(200, 20)
         :HitRectInsets(0, 0, 0, 0)
-        :Hooks {
-            OnClick = function(self)
-                if QuestFrameRewardPanel:IsShown() and not IsModifierKeyDown() then
-                    QuestFrameCompleteQuestButton:Click()
-                    QuestInfoItemHighlight:SetPoint('TOPLEFT', self, 'TOPLEFT', -10, -2.5)
-                end
-            end,
-            OnEnter = function(self)
-                if QuestFrameRewardPanel:IsShown() then
-                    Style(QuestInfoItemHighlight)
-                        :SetHeight(20)
-                        :SetPoint('TOPLEFT', self, 'TOPLEFT', -10, -2.5)
-                        :Show()
-                end
-            end,
-            OnLeave = function(...)
-                QuestInfoItemHighlight:Hide()
-            end
-        }
     {
+
+        [Script.OnClick] = function(self)
+            if QuestFrameRewardPanel:IsShown() and not IsModifierKeyDown() then
+                QuestFrameCompleteQuestButton:Click()
+                QuestInfoItemHighlight:SetPoint('TOPLEFT', self, 'TOPLEFT', -10, -2.5)
+            end
+        end,
+        [Script.OnEnter] = function(self)
+            if QuestFrameRewardPanel:IsShown() then
+                Style(QuestInfoItemHighlight)
+                    :SetHeight(20)
+                    :SetPoint('TOPLEFT', self, 'TOPLEFT', -10, -2.5)
+                    :Show()
+            end
+        end,
+        [Script.OnLeave] = function(...)
+            QuestInfoItemHighlight:Hide()
+        end,
+
         ['.Texture'] = Style:Hide(),
 
         ['.Name'] = Style
@@ -229,7 +236,7 @@ local function StyleAll()
                 .LEFT:TOPLEFT(4, -7)
                 :Size(65, 65),
                 -- :DrawLayer 'ARTWORK',
-            
+
             ['.PortraitContainer'] = Style
                 .LEFT:TOPLEFT(4, -7)
                 :Size(65, 65)
@@ -267,9 +274,6 @@ local function StyleAll()
             {
                 ['.Shadows'] = Style:Hide(),
                 ['.ScrollTarget'] = Style
-                    -- :Scripts {
-                    --     OnSizeChanged = nil
-                    -- }
                     :Width(WIDTH-20)
                     :Height(800)
                     .TOPLEFT:TOPLEFT()
@@ -335,17 +339,16 @@ local function StyleAll()
 
         if window == ItemTextFrame then
 
-            Style(window)
-                :Scripts {
-                    OnMouseWheel = function(self, delta)
-                        if delta > 0 then
-                            query(window, '.ItemTextPrevPageButton'):Click()
-                        else
-                            query(window, '.ItemTextNextPageButton'):Click()
-                        end
+            Style(window) {
+
+                [Script.OnMouseWheel] = function(self, delta)
+                    if delta > 0 then
+                        query(window, '.ItemTextPrevPageButton'):Click()
+                    else
+                        query(window, '.ItemTextNextPageButton'):Click()
                     end
-                }
-            {
+                end,
+
                 ['.Texture:NOATTR:NONAME'] = Hide,
 
                 ['.ItemTextFramePageBg'] = Hide,
@@ -422,10 +425,10 @@ local function StyleAll()
             for content in query(container, '.Frame').filter(byVisible) do
                 Style(content)
                     :Width(WIDTH-20)
-                    :Scripts {
-                        OnSizeChanged = nil
-                    }
                 {
+                    function(self)
+                        self:SetScript('OnSizeChanged', nil)
+                    end,
                     ['.QuestProgressItem#'] = Style
                         :Size(200, 20)
                     {
@@ -533,28 +536,26 @@ end
 local doUpdate = true
 local function update() doUpdate = true end
 
-Frame
-    :EventHooks {
-        GOSSIP_SHOW = update,
-        GOSSIP_CLOSED = update,
-        QUEST_ACCEPTED = update,
-        QUEST_COMPLETE = update,
-        QUEST_DETAIL = update,
-        QUEST_FINISHED = update,
-        QUEST_GREETING = update,
-        QUEST_PROGRESS = update,
-        QUEST_ITEM_UPDATE = update,
-        ITEM_TEXT_BEGIN = update,
-        ITEM_TEXT_READY = update,
-    }
-    :Scripts {
-        OnUpdate = function()
-            if doUpdate then
-                doUpdate = false
-                StyleAll()
-            end
+Frame {
+    [Event.GOSSIP_SHOW] = update,
+    [Event.GOSSIP_CLOSED] = update,
+    [Event.QUEST_ACCEPTED] = update,
+    [Event.QUEST_COMPLETE] = update,
+    [Event.QUEST_DETAIL] = update,
+    [Event.QUEST_FINISHED] = update,
+    [Event.QUEST_GREETING] = update,
+    [Event.QUEST_PROGRESS] = update,
+    [Event.QUEST_ITEM_UPDATE] = update,
+    [Event.ITEM_TEXT_BEGIN] = update,
+    [Event.ITEM_TEXT_READY] = update,
+
+    [Script.OnUpdate] = function()
+        if doUpdate then
+            doUpdate = false
+            StyleAll()
         end
-    }
+    end
+}
     .new()
 
 -- UIParent {

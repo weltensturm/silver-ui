@@ -2,9 +2,12 @@
 local Addon = select(2, ...)
 
 local LQT = Addon.LQT
-local Frame, Style, Texture, Cooldown = LQT.Frame, LQT.Style, LQT.Texture, LQT.Cooldown
-
+local Script = LQT.Script
 local PARENT = LQT.PARENT
+local Frame = LQT.Frame
+local Style = LQT.Style
+local Texture = LQT.Texture
+local Cooldown = LQT.Cooldown
 
 
 local StyleTargetFrameThreat = Style {
@@ -126,19 +129,19 @@ Frame
                     :Show()
                     :CooldownDuration(1)
                     :Pause()
-                    :Hooks {
-                        OnUpdate = function(self)
-                            local parent = self:GetParent()
-                            if parent.unit then
-                                local hp = UnitHealth(parent.unit) / math.max(UnitHealthMax(parent.unit), 1)
-                                self:SetSwipeColor(0, 0.8, 0, 1)
-                                self:SetRotation(math.rad(90)+math.rad(90)*(1-hp))
-                                -- self:SetSwipeColor(parent.HealthBar:GetStatusBarColor())
-                                self:SetCooldown(GetTime()-hp, 2)
-                                self:Pause()
-                            end
+                {
+                    [Script.OnUpdate] = function(self)
+                        local parent = self:GetParent()
+                        if parent.unit then
+                            local hp = UnitHealth(parent.unit) / math.max(UnitHealthMax(parent.unit), 1)
+                            self:SetSwipeColor(0, 0.8, 0, 1)
+                            self:SetRotation(math.rad(90)+math.rad(90)*(1-hp))
+                            -- self:SetSwipeColor(parent.HealthBar:GetStatusBarColor())
+                            self:SetCooldown(GetTime()-hp, 2)
+                            self:Pause()
                         end
-                    },
+                    end
+                },
 
                 PowerBarCircular = Cooldown
                     :UseCircularEdge(true)
@@ -156,21 +159,21 @@ Frame
                     :Show()
                     :CooldownDuration(1)
                     :Pause()
-                    :Hooks {
-                        OnUpdate = function(self)
-                            local parent = self:GetParent()
-                            if parent.unit then
-                                local power = UnitPower(parent.unit) / math.max(UnitPowerMax(parent.unit), 0.1)
-                                -- self:SetSwipeColor(parent.PowerBar:GetStatusBarColor())
-                                -- self:SetSwipeColor(0.2, 0.2, 1, 1)
-                                self:SetRotation(math.rad(-90)+math.rad(90)*(1-power))
-                                self:SetCooldown(GetTime()-power, 2)
-                                self:Pause()
-                            else
-                                self:SetCooldownDuration(0)
-                            end
+                {
+                    [Script.OnUpdate] = function(self)
+                        local parent = self:GetParent()
+                        if parent.unit then
+                            local power = UnitPower(parent.unit) / math.max(UnitPowerMax(parent.unit), 0.1)
+                            -- self:SetSwipeColor(parent.PowerBar:GetStatusBarColor())
+                            -- self:SetSwipeColor(0.2, 0.2, 1, 1)
+                            self:SetRotation(math.rad(-90)+math.rad(90)*(1-power))
+                            self:SetCooldown(GetTime()-power, 2)
+                            self:Pause()
+                        else
+                            self:SetCooldownDuration(0)
                         end
-                    },
+                    end
+                },
 
 
                 BgOverlay = Frame

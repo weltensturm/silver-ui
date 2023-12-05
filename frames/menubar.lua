@@ -3,7 +3,14 @@ local Addon = select(2, ...)
 
 local LQT = Addon.LQT
 local query = LQT.query
-local PARENT, Style, Frame, Texture, MaskTexture, FontString = LQT.PARENT, LQT.Style, LQT.Frame, LQT.Texture, LQT.MaskTexture, LQT.FontString
+local Script = LQT.Script
+local Event = LQT.Event
+local PARENT = LQT.PARENT
+local Style = LQT.Style
+local Frame = LQT.Frame
+local Texture = LQT.Texture
+local MaskTexture = LQT.MaskTexture
+local FontString = LQT.FontString
 
 
 local load
@@ -38,27 +45,21 @@ SilverUI.Settings 'Menu Bar' {
 }
 
 
-
-
-local addon = Frame.new()
-
-
 local alpha = 0.1
 local alphaTarget = 0
 
-local alpha_listeners = {
-    OnEnter = function() alphaTarget = 1 end,
-    OnLeave = function() alphaTarget = 0 end,
+local AlphaHooks = Style {
+    [Script.OnEnter] = function() alphaTarget = 1 end,
+    [Script.OnLeave] = function() alphaTarget = 0 end,
 }
 
 local scale = UIParent:GetEffectiveScale()
 
 
-local TopMenu = Frame
+local TopMenu = (Frame .. AlphaHooks) -- TODO, braces required :(
     .TOPLEFT:TOPLEFT(UIParent)
     .TOPRIGHT:TOPRIGHT(UIParent)
     :Height(24)
-    :Hooks(alpha_listeners)
     :FrameStrata 'MEDIUM'
 {
     Bg = Texture
@@ -71,27 +72,22 @@ local TopMenu = Frame
     .new()
 
 
-local SPACING = UIParent:GetWidth() / 9
-
-
 local ICON_SIZE = 32
 
 
-local MenuButton = Style
+local MenuButton = Style .. AlphaHooks
     :ClearAllPoints()
     :Size(ICON_SIZE, ICON_SIZE)
     :Parent(TopMenu)
     :HitRectInsets(0, 0, 0, 0)
-    :Hooks(alpha_listeners)
-    :Hooks {
-        OnEnter = function(self)
-            self.Hover.Bg:Show()
-        end,
-        OnLeave = function(self)
-            self.Hover.Bg:Hide()
-        end
-    }
 {
+    [Script.OnEnter] = function(self)
+        self.Hover.Bg:Show()
+    end,
+    [Script.OnLeave] = function(self)
+        self.Hover.Bg:Hide()
+    end,
+
     ['.Texture'] = Style
         .CENTER:CENTER()
         :Size(ICON_SIZE, ICON_SIZE),
@@ -183,7 +179,7 @@ local style = function()
         ['.MicroButtonAndBagsBar'] = Style:Hide()
     }
 
-    Style(QuestLogMicroButton)
+    AlphaHooks(QuestLogMicroButton)
         .TOPLEFT:TOPLEFT(TopMenu, 4, -2)
         :Height(26)
         -- :Width(QuestLogMicroButton.ButtonText:GetWidth() + ICON_SIZE)
@@ -192,7 +188,6 @@ local style = function()
         :HighlightTexture 'Interface/QUESTFRAME/AutoQuest'
         :PushedTexture 'Interface/QUESTFRAME/AutoQuest'
         :Parent(TopMenu)
-        :Hooks(alpha_listeners)
         {
             ['.Texture'] = Style
                 .TOPLEFT:TOPLEFT(1, -1)
@@ -309,26 +304,23 @@ load = function()
         hooksecurefunc(BagsBar, 'Layout', function() doUpdate = true end)
     end
 
-    Frame
-        :Events {
-            PLAYER_ENTERING_WORLD = function()
-                doUpdate = true
+    Frame {
+        [Event.PLAYER_ENTERING_WORLD] = function()
+            doUpdate = true
+        end,
+        [Script.OnUpdate] = function(self, dt)
+            if doUpdate then
+                doUpdate = false
+                style()
             end
-        }
-        :Hooks {
-            OnUpdate = function(self, dt)
-                if doUpdate then
-                    doUpdate = false
-                    style()
-                end
-                
-                if alpha ~= alphaTarget then
-                    local sign = alpha >= alphaTarget and -1 or 1
-                    alpha = math.min(1, math.max(0, alpha + sign * dt*5))
-                    local anim = math.sqrt(alpha)
-                    TopMenu:SetAlpha(anim)
-                end
+
+            if alpha ~= alphaTarget then
+                local sign = alpha >= alphaTarget and -1 or 1
+                alpha = math.min(1, math.max(0, alpha + sign * dt*5))
+                local anim = math.sqrt(alpha)
+                TopMenu:SetAlpha(anim)
             end
-        }
+        end
+    }
         .new()
 end
