@@ -15,6 +15,9 @@ local Style = LQT.Style
 local Texture = LQT.Texture
 
 
+local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+
+
 local CheckBox = Addon.CheckBox
 
 
@@ -120,7 +123,7 @@ local StyleNameplate = Style {
         Auras = Addon.Nameplates.Auras
             :AllPoints(PARENT.Health),
 
-        Absorb = Addon.Units.Shield
+        Absorb = IsRetail and Addon.Units.Shield
             :AllPoints(PARENT.Health)
             :FrameLevel(4),
 
