@@ -102,10 +102,10 @@ local SectionStyle = Style {
     --         self.module.fromModuleOffsetY = 0
     --     end
     -- end,
-    ['.rightButton'] = Style .. AlphaHooks
+    ['.rightButton'] = Style { AlphaHooks }
         .TOPLEFT:TOPRIGHT(),
     ['.HeaderText'] = TextStyle,
-    ['.HeaderButton'] = TextStyle:FrameLevel(3) .. AlphaHooks,
+    ['.HeaderButton'] = TextStyle:FrameLevel(3) { AlphaHooks },
     ['.Text'] = TextStyle,
     ['.Frame'] = Style {
         ['.Text'] = TextStyle,
@@ -138,11 +138,11 @@ local SectionStyle = Style {
 
 
 local StyleObjectiveTrackerFrame = Style {
-    HoverBg = Frame .. AlphaHooks
+    HoverBg = Frame { AlphaHooks }
         :AllPoints(ObjectiveTrackerFrame),
 
     ['.BlocksFrame'] = Style {
-        ['.Button'] = Style:Alpha(0) .. AlphaHooks,
+        ['.Button'] = Style:Alpha(0) { AlphaHooks },
         ['.ScrollFrame'] = Style {
             ['.ScrollContents'] = SectionStyle {
                 ['.Frame'] = Style {
@@ -205,7 +205,7 @@ load = function()
     Style(ObjectiveTrackerFrame) {
         ['.HeaderMenu'] = Style {
             ['.Button'] =  AlphaHooks,
-            HoverFrame = Frame .. AlphaHooks
+            HoverFrame = Frame { AlphaHooks }
                 :FrameStrata('BACKGROUND', -1)
                 .TOPLEFT:TOPLEFT(ObjectiveTrackerFrame)
                 .TOPRIGHT:TOPRIGHT(ObjectiveTrackerFrame)
@@ -220,11 +220,11 @@ load = function()
             ['.Frame'] = Style
                 .filter(function(self) return self.MinimizeButton and self.Background end)
             {
-                ['.MinimizeButton'] = Style .. AlphaHooks {
+                ['.MinimizeButton'] = Style { AlphaHooks } {
                     [Script.OnClick] = update_size
                 },
                 ['.Background'] = Style:Hide(),
-                TitleClickBackground = Frame .. AlphaHooks
+                TitleClickBackground = Frame { AlphaHooks }
                     -- :FrameStrata 'BACKGROUND'
                     :AllPoints()
                 {

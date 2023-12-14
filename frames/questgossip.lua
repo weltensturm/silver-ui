@@ -143,12 +143,13 @@ local StyleQuestInfoRewardsFrame = Style {
             :BlendMode 'ADD'
             :VertexColor(1,1,1,0.2)
             :Height(16)
-            ..
-                function(self)
-                    local parent = self:GetParent()
-                    local show = QuestFrameRewardPanel:IsShown() and parent:IsShown() and parent.Icon and parent:GetNumPoints() > 0
-                    self:SetAlpha(show and 0.2 or 0)
-                end,
+        {
+            function(self)
+                local parent = self:GetParent()
+                local show = QuestFrameRewardPanel:IsShown() and parent:IsShown() and parent.Icon and parent:GetNumPoints() > 0
+                self:SetAlpha(show and 0.2 or 0)
+            end,
+        },
 
         ['.Count'] = Style
             :TextColor(1, 1, 1)
@@ -284,11 +285,13 @@ local function StyleAll()
                     {
                         ['.FontString'] = Style
                             :Width(WIDTH-45)
-                            .. function(self)
+                        {
+                            function(self)
                                 local tl1, to, tl2, x, y = self:GetPoint()
                                 self:SetPoint(tl1, to, tl2, x, -1)
                                 self:GetParent():SetHeight(self:GetHeight()+3)
                             end,
+                        }
                     },
                     
                     function(self)
@@ -303,13 +306,15 @@ local function StyleAll()
                 :DrawLayer 'OVERLAY'
                 :Texture 'Interface/MINIMAP/UI-MINIMAP-BORDER'
                 :TexCoord(0, 1, 0.11, 1)
-                .. function(self)
+            {
+                function(self)
                     local parent = self:GetParent()
                     local portrait = query(parent, '.*FramePortrait, .PortraitContainer.portrait')[1]
                     self:ClearAllPoints()
                     self:SetPoint('TOPLEFT', portrait, 'TOPLEFT', -49, 4)
                     self:SetPoint('BOTTOMRIGHT', portrait, 'BOTTOMRIGHT', 10, -41)
                 end,
+            },
 
             NameBackground = Texture
                 :DrawLayer('ARTWORK', -1)

@@ -14,6 +14,7 @@ local Texture = LQT.Texture
 local MaskTexture = LQT.MaskTexture
 local FontString = LQT.FontString
 
+local PixelSize = Addon.Templates.PixelSize
 
 local load
 
@@ -48,21 +49,11 @@ SilverUI.Settings 'Buff Frame' {
 }
 
 
-
-local Size = function(w, h)
-    return Style {
-        function(self)
-            PixelUtil.SetSize(self, w, h)
-        end
-    }
-end
-
-
 local MailFrame = MiniMapMailFrame or MinimapCluster.IndicatorFrame.MailFrame
 
 
-local StyleMailIcon = Style
-    ..Size(32, 32)
+local StyleMailIcon = Style { PixelSize }
+    :Size(32, 32)
 {
     ['.MiniMapMailBorder'] = Style:Hide(),
     ['.MiniMapMailIcon'] = Style
@@ -98,12 +89,12 @@ local StyleMailIcon = Style
 }
 
 
-local StyleLfgButton = Style
-    ..Size(32, 32)
+local StyleLfgButton = Style { PixelSize }
+    :Size(32, 32)
 {
     ['.Eye'] = Style {
-        ['.Texture'] = Style
-            ..Size(32, 32)
+        ['.Texture'] = Style { PixelSize }
+            :Size(32, 32)
     },
     Mask = MaskTexture
         .TOPLEFT:TOPLEFT(-4, 4)
@@ -131,16 +122,16 @@ local StyleLfgButton = Style
 
 }
 
-local StyleBuffIcon = Style
-    ..Size(32, 32)
+local StyleBuffIcon = Style { PixelSize }
+    :Size(32, 32)
 {
     [Script.OnUpdate] = function(self)
         self:SetAlpha(1.0);
     end,
 
-    ['.Icon'] = Style
+    ['.Icon'] = Style { PixelSize }
         .CENTER:CENTER()
-        ..Size(30, 30),
+        :Size(30, 30),
 
     Mask = MaskTexture
         .TOPLEFT:TOPLEFT(-7, 7)
@@ -209,14 +200,14 @@ local StyleBuffIcon = Style
 }
 
 
-local StyleDebuffIcon = Style
-    ..Size(32, 32)
+local StyleDebuffIcon = Style { PixelSize }
+    :Size(32, 32)
 {
     ['.Border'] = Style:Hide(),
 
-    ['.Icon'] = Style
+    ['.Icon'] = Style { PixelSize }
         .CENTER:CENTER()
-        ..Size(30, 30)
+        :Size(30, 30)
         :TexCoord(0.05, 0.95, 0.05, 0.95),
 
     ['.DebuffBorder'] = Style:Texture '',

@@ -24,7 +24,7 @@ local HealthDynamicScale = Addon.util.HealthDynamicScale
 local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 
 
-Addon.Nameplates.HealthScaledBar = Frame .. Addon.Templates.PixelSizex2 {
+Addon.Nameplates.HealthScaledBar = Frame { Addon.Templates.PixelSizex2 } {
     healthMax = 0,
 
     [Hook.SetEventUnit] = function(self, unit)

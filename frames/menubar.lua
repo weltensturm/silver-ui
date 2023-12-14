@@ -56,7 +56,7 @@ local AlphaHooks = Style {
 local scale = UIParent:GetEffectiveScale()
 
 
-local TopMenu = (Frame .. AlphaHooks) -- TODO, braces required :(
+local TopMenu = Frame { AlphaHooks }
     .TOPLEFT:TOPLEFT(UIParent)
     .TOPRIGHT:TOPRIGHT(UIParent)
     :Height(24)
@@ -75,7 +75,7 @@ local TopMenu = (Frame .. AlphaHooks) -- TODO, braces required :(
 local ICON_SIZE = 32
 
 
-local MenuButton = Style .. AlphaHooks
+local MenuButton = Style { AlphaHooks }
     :ClearAllPoints()
     :Size(ICON_SIZE, ICON_SIZE)
     :Parent(TopMenu)

@@ -718,7 +718,7 @@ local ActionBarFrame = Frame {
 }
 
 
-local StyledActionBarButton = ActionBarButton .. Proc .. ClockCooldown .. Hover .. Fade .. GreyoutNoPower
+local StyledActionBarButton = ActionBarButton { Proc, ClockCooldown, Hover, Fade, GreyoutNoPower }
 
 
 local TopSmallButton = StyledActionBarButton {
@@ -776,8 +776,8 @@ local CharacterButton = Style
         GlobalFadeButton = false
         GlobalFadeTarget = (GlobalFadeButton or GlobalFadeGrid) and 1 or 0
     end,
+    Hover
 }
-    .. Hover
 
 
 load = function()

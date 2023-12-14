@@ -94,7 +94,7 @@ local Bubble = setmetatable(
 )
 
 
-local BubbleHover = Bubble.OnEnter .. Bubble.OnLeave
+local BubbleHover = Style { Bubble.OnEnter, Bubble.OnLeave }
 
 
 local SortedChildren = nil
@@ -110,7 +110,7 @@ local SidebarMouseHooks = Style {
 }
 
 
-local ExpandDownButton = Button .. BubbleHover
+local ExpandDownButton = Button { BubbleHover }
     :RegisterForClicks('LeftButtonUp', 'LeftButtonDown')
     :Height(16)
 {
@@ -158,7 +158,7 @@ local ExpandDownButton = Button .. BubbleHover
 }
 
 
-local ExpandDownMenu = ScrollFrame .. BubbleHover
+local ExpandDownMenu = ScrollFrame { BubbleHover }
     .TOPLEFT:BOTTOMLEFT()
     .TOPRIGHT:BOTTOMRIGHT()
     :Height(1)
@@ -213,7 +213,7 @@ local ExpandDownMenu = ScrollFrame .. BubbleHover
         self:SetHeight(1)
     end,
 
-    Container = Frame .. BubbleHover
+    Container = Frame { BubbleHover }
         :AllPoints(PARENT),
 
     ClickTracker = EditBox
@@ -297,7 +297,7 @@ local StyledButton = Button {
 
 
 
-local ScriptEntry = Frame .. SidebarMouseHooks {
+local ScriptEntry = Frame { SidebarMouseHooks } {
     Update = function(self)
         if self.settings.enabled then
             self.ContextMenu.Toggle:SetText('Disable')
@@ -355,13 +355,13 @@ local ScriptEntry = Frame .. SidebarMouseHooks {
         self.ActiveBg:SetShown(show)
     end,
 
-    Button = StyledButton .. BubbleHover
+    Button = StyledButton { BubbleHover }
         :AllPoints()
         :RegisterForClicks('AnyUp')
     {
         ['.Text'] = Style:Alpha(0),
 
-        Name = RenameBox .. BubbleHover
+        Name = RenameBox { BubbleHover }
             .TOPLEFT:TOPLEFT(10, 0)
             .BOTTOMRIGHT:BOTTOMRIGHT()
             :EnableMouse(false)
@@ -511,7 +511,7 @@ local FrameAddonSection = Frame
 }
 
 
-local SidebarButton = StyledButton .. SidebarMouseHooks {
+local SidebarButton = StyledButton { SidebarMouseHooks } {
 
     Selected = Texture
         .LEFT:LEFT(3.5, 0)
@@ -571,9 +571,9 @@ local Sidebar = FrameSmoothScroll
         end
     end,
 
-    ['.Content'] = Style .. SidebarMouseHooks {
+    ['.Content'] = Style { SidebarMouseHooks } {
 
-        EnterTrace = StyledButton .. BubbleHover
+        EnterTrace = StyledButton { BubbleHover }
             .TOPLEFT:TOPLEFT(0, -6)
             .TOPRIGHT:TOPRIGHT(0, -6)
             :Height(20)
@@ -646,7 +646,7 @@ local Sidebar = FrameSmoothScroll
             :Font('Fonts/FRIZQT__.ttf', 12)
             :Text 'Scripts'
             :TextColor(0.6, 0.6, 0.6),
-        ScriptAdd = Button .. SidebarMouseHooks
+        ScriptAdd = Button { SidebarMouseHooks }
             .LEFT:RIGHT(PARENT.ScriptLabel, 2, 0)
             :Size(14, 14)
             :NormalTexture 'Interface/AddOns/silver-ui/art/icons/plus'
@@ -854,7 +854,7 @@ local PageSettings = FrameSmoothScroll {
 }
 
 
-local FrameDTT = Frame .. PixelAnchor .. PixelSizex2
+local FrameDTT = Frame { PixelAnchor, PixelSizex2 }
     :Width(1000)
     :Height(600)
     .TOPLEFT:TOPLEFT(300, -200)

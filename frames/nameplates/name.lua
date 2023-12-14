@@ -16,7 +16,7 @@ local FontString = LQT.FontString
 local PixelSizex2 = Addon.Templates.PixelSizex2
 
 
-Addon.Nameplates.FrameUnitName = Frame .. PixelSizex2 {
+Addon.Nameplates.FrameUnitName = Frame { PixelSizex2 } {
 
     [Override.SetEventUnit] = function(self, oldfn, unit, ...)
         self.unit = unit
@@ -33,7 +33,7 @@ Addon.Nameplates.FrameUnitName = Frame .. PixelSizex2 {
         local level = UnitLevel(self.unit);
         if UnitCanAttack('player', self.unit) then
             local color = GetCreatureDifficultyColor(level);
-            name = name .. string.format('|cff%02x%02x%02x %s', color.r*255, color.g*255, color.b*255, level)
+            name = name .. string.format('|cff%02x%02x%02x %s', color.r*255, color.g*255, color.b*255, level ~= -1 and level or '?')
         else
             name = name .. string.format('|cff%02x%02x%02x %s', 1.0*255, 0.82*255, 0.0, level)
         end
@@ -48,7 +48,7 @@ Addon.Nameplates.FrameUnitName = Frame .. PixelSizex2 {
         end
     end,
 
-    Name = FontString .. PixelSizex2
+    Name = FontString { PixelSizex2 }
         :AllPoints()
         :Font('Fonts/FRIZQT__.ttf', 8.5, '')
         :TextColor(0.9, 0.9, 0.9, 0)

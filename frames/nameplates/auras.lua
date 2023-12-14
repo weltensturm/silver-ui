@@ -116,7 +116,7 @@ local Aura = Frame
 
 local AuraBin = Addon.util.LIFO()
 
-Addon.Nameplates.Auras = Frame .. Addon.Templates.AuraTracker {
+Addon.Nameplates.Auras = Frame { Addon.Templates.AuraTracker } {
 
     buffs = {},
     debuffs = {},

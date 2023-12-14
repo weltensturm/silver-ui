@@ -76,7 +76,7 @@ Addon:Settings 'Player Frame' {
 }
 
 
-local UnitPlayer = Addon.Templates.UnitButton .. Addon.Templates.PixelAnchor
+local UnitPlayer = Addon.Templates.UnitButton { Addon.Templates.PixelAnchor }
     :Attribute('unit', 'player')
     :Size(300, 300/4)
     :HitRectInsets(20, 20, 25, 25)

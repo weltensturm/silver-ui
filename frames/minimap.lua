@@ -88,7 +88,7 @@ local StyleMinimapCluster = Style:Size(200, 200) {
     ['.BorderTop'] = Style.TOP:TOP(MinimapCluster, 0, -17) {
         ['.Texture'] = Hide
     },
-    ['.ZoneTextButton'] = Style .. AlphaHooks
+    ['.ZoneTextButton'] = Style { AlphaHooks }
         .TOP:TOP(Minimap, 0, -8-MAP_INSET)
         :FrameStrata('HIGH')
         :Width(150)
@@ -113,7 +113,7 @@ local StyleMinimapCluster = Style:Size(200, 200) {
     ['.MinimapContainer'] = Style
         :AllPoints(PARENT),
 
-    ['.MinimapContainer.Minimap, .Minimap'] = Style .. AlphaHooks
+    ['.MinimapContainer.Minimap, .Minimap'] = Style { AlphaHooks }
         :Size(195, 195)
         :MaskTexture 'Interface/AddOns/silver-ui/art/circle'
     {
