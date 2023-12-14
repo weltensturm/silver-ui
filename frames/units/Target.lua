@@ -60,12 +60,13 @@ local UnitTarget = UnitButton
     :Alpha(0.75)
 {
     [Event.PLAYER_TARGET_CHANGED] = function(self)
-        self.Name:SetText(UnitName('target') or '')
+        self:UpdateName()
         self.HpText:SetText(UnitHealth('target'))
         self.PowerText:SetText(UnitPower('target'))
     end,
     [UnitEvent.UNIT_HEALTH] = function(self)
         self.HpText:SetText(UnitHealth('target'))
+        self:UpdateName()
     end,
     [UnitEvent.UNIT_POWER_FREQUENT] = function(self)
         self.PowerText:SetText(UnitPower('target'))
@@ -82,6 +83,16 @@ local UnitTarget = UnitButton
 
     [Hook.SetEventUnit] = function(self, unit)
         self.Auras:SetEventUnit(unit)
+    end,
+
+    UpdateName = function(self)
+        self.Name:SetText(
+            string.format(
+                '%s |cffbb3333%d',
+                UnitName('target') or '',
+                UnitHealth('target')/math.max(1, UnitHealthMax('target')) * 100
+            )
+        )
     end,
 
     Background = Texture
