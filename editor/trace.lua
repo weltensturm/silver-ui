@@ -74,10 +74,11 @@ local FrameTraceWindow = FrameSmoothScroll {
         local frame
         if functionName then
             frame = frameOrFunctionName
+            assert(frame[functionName], 'Frame has no function ' .. tostring(functionName))
         else
             functionName = frameOrFunctionName
+            assert(_G[functionName], 'No function ' .. tostring(functionName) .. ' found')
         end
-        assert(functionName == nil or frame[functionName], 'Frame has no function ' .. functionName)
         local tracer = self:GetTrace(frame, functionName)
 
         if not tracer then
@@ -111,7 +112,7 @@ local FrameTraceWindow = FrameSmoothScroll {
         end
     end,
     StopTrace = function(self, frame, functionName)
-        self:GetTrace(frame, funcitonName)[1] = false
+        self:GetTrace(frame, functionName)[1] = false
     end,
     StopAll = function(self, frame)
         for _, tracer in pairs(self.tracers) do
