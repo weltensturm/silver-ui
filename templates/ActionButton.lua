@@ -7,25 +7,7 @@ local LQT = Addon.LQT
 Addon.Templates = Addon.Templates or {}
 
 
-local
-    PARENT,
-    Style,
-    Frame,
-    CheckButton,
-    Texture,
-    MaskTexture,
-    FontString,
-    AnimationGroup,
-    Animation
-    =   LQT.PARENT,
-        LQT.Style,
-        LQT.Frame,
-        LQT.CheckButton,
-        LQT.Texture,
-        LQT.MaskTexture,
-        LQT.FontString,
-        LQT.AnimationGroup,
-        LQT.Animation
+local Style = LQT.Style
 
 
 Addon.Templates.ActionButton = Style

@@ -98,36 +98,6 @@ function util.method_chain_wrapper(obj)
     return wrapper
 end
 
-function print_table(t_o)
-    local t = {}
-
-    for k, v in pairs(t_o) do
-
-        if type(v) == 'table' then
-            if pcall(v.GetObjectType, v) then
-                table.insert(t,
-                      '|cffffaaff' .. v:GetObjectType() .. ' ' ..
-                      '|cffaaaaff' .. k .. ' ' ..
-                      '|cffffffff' .. (v.GetName and (v:GetName() or '') .. ' ' or ''))
-            else
-                table.insert(t, '|cffaaaaff' .. k .. ' ' .. '|cffaaaaaa' .. tostring(v))
-            end
-        elseif type(v) ~= 'function' then
-            table.insert(t, '|cffffafaa' .. type(v) .. ' |cffaaaaff' .. k .. ' ' .. '|cffff1111' .. tostring(v))
-        else
-            table.insert(t, '|cffffaaaa' .. type(v) .. ' |cffaaaaff' .. k .. ' ' .. '|cffaaaaaa' .. tostring(v))
-        end
-
-    end
-
-    table.sort(t)
-
-    for _, v in pairs(t) do
-        print(v)
-    end
-
-end
-
 
 ---@class SilverUI.LIFO
 local LIFO = {}
