@@ -17,6 +17,8 @@ Addon.Templates.BarShaped = Frame {
     value = 0,
     valueMax = 0,
     maskAspect = 4096 / 64,
+    endcapValue = 0,
+    endcapWidth = 0,
 
     SetTexture = function(self, texture)
         self.Bar:SetTexture(texture)
