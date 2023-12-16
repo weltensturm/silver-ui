@@ -249,7 +249,7 @@ local ActionBarButton = ActionBarButtonBase
         :AddMaskTexture(PARENT.iconMask),
     iconMask = MaskTexture
         .CENTER:CENTER()
-        :Texture 'Interface/AddOns/silver-ui/art/circle',
+        :Texture 'Interface/AddOns/silver-ui/art/actionbar-iconmask',
     UpdateTexture = function(self)
         local type, id, _ = GetActionInfo(self.action)
         self.icon:SetTexture(GetActionTexture(self.action))
