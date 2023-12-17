@@ -2,7 +2,10 @@
 local Addon = select(2, ...)
 
 local LQT = Addon.LQT
-local query, Style, Frame = LQT.query, LQT.Style, LQT.Frame
+local query = LQT.query
+local Style = LQT.Style
+local Event = LQT.Event
+local Frame = LQT.Frame
 
 
 local center = GameTooltip.NineSlice.Center
@@ -31,10 +34,9 @@ Style(GameTooltipStatusBar)
     :Height(1)
 
 
-Frame
-    :Events {
-        UPDATE_MOUSEOVER_UNIT = function()
-            StyleCenter(center)
-        end
-    }
+Frame {
+    [Event.UPDATE_MOUSEOVER_UNIT] = function()
+        StyleCenter(center)
+    end
+}
     .new()
