@@ -62,7 +62,7 @@ Addon.Templates.BarShaped = Frame {
         local offset = PixelUtil.GetNearestPixelSize((width-shapeWidth)/2, self:GetEffectiveScale())
         self.MaskLeft:SetPoint('LEFT', self, 'LEFT', offset, 0)
         self.MaskRight:SetPoint('RIGHT', self, 'RIGHT', -offset, 0)
-
+        self.value = value
     end,
 
     MaskLeft = MaskTexture
@@ -94,5 +94,10 @@ Addon.Templates.BarShaped = Frame {
         :AddMaskTexture(PARENT.MaskLeft)
         :AddMaskTexture(PARENT.MaskRight),
 
+    [Script.OnSizeChanged] = function(self)
+        local max = self.valueMax
+        self.valueMax = 0
+        self:SetValue(self.value, max)
+    end,
 }
 
