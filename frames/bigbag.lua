@@ -462,7 +462,7 @@ FrameBigBag = Frame
     .CENTER:CENTER(AnchorFrame)
     -- :FrameLevel(2)
     :FrameStrata 'HIGH'
-    :FlattensRenderLayers(true)
+    :Toplevel(true)
     :IsFrameBuffer(true)
 {
     padding = 5,
