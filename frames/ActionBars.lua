@@ -252,8 +252,13 @@ local ActionBarButton = ActionBarButtonBase
         :Texture 'Interface/AddOns/silver-ui/art/actionbar-iconmask',
     UpdateTexture = function(self)
         local type, id, _ = GetActionInfo(self.action)
+        self.actionType = type
+        self.actionID = id
         self.icon:SetTexture(GetActionTexture(self.action))
-        local known = (type ~= 'spell' or IsSpellKnownOrOverridesKnown(id)) and 1 or 0
+        local known = 1
+        if type == 'spell' and id and id ~= 0 then
+            known = (type ~= 'spell' or id and IsSpellKnownOrOverridesKnown(id)) and 1 or 0
+        end
         self.icon:SetVertexColor(1, known, known)
     end,
     [Event.SPELL_UPDATE_ICON] = SELF.UpdateTexture,
@@ -515,7 +520,7 @@ local Fade = Style {
     UpdateFade = function(self)
         if not self.action then return end
         local type, id, _ = GetActionInfo(self.action)
-        if not id then
+        if not id or id == 0 then
             self.animTarget = db.fadeOffCD and 0 or 1
             return
         end
