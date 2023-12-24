@@ -11,13 +11,12 @@ local Style = LQT.Style
 Addon.Templates = Addon.Templates or {}
 
 
-local ADD = 1
-local KEEP = 2
-local UPDATE = 3
-local REMOVE = 4
-
-
 local function CheckUnitAuras(self, unit)
+    local ADD = 1
+    local KEEP = 2
+    local UPDATE = 3
+    local REMOVE = 4
+
     for _, v in pairs(self.trackedAuras) do
         v[1] = REMOVE
     end
