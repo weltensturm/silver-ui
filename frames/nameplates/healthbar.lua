@@ -20,11 +20,16 @@ local GetTime = GetTime
 local color = Addon.util.color
 local HealthDynamicScale = Addon.util.HealthDynamicScale
 
+local PixelSizex2 = Addon.Templates.PixelSizex2
+local PixelSizeH2 = Addon.Templates.PixelSizeH2
 
 local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 
 
-Addon.Nameplates.HealthScaledBar = Frame { Addon.Templates.PixelSizex2 } {
+Addon.Nameplates.HealthScaledBar = Frame { PixelSizex2 }
+    :FlattensRenderLayers(true)
+    :IsFrameBuffer(true)
+{
     healthMax = 0,
 
     [Hook.SetEventUnit] = function(self, unit)
@@ -69,15 +74,15 @@ Addon.Nameplates.HealthScaledBar = Frame { Addon.Templates.PixelSizex2 } {
         if max ~= self.healthMax then
             local scale = HealthDynamicScale(self.unit)
 
-            self:SetSize(4+100/2*scale, 5)
+            self:SetWidth(4+100/2*scale)
 
             width = self:GetWidth()
             local height = self:GetHeight()
 
             local MASK_WIDTH_RATIO = 4096 / 64
             local huge_width = math.max(0.01, self:GetHeight()) * MASK_WIDTH_RATIO
-            PixelUtil.SetSize(self.Shadow.Left, width/2+height*0.35, height*2)
-            PixelUtil.SetSize(self.Shadow.Right, width/2+height*0.35, height*2)
+            self.Shadow.Left:SetSize(width/2+height*0.35, height*2)
+            self.Shadow.Right:SetSize(width/2+height*0.35, height*2)
             self.Shadow.Left:SetTexCoord(0, width/2/huge_width, 0, 1)
             self.Shadow.Right:SetTexCoord(1 - width/2/huge_width, 1, 0, 1)
         end
@@ -90,27 +95,17 @@ Addon.Nameplates.HealthScaledBar = Frame { Addon.Templates.PixelSizex2 } {
         self:SetValue(UnitHealth(unit), self.healthMax)
     end,
 
-    Background = Addon.Templates.BarShaped
-        :AllPoints()
-        :Texture 'Interface/RAIDFRAME/Raid-Bar-Hp-Fill'
-        :Value(1, 1)
-        :FrameLevel(0)
-    {
-        ['.Bar'] = Style
-            :VertexColor(0.1, 0.1, 0.1, 0.7)
-    },
-
     Bar = Addon.Templates.BarShaped
         :AllPoints()
-        :Texture 'Interface/AddOns/silver-ui/art/bar-bright',
+        :Texture 'Interface/AddOns/silver-ui/art/bar-shaded',
 
     Shadow = Frame:AllPoints() { -- framebuffer children need a container
-        Left = Texture
+        Left = Texture { PixelSizeH2 }
             .RIGHT:CENTER()
             :Texture 'Interface/AddOns/silver-ui/art/hp-sharp-shadow'
-            :Alpha(0.8),
+            :Alpha(0.7),
 
-        Right = Texture
+        Right = Texture { PixelSizeH2 }
             .LEFT:CENTER()
             :Texture 'Interface/AddOns/silver-ui/art/hp-sharp-shadow'
             :Alpha(0.7),

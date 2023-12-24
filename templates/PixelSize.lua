@@ -3,6 +3,7 @@ local Addon = select(2, ...)
 
 local LQT = Addon.LQT
 local Override = LQT.Override
+local SELF = LQT.SELF
 local Style = LQT.Style
 
 
@@ -10,28 +11,54 @@ local Style = LQT.Style
 Addon.Templates = Addon.Templates or {}
 
 
-Addon.Templates.PixelSize = Style {
+local function PixelSizeT(roundWidth, roundHeight)
+    return Style {
 
-    [Override.SetSize] = function(self, orig, width, height)
-	    local pixelToUnit = 768.0 / select(2, GetPhysicalScreenSize()) / self:GetEffectiveScale();
-        orig(
-            self,
-            Round(width/pixelToUnit)*pixelToUnit,
-            Round(height/pixelToUnit)*pixelToUnit
-        )
-    end,
+        ['PixelSize.TargetSize'] = {},
 
-    [Override.SetWidth] = function(self, orig, width)
-	    local pixelToUnit = 768.0 / select(2, GetPhysicalScreenSize()) / self:GetEffectiveScale();
-        orig(self, Round(width/pixelToUnit)*pixelToUnit)
-    end,
+        [Override.SetSize] = function(self, OrigSetSize, width, height)
+            local pixelToUnit = 768.0 / select(2, GetPhysicalScreenSize()) / self:GetEffectiveScale()
+            OrigSetSize(
+                self,
+                roundWidth(width/pixelToUnit)*pixelToUnit,
+                roundHeight(height/pixelToUnit)*pixelToUnit
+            )
+            self['PixelSize.TargetSize'][1] = width
+            self['PixelSize.TargetSize'][2] = height
+        end,
 
-    [Override.SetHeight] = function(self, orig, height)
-	    local pixelToUnit = 768.0 / select(2, GetPhysicalScreenSize()) / self:GetEffectiveScale();
-        orig(self, Round(height/pixelToUnit)*pixelToUnit)
-    end,
+        [Override.SetWidth] = function(self, orig, width)
+            local pixelToUnit = 768.0 / select(2, GetPhysicalScreenSize()) / self:GetEffectiveScale()
+            orig(self, roundWidth(width/pixelToUnit)*pixelToUnit)
+            self['PixelSize.TargetSize'][1] = width
+        end,
 
-}
+        [Override.SetHeight] = function(self, orig, height)
+            local pixelToUnit = 768.0 / select(2, GetPhysicalScreenSize()) / self:GetEffectiveScale()
+            orig(self, roundHeight(height/pixelToUnit)*pixelToUnit)
+            self['PixelSize.TargetSize'][2] = height
+        end,
+
+        function(self, parent)
+            -- hacky way to react to scale changes
+            local hookedFrame = self:HasScript('OnSizeChanged') and self or parent
+            if not self['PixelSize.Hooked'] then
+                self['PixelSize.Hooked'] = hookedFrame
+                hookedFrame:HookScript('OnSizeChanged', function()
+                    if self:GetEffectiveScale() < 0.3 then
+                        return -- otherwise width or height gets set to 0 -> no more events
+                    end
+                    if self['PixelSize.TargetSize'][1] then
+                        self:SetWidth(self['PixelSize.TargetSize'][1])
+                    end
+                    if self['PixelSize.TargetSize'][2] then
+                        self:SetHeight(self['PixelSize.TargetSize'][2])
+                    end
+                end)
+            end
+        end,
+    }
+end
 
 
 local function Roundx2(value)
@@ -42,26 +69,15 @@ local function Roundx2(value)
 end
 
 
+Addon.Templates.PixelSize = PixelSizeT(Round, Round)
+
 -- Ensures size is a multiple of 2 pixels. Useful for "half-anchors" such as CENTER, LEFT etc.
-Addon.Templates.PixelSizex2 = Style {
+Addon.Templates.PixelSizex2 = PixelSizeT(Roundx2, Roundx2)
 
-    [Override.SetSize] = function(self, orig, width, height)
-	    local pixelToUnit = 768.0 / select(2, GetPhysicalScreenSize()) / self:GetEffectiveScale();
-        orig(
-            self,
-            Roundx2(width/pixelToUnit)*pixelToUnit,
-            Roundx2(height/pixelToUnit)*pixelToUnit
-        )
-    end,
+-- Ensures width is pixel aligned, and height is a multiple of 2 pixels.
+-- Useful for "half-anchors" such as CENTER, LEFT etc.
+Addon.Templates.PixelSizeH2 = PixelSizeT(Round, Roundx2)
 
-    [Override.SetWidth] = function(self, orig, width)
-	    local pixelToUnit = 768.0 / select(2, GetPhysicalScreenSize()) / self:GetEffectiveScale();
-        orig(self, Roundx2(width/pixelToUnit)*pixelToUnit)
-    end,
-
-    [Override.SetHeight] = function(self, orig, height)
-	    local pixelToUnit = 768.0 / select(2, GetPhysicalScreenSize()) / self:GetEffectiveScale();
-        orig(self, Roundx2(height/pixelToUnit)*pixelToUnit)
-    end,
-
-}
+-- Ensures height is pixel aligned, and width is a multiple of 2 pixels.
+-- Useful for "half-anchors" such as CENTER, LEFT etc.
+Addon.Templates.PixelSizeW2 = PixelSizeT(Roundx2, Round)

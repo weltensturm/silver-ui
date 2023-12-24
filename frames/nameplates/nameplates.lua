@@ -71,9 +71,9 @@ local StyleNameplate = Style {
         :Hide(),
 
     SilverUINamePlate = Frame
-        :AllPoints(PARENT)
-        :FlattensRenderLayers(true)
-        :IsFrameBuffer(true)
+        :AllPoints()
+        -- :FlattensRenderLayers(true) -- no, unless framebuffer blending with black is fixed (text is ugly)
+        -- :IsFrameBuffer(true)
     {
 
         SetEventUnit = function(self, unit)
@@ -95,20 +95,32 @@ local StyleNameplate = Style {
         end,
         [Event.PLAYER_TARGET_CHANGED] = SELF.UpdateAlpha,
 
-        Background = Texture
-            :AllPoints(PARENT)
-            :ColorTexture(0, 0, 0, 0),
+        -- Background = Texture
+        --     :AllPoints(PARENT)
+        --     :ColorTexture(1, 0, 0, 0),
+
+        HealthBackground = Addon.Templates.BarShaped
+            :AllPoints(PARENT.Health)
+            :Texture 'Interface/RAIDFRAME/Raid-Bar-Hp-Fill'
+            :Value(1, 1)
+            :FrameLevel(0)
+        {
+            ['.Bar'] = Style
+                :VertexColor(0.1, 0.1, 0.1, 0.7)
+        },
+
+        HealthLoss = Addon.Nameplates.HealthLoss
+            :AllPoints(PARENT.Health)
+            :FrameLevel(1),
 
         -- Health = Addon.Nameplates.FrameHealthDiamond,
         Health = Addon.Nameplates.HealthScaledBar
             .BOTTOM:BOTTOM()
-            :Size(128, 16),
-
-        HealthLoss = Addon.Nameplates.HealthLoss
-            :AllPoints(PARENT.Health),
+            :Size(128, 8)
+            :FrameLevel(2),
 
         Name = Addon.Nameplates.FrameUnitName
-            .TOP:TOP()
+            .BOTTOM:TOP(PARENT.Health, 0, 4)
             :Size(200, 10),
 
         Target = Addon.Nameplates.FrameTarget

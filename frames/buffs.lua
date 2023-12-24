@@ -57,7 +57,7 @@ local StyleMailIcon = Style { PixelSize }
 {
     ['.MiniMapMailBorder'] = Style:Hide(),
     ['.MiniMapMailIcon'] = Style
-        :AllPoints(MiniMapMailFrame)
+        :AllPoints()
         :Texture 'Interface/Icons/INV_Letter_15',
     ['.Icon'] = Style
         .CENTER:CENTER()
