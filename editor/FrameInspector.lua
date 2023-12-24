@@ -89,6 +89,7 @@ end
 
 local FramePicker = Frame
     :SetFrameStrata('TOOLTIP')
+    :SetFrameLevel(9999)
     :Hide()
 {
     Start = function(self)
@@ -114,7 +115,7 @@ local FramePicker = Frame
         local stack = C_System.GetFrameStack()
         if stack ~= self.lastStack then
             self.lastStack = stack
-            local smallest = UIParent
+            local smallest = UIParent --[[@as ScriptRegion]]
             for k, v in pairs(stack) do
                 if v ~= self.tex and v ~= self.name then
                     local w, h = v:GetSize()
@@ -251,7 +252,7 @@ local FrameInspectorButton = Btn
                 self.inspector:SetFrameStack(self.reference, parents)
             else
                 if self.referenceName and self.parents[1][1][self.referenceName] then
-                    self.inspector:ClickFunction(self.parents[1][1], self.referenceName)
+                    self.inspector:ClickEntry(self.parents[1][1], self.referenceName)
                 end
             end
         end
@@ -348,10 +349,7 @@ Addon.FrameInspector = Addon.Templates.SmoothScrollSparse --FrameSmoothScroll
 
     selected = nil,
 
-    ClickFunction = function() end,
-    SetClickFunction = function(self, fn)
-        self.ClickFunction = fn
-    end,
+    ClickEntry = function() end,
 
     PickFrame = function(self)
         self.FramePicker:Start()
@@ -671,7 +669,7 @@ SortedChildren = function(obj)
                 if type(k) == 'number' then
                     sort = string.format('|c%08x', k)
                 end
-                table.insert(result, { v, SORT_DATA .. sort .. WHITE .. '  ' .. tostring(k) .. ' ' .. FormatValue(v) })
+                table.insert(result, { v, SORT_DATA .. sort .. WHITE .. '  ' .. tostring(k) .. ' ' .. FormatValue(v), k })
             end
         end
     end

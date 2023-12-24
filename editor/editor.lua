@@ -137,7 +137,7 @@ local ExpandDownButton = Button { BubbleHover }
         if down then
             self.menu.ClickTracker:SetFocus()
         else
-            self.menu:Close()
+            self.menu:MenuClose()
             if self.Click then
                 self.Click(self.menu:GetParent())
             end
@@ -764,6 +764,8 @@ local PageMain = FrameSmoothScroll {
                     self.label:SetText(script.name)
                 elseif page == 'scratchpad' then
                     self.label:SetText('Scratchpad')
+                elseif page == 'raw' then
+                    self.label:SetText(script)
                 end
             end,
         },
@@ -782,21 +784,19 @@ local PageMain = FrameSmoothScroll {
                     Addon
                 )
                 if not ok then
-                    self:GetParent().Error:SetText(error)
-                    self:GetParent().Red:Show()
-                    self:GetParent().Error:Show()
+                    self:OnError(error)
                 end
             end,
 
             [SELF.OnError] = function(self, error)
-                local parent = self:GetParent()
+                local e = self:GetParent():GetParent().Error
                 if error then
-                    parent.Error:SetText(error)
-                    parent.Error:Show()
-                    parent.Red:Show()
+                    e.Text:SetText(error)
+                    e.Text:Show()
+                    e.Background:Show()
                 else
-                    parent.Error:Hide()
-                    parent.Red:Hide()
+                    e.Text:Hide()
+                    e.Background:Hide()
                 end
             end,
 
@@ -807,19 +807,24 @@ local PageMain = FrameSmoothScroll {
                 :Size(1, 50)
         },
 
-        Error = FontString
+    },
+
+    Error = Frame
+        :AllPoints()
+    {
+        Text = FontString
             :Font('Interface/AddOns/silver-ui/Fonts/iosevka-regular.ttf', 11, '')
             :JustifyH 'LEFT'
             :Hide()
-            .BOTTOMLEFT:BOTTOMLEFT(PARENT:GetParent():GetParent(), 2, 2)
-            .BOTTOMRIGHT:BOTTOMRIGHT(PARENT:GetParent():GetParent(), -2, 2),
+            .BOTTOMLEFT:BOTTOMLEFT(2, 2)
+            .BOTTOMRIGHT:BOTTOMRIGHT(-2, 2),
 
-        Red = Texture
-            :ColorTexture(0.3, 0, 0, 0.9)
-            .TOPLEFT:TOPLEFT(PARENT.Error, -2, 2)
-            .BOTTOMRIGHT:BOTTOMRIGHT(PARENT.Error, 2, -2),
+        Background = Texture
+            :ColorTexture(0.2, 0.07, 0.07, 0.9)
+            .TOPLEFT:TOPLEFT(PARENT.Text, -2, 2)
+            .BOTTOMRIGHT:BOTTOMRIGHT(PARENT.Text, 2, -2),
+    },
 
-    }
 }
 
 
@@ -858,8 +863,8 @@ local FrameDTT = Frame { PixelAnchor, PixelSizex2 }
     :Width(1000)
     :Height(600)
     .TOPLEFT:TOPLEFT(300, -200)
-    :FrameStrata 'HIGH'
     :EnableMouse(true)
+    :Toplevel(true)
 {
     function(self)
         self.editor = self.PageMain.Content.CodeEditor.Editor
@@ -906,6 +911,18 @@ local FrameDTT = Frame { PixelAnchor, PixelSizex2 }
         self.editor:SetFocus()
         self.PageMain:SetVerticalScroll(0)
         OnPage('scratchpad')
+    end,
+    EditRawValue = function(self, value, name)
+        self:ShowMain()
+        self.scriptEditing = 'raw'
+        -- self.CodeEditor:Show()
+        self.editor.Save = function(code) end
+        self.editor:ClearHistory()
+        self.editor:SetText(value)
+        self.editor:SetCursorPosition(0)
+        self.editor:SetFocus()
+        self.PageMain:SetVerticalScroll(0)
+        OnPage('raw', name)
     end,
     EnterTrace = function(self)
         self:HideAll()
@@ -1021,7 +1038,7 @@ local FrameDTT = Frame { PixelAnchor, PixelSizex2 }
         end
     },
 
-    Resizer = Frame
+    CornerResizer = Frame
         .BOTTOMRIGHT:BOTTOMRIGHT()
         :Size(16, 16)
         :FrameLevel(20)
@@ -1095,7 +1112,10 @@ local FrameDTT = Frame { PixelAnchor, PixelSizex2 }
         :Size(20, 20)
         .RIGHT:LEFT(PARENT.ButtonReload)
     {
-        [Script.OnClick] = PARENT.FrameInspector.PickFrame
+        -- [Script.OnClick] = PARENT.FrameInspector.PickFrame -- TODO: fix
+        [Script.OnClick] = function(self)
+            self:GetParent().FrameInspector:PickFrame()
+        end
     },
 
     SideBar = Sidebar
@@ -1121,7 +1141,15 @@ local FrameDTT = Frame { PixelAnchor, PixelSizex2 }
     FrameInspector = FrameInspector
         .TOPLEFT:TOPRIGHT(PARENT.PageMain)
         .BOTTOMRIGHT:BOTTOMRIGHT(-10, 0)
-        :ClickFunction(function(self, frame, functionName) self:GetParent().Tracer:StartTrace(frame, functionName) end),
+    {
+        [Hook.ClickEntry] = function(self, table, key)
+            if type(table[key]) == 'function' then
+                self:GetParent().Tracer:StartTrace(table, key)
+            elseif type(table[key]) == 'string' then
+                self:GetParent():EditRawValue(table[key], key)
+            end
+        end,
+    }
 
 }
 

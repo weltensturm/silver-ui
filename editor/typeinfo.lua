@@ -84,7 +84,7 @@ local function FillTypeInfo()
         end
     end
 
-    LoadAddOn('Blizzard_APIDocumentationGenerated')
+    C_AddOns.LoadAddOn('Blizzard_APIDocumentationGenerated')
 
     for _, typeinfo in pairs(TypeInfo) do
         for _, system in pairs(APIDocumentation.systems) do
