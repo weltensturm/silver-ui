@@ -102,7 +102,7 @@ Addon.Nameplates.FrameCastBar = Frame
     },
     Text = FontString
         .TOP:CENTER()
-        :Font('Fonts/FRIZQT__.ttf', 8.5, '')
+        :Font('Fonts/FRIZQT__.ttf', 10, '')
         :Alpha(0.7)
         :ShadowOffset(1, -1)
 }

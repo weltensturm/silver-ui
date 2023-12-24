@@ -75,6 +75,12 @@ local StyleNameplate = Style {
         -- :FlattensRenderLayers(true) -- no, unless framebuffer blending with black is fixed (text is ugly)
         -- :IsFrameBuffer(true)
     {
+        function(self, parent)
+            self:SetScale(UIParent:GetScale())
+        end,
+        [Event.UI_SCALE_CHANGED] = function(self)
+            self:SetScale(UIParent:GetScale())
+        end,
 
         SetEventUnit = function(self, unit)
             self.unit = unit
@@ -155,6 +161,7 @@ load = function()
     hooksecurefunc(
         NamePlateDriverFrame, 'UpdateNamePlateOptions',
         function()
+            -- C_CVar.SetCVar('nameplateGlobalScale', UIParent:GetScale())
             C_NamePlate.SetNamePlateFriendlySize(70, 20)
             C_NamePlate.SetNamePlateEnemySize(70, 20)
         end

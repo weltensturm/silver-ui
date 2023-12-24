@@ -19,7 +19,7 @@ local AnimationGroup = LQT.AnimationGroup
 
 
 local Aura = Frame
-    :Size(12, 12)
+    :Size(16, 16)
     :Alpha(0.9)
     :EnableMouse(true)
 {
