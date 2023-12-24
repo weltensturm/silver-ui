@@ -20,6 +20,7 @@ local MaskTexture = LQT.MaskTexture
 local FontString = LQT.FontString
 local AnimationGroup = LQT.AnimationGroup
 local Animation = LQT.Animation
+local Button = LQT.Button
 
 
 local db
@@ -110,7 +111,13 @@ local UnitPlayer = Addon.Templates.UnitButton { Addon.Templates.PixelAnchor }
         .TOPLEFT:TOPLEFT(21, -38.5)
         .BOTTOMRIGHT:BOTTOMRIGHT(-21, 21.5)
         :FrameLevel(3)
-        :Unit 'player',
+        :Unit 'player'
+    {
+        ['.Bar'] = Style
+            :ClearAllPoints()
+            .TOPLEFT:TOPLEFT(0, 10)
+            .BOTTOMRIGHT:BOTTOMRIGHT()
+    },
 
     Shield = IsRetail and Addon.Units.Shield
         .TOPLEFT:TOPLEFT(21, -38.5)
@@ -126,7 +133,13 @@ local UnitPlayer = Addon.Templates.UnitButton { Addon.Templates.PixelAnchor }
         :Size(240, 8)
         -- .TOPLEFT:TOPLEFT(31.5, -26)
         -- .BOTTOMRIGHT:BOTTOMRIGHT(-31.5, 39)
-        :Unit 'player',
+        :Unit 'player'
+    {
+        ['.Bar'] = Style
+            :ClearAllPoints()
+            .TOPLEFT:TOPLEFT()
+            .BOTTOMRIGHT:BOTTOMRIGHT(0, -10)
+    },
 
     SecondaryPower = Addon.Units.SecondaryPower
         :AllPoints(PARENT)
@@ -141,7 +154,31 @@ local UnitPlayer = Addon.Templates.UnitButton { Addon.Templates.PixelAnchor }
     GCD = Addon.Units.GCD
         .TOPLEFT:TOPLEFT(30, -33)
         .BOTTOMRIGHT:BOTTOMRIGHT(-30, 35)
-        :FrameLevel(11)
+        :FrameLevel(11),
+
+    VehicleExit = Button
+        .TOPRIGHT:TOPRIGHT()
+        :Size(32, 32)
+        :RegisterForClicks('LeftButtonUp')
+        :Hide()
+    {
+        Bg = Texture
+            :AllPoints()
+            :ColorTexture(0.7, 0.3, 0.3),
+        UpdateShow = function(self)
+            self:SetShown(CanExitVehicle())
+        end,
+        [UnitEvent.UNIT_ENTERED_VEHICLE] = SELF.UpdateShow,
+        [UnitEvent.UNIT_EXITED_VEHICLE] = SELF.UpdateShow,
+        [Script.OnClick] = function(self)
+            if UnitOnTaxi("player") then
+                TaxiRequestEarlyLanding();
+            else
+                VehicleExit();
+            end
+        end,
+    }
+        :EventUnit 'player'
 }
 
 

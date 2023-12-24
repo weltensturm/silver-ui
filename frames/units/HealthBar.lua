@@ -51,15 +51,11 @@ Addon.Units.HealthBar = Frame {
     Bar = Texture
         .TOPLEFT:TOPLEFT()
         .BOTTOMRIGHT:BOTTOMRIGHT()
-        -- .TOPLEFT:TOPLEFT()
-        -- .BOTTOMLEFT:BOTTOMLEFT()
-        -- :ColorTexture(1, 0, 0, 1)
         -- :Texture 'Interface/BUTTONS/GreyscaleRamp64'
         -- :Texture 'Interface/TARGETINGFRAME/UI-StatusBar-Glow'
         -- :Texture 'Interface/BUTTONS/UI-Listbox-Highlight2'
         -- :Texture 'Interface/TARGETINGFRAME/UI-StatusBar'
-
-        :Texture 'Interface/AddOns/silver-ui/art/bar-bright'
+        :Texture 'Interface/AddOns/silver-ui/art/bar-shaded'
         :VertexColor(0.3, 0.7, 0.1, 1)
 
         -- :Texture 'Interface/AddOns/silver-ui/art/bar'
