@@ -355,10 +355,20 @@ local ActionBarButton = ActionBarButtonBase
     [Event.SPELL_UPDATE_CHARGES] = SELF.UpdateCharges,
     [Hook.UpdateAction] = SELF.UpdateCharges,
 
+    unusable = Texture
+        :AllPoints()
+        :ColorTexture(1, 0, 0, 0.2)
+        :DrawLayer 'OVERLAY'
+        :Hide(),
     UpdateUsable = function(self)
+        if not self.action then return end
+        local _, id, _ = GetActionInfo(self.action)
+        if not id or id == 0 then
+            self.unusable:Hide()
+            return
+        end
         local isUsable, notEnoughMana = IsUsableAction(self.action);
-        -- self.animTarget = isUsable and 0 or 1
-        -- self:SetAlpha(isUsable and 1 or 0.5)
+        self.unusable:SetShown(not isUsable and not notEnoughMana)
     end,
     [Event.ACTIONBAR_UPDATE_USABLE] = SELF.UpdateUsable,
 
@@ -781,6 +791,7 @@ local CharacterButton = Style
         GlobalFadeButton = false
         GlobalFadeTarget = (GlobalFadeButton or GlobalFadeGrid) and 1 or 0
     end,
+
     Hover
 }
 
@@ -790,7 +801,7 @@ load = function()
     Frame {
         HideBlizzard = function(self, frame)
             if frame then
-                Style(frame):Parent(self)
+                frame:SetParent(self)
                 --:UnregisterAllEvents()
                 if frame.actionButtons then
                     for _, button in pairs(frame.actionButtons) do
@@ -850,7 +861,7 @@ load = function()
         :FrameLevel(ActionBar1:GetFrameLevel())
         .new()
     PixelUtil.SetSize(CharacterButton, size/12, size/12)
-
+    
     Frame
         :AllPoints()
         :FrameStrata 'BACKGROUND'

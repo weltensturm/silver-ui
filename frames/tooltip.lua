@@ -12,7 +12,7 @@ local center = GameTooltip.NineSlice.Center
 local tex = center:GetTexture()
 local color = { center:GetVertexColor() }
 color[4] = 0.7
-for slice in query(GameTooltip, '.NineSlice.Texture') do
+for slice in query(GameTooltip, '.NineSlice > @Texture') do
     if slice ~= center then
         slice:SetTexture ''
         slice:SetAlpha(0)
@@ -28,10 +28,10 @@ local StyleCenter = Style
     .BOTTOMRIGHT:BOTTOMRIGHT(GameTooltip)
 
 
-Style(GameTooltipStatusBar)
+Style
     .TOPLEFT:BOTTOMLEFT(GameTooltip, 6, 6)
     .TOPRIGHT:BOTTOMRIGHT(GameTooltip, -6, 6)
-    :Height(1)
+    :Height(1)(GameTooltipStatusBar)
 
 
 Frame {

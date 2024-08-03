@@ -110,9 +110,9 @@ Frame {
 
         for i = 1, 10 do
             Hooks(_G['ChatFrame'..i])
-            Hooks(_G['ChatFrame'..i].buttonFrame) {
+            Hooks {
                 ['.Button'] = Hooks
-            }
+            }(_G['ChatFrame'..i].buttonFrame)
             Hooks(_G['ChatFrame'..i..'Tab'])
         end
 

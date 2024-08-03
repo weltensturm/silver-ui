@@ -86,26 +86,26 @@ local StyleMinimapCluster = Style:Size(200, 200) {
     ['.MinimapBorderTop'] = Hide,
     ['.MinimapBorder'] = Hide,
     ['.BorderTop'] = Style.TOP:TOP(MinimapCluster, 0, -17) {
-        ['.Texture'] = Hide
+        ['@Texture'] = Hide
     },
     ['.ZoneTextButton'] = Style { AlphaHooks }
         .TOP:TOP(Minimap, 0, -8-MAP_INSET)
         :FrameStrata('HIGH')
         :Width(150)
     {
-        ['.FontString'] = Style
+        ['@FontString'] = Style
             :JustifyH 'CENTER'
             :AllPoints(PARENT)
     },
     ['.Tracking'] = Style
         .CENTER:LEFT(Minimap, 5, -5)
     {
-        ['.Frame, .Button'] =  AlphaHooks
+        ['@Frame, @Button'] =  AlphaHooks
     },
-    ['.TimeManagerClockButton'] = Style
+    [':TimeManagerClockButton'] = Style
         .BOTTOM:BOTTOM(Minimap, 0, MAP_INSET)
     {
-        ['.Texture'] = Hide:Texture ''
+        ['@Texture'] = Hide:Texture ''
     },
     ['.MiniMapTrackingButtonBorder'] = Style:Texture '',
     ['.MiniMapTrackingBackground'] = Style:Texture '',
@@ -113,7 +113,7 @@ local StyleMinimapCluster = Style:Size(200, 200) {
     ['.MinimapContainer'] = Style
         :AllPoints(PARENT),
 
-    ['.MinimapContainer.Minimap, .Minimap'] = Style { AlphaHooks }
+    ['.MinimapContainer > .Minimap, .Minimap'] = Style { AlphaHooks }
         :Size(195, 195)
         :MaskTexture 'Interface/AddOns/silver-ui/art/circle'
     {
@@ -136,19 +136,19 @@ local StyleMinimapCluster = Style:Size(200, 200) {
 
         ['.Button'] = AlphaHooks,
 
-        ['.MinimapBackdrop'] = Style:AllPoints(Minimap) {
+        [':MinimapBackdrop'] = Style:AllPoints(Minimap) {
             ['.MinimapZoomIn'] = Hide,
             ['.MinimapZoomOut'] = Hide,
             ['.MinimapNorthTag'] = Hide,
             ['.MiniMapWorldMapButton'] = Hide,
-            ['.MinimapCompassTexture'] = Hide,
+            [':MinimapCompassTexture'] = Hide,
             ['.MinimapBorder'] = Hide,
-            ['.Button'] = AlphaHooks,
-            ['.*.Button'] = AlphaHooks,
+            ['@Button'] = AlphaHooks,
+            ['.* > @Button'] = AlphaHooks,
         },
 
-        ['.TimeManagerClockButton'] = Style {
-            ['.Texture'] = Style:Hide()
+        [':TimeManagerClockButton'] = Style {
+            ['@Texture'] = Style:Hide()
         },
 
         BgOuter = Texture
@@ -330,9 +330,7 @@ load = function()
                 end
             end
 
-            Style(UIWidgetTopCenterContainerFrame)
-                .TOP:BOTTOM(Minimap, 0, -12)
-                :Scale(0.75)
+            Style.TOP:BOTTOM(Minimap, 0, -12):Scale(0.75)(UIWidgetTopCenterContainerFrame)
 
             if WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE then
                 MinimapCluster:ClearAllPoints()

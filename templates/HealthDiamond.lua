@@ -2,7 +2,8 @@
 local Addon = select(2, ...)
 
 
-Addon.Nameplates = Addon.Nameplates or {}
+---@class Addon.Templates
+Addon.Templates = Addon.Templates or {}
 
 
 local LQT = Addon.LQT
@@ -19,9 +20,9 @@ local color = Addon.util.color
 local HealthDynamicScale = Addon.util.HealthDynamicScale
 
 
-Addon.Nameplates.FrameHealthDiamond = Frame
-    .CENTER:BOTTOM(0, 4)
-    :Size(16, 16)
+Addon.Templates.FrameHealthDiamond = Frame { LQT.UnitEventBase, Addon.Templates.PixelSizex2, Addon.Templates.PixelAnchor }
+    .BOTTOM:BOTTOM(0, 4)
+    :Size(32, 32)
 {
     parent = PARENT,
 
@@ -36,23 +37,26 @@ Addon.Nameplates.FrameHealthDiamond = Frame
     end,
 
     UpdateTarget = function(self)
-        -- if UnitIsUnit(self.unit, 'target') then
-        --     self:Hide()
-        --     -- self.Target:Show()
-        --     -- self.TargetBackground:Show()
-        -- else
-        --     self:Show()
-        --     -- self.Target:Hide()
-        --     -- self.TargetBackground:Hide()
-        -- end
+        if UnitIsUnit(self.unit, 'target') then
+            -- self:Hide()
+            self.Border:SetAlpha(0.3)
+            self.Target:Show()
+            self.TargetBackground:Show()
+        else
+            -- self:Show()
+            self.Border:SetAlpha(1)
+            self.Target:Hide()
+            self.TargetBackground:Hide()
+        end
     end,
 
     UpdateHealth = function(self)
         local unit = self.unit
         local healthMax = UnitHealthMax(unit)
         local scale = math.sqrt(HealthDynamicScale(unit))
-        PixelUtil.SetSize(self, 16*scale, 16*scale)
-        PixelUtil.SetSize(self.Target, 16*scale + 4, 16*scale + 4)
+        self:SetPoint('BOTTOM', self:GetParent(), 'BOTTOM', 0, 4*scale)
+        self:SetSize(32*scale, 32*scale)
+        self.Target:SetSize(32*scale + 4*scale, 32*scale + 4*scale)
 
         local r, g, b, a = UnitSelectionColor(unit)
         local threat = UnitThreatSituation('player', self.unit) or 0
@@ -76,7 +80,7 @@ Addon.Nameplates.FrameHealthDiamond = Frame
     Border = Texture
         :AllPoints(PARENT)
         :Texture 'Interface/AddOns/silver-ui/art/diamond-bg'
-        :DrawLayer('BACKGROUND', -3),
+        :DrawLayer('BACKGROUND', 0),
 
     Background = Texture
         :AllPoints(PARENT)
@@ -92,10 +96,11 @@ Addon.Nameplates.FrameHealthDiamond = Frame
         :VertexColor(1, 0, 0)
         :AddMaskTexture(PARENT.HealthClip),
 
-    Target = Texture
-        .CENTER:CENTER()
+    Target = Texture { Addon.Templates.PixelSizex2, Addon.Templates.PixelAnchor }
+        .CENTER:CENTER(0, -2)
         :Texture 'Interface/AddOns/silver-ui/art/diamond'
         :DrawLayer('BACKGROUND', -1)
+        :Alpha(0.8)
         :Hide(),
 
     TargetBackground = Texture

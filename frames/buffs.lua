@@ -93,7 +93,7 @@ local StyleLfgButton = Style { PixelSize }
     :Size(32, 32)
 {
     ['.Eye'] = Style {
-        ['.Texture'] = Style { PixelSize }
+        ['@Texture'] = Style { PixelSize }
             :Size(32, 32)
     },
     Mask = MaskTexture
@@ -104,7 +104,7 @@ local StyleLfgButton = Style { PixelSize }
     {
         function(self, parent)
             if parent then
-                query(parent.Eye, '.Frame.Texture'):AddMaskTexture(self)
+                query(parent.Eye, '@Frame > @Texture'):AddMaskTexture(self)
             end
         end
     },
@@ -245,7 +245,7 @@ local BuffSystem = Frame {
         local sorted = {}
         local sorted_timed = {}
 
-        for button in query(BuffFrame, '.Button, .AuraContainer.Button') do
+        for button in query(BuffFrame, '@Button, .AuraContainer > @Button') do
             -- for _, button in pairs(BuffFrame.auraFrames) do -- retail
             --BuffFrame'.BuffButton#, .AuraContainer.Button' do -- old classic
             if button:IsShown() then
@@ -273,7 +273,7 @@ local BuffSystem = Frame {
         self.cacheBuffsTimed = sorted_timed
 
         if DebuffFrame then
-            self.cacheDebuffs = query(DebuffFrame, '.AuraContainer.Button').filter(function(self) return self:IsShown() end).all()
+            self.cacheDebuffs = query(DebuffFrame, '.AuraContainer > @Button').filter(function(self) return self:IsShown() end).all()
         else
             self.cacheDebuffs = query(BuffFrame, '.DebuffButton#').filter(function(self) return self:IsShown() end).all()
         end

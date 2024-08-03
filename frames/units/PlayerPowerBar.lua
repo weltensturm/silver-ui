@@ -17,7 +17,7 @@ local MaskTexture = LQT.MaskTexture
 local color = Addon.util.color
 
 
-Addon.Units.PowerBar = Frame {
+Addon.Units.PlayerPowerBar = Frame { LQT.UnitEventBase } {
     SetUnit = function(self, unit)
         self.unit = unit
         -- self:UpdateColor()
@@ -30,12 +30,18 @@ Addon.Units.PowerBar = Frame {
         self.powerType, _, r, g, b = UnitPowerType(self.unit)
         if not r then
             local info = PowerBarColor[self.powerType]
-            r, g, b = info.r, info.g, info.b
+            if info then
+                r, g, b = info.r, info.g, info.b
+            else
+                r, g, b = 1, 0, 0
+            end
         end
         r, g, b = color(r, g, b, 0.95, 0.85, 2)
         self.Bar:SetVertexColor(r, g, b, 1)
         self:UpdateValues()
     end,
+    [UnitEvent.UNIT_DISPLAYPOWER] = SELF.UpdateColor,
+    [Event.PLAYER_ENTERING_WORLD] = SELF.UpdateColor,
 
     UpdateValues = function(self)
         if Enum.PowerType.Rage == self.powerType then
@@ -59,11 +65,8 @@ Addon.Units.PowerBar = Frame {
         self.MaskLeft:SetPoint('BOTTOMLEFT', self:GetParent(), 'BOTTOMLEFT', self:GetWidth()*ratio/2, 0)
         self.MaskRight:SetPoint('BOTTOMRIGHT', self:GetParent(), 'BOTTOMRIGHT', -self:GetWidth()*ratio/2, 0)
     end,
-
     [UnitEvent.UNIT_MAXPOWER] = SELF.UpdateValues,
     [UnitEvent.UNIT_POWER_FREQUENT] = SELF.UpdateValues,
-    [UnitEvent.UNIT_DISPLAYPOWER] = SELF.UpdateColor,
-    [Event.PLAYER_ENTERING_WORLD] = SELF.UpdateColor,
 
     [Script.OnSizeChanged] = function(self, w, h)
         self.MaskLeft:SetSize(self:GetParent():GetSize())
@@ -71,11 +74,11 @@ Addon.Units.PowerBar = Frame {
     end,
 
     MaskLeft = MaskTexture
-        :Texture'Interface/AddOns/silver-ui/art/playerframe-power-mask'
+        :Texture 'Interface/AddOns/silver-ui/art/playerframe-power-mask'
         .BOTTOMLEFT:BOTTOMLEFT(PARENT:GetParent()),
 
     MaskRight = MaskTexture
-        :Texture'Interface/AddOns/silver-ui/art/playerframe-power-mask'
+        :Texture 'Interface/AddOns/silver-ui/art/playerframe-power-mask'
         .BOTTOMRIGHT:BOTTOMRIGHT(PARENT:GetParent()),
 
     Bar = Texture

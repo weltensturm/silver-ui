@@ -14,6 +14,7 @@ libs/indent.lua
 templates/Animation.lua
 templates/BoxShadow.lua
 templates/CheckBox.lua
+templates/DataEvent.lua
 templates/SmoothScroll.lua
 templates/SmoothScrollSparse.lua
 templates/UnitButton.lua
@@ -23,6 +24,13 @@ templates/PixelAnchor.lua
 templates/SettingsWidgets.lua
 templates/AuraTracker.lua
 templates/BarShaped.lua
+
+templates/HealthDiamond.lua
+templates/HealthBarScaled.lua
+templates/HealthTextScaled.lua
+templates/HealthLoss.lua
+templates/CastSparkOnly.lua
+templates/UnitName.lua
 
 settings.lua
 
@@ -37,12 +45,12 @@ frames/questtracker.lua
 frames/units/HealthBar.lua
 frames/units/HealthLoss.lua
 frames/units/Shield.lua
-frames/units/CastBar.lua
+frames/units/PlayerCastBar.lua
 frames/units/GCD.lua
-frames/units/PowerBar.lua
-frames/units/SecondaryPower.lua
+frames/units/PlayerPowerBar.lua
+frames/units/PlayerSecondaryPower.lua
 frames/units/Auras.lua
-frames/units/Player.lua
+frames/units/UnitPlayer.lua
 frames/units/Target.lua
 frames/tooltip.lua
 frames/raidframe.lua
@@ -50,11 +58,6 @@ frames/bigbag.lua
 frames/WorldMap.lua
 frames/ChatBubbles.lua
 
-frames/nameplates/castbar.lua
-frames/nameplates/HealthLoss.lua
-frames/nameplates/healthbar.lua
-frames/nameplates/healthdiamond.lua
-frames/nameplates/name.lua
 frames/nameplates/target.lua
 frames/nameplates/auras.lua
 frames/nameplates/nameplates.lua

@@ -11,7 +11,7 @@ local SELF = LQT.SELF
 local Style = LQT.Style
 
 
-Addon.Units.Shield = Addon.Templates.BarShaped {
+Addon.Units.Shield = Addon.Templates.BarShaped { LQT.UnitEventBase } {
     [Hook.SetEventUnit] = function(self, unit)
         self.unit = unit
         self:Update()

@@ -104,7 +104,7 @@ local Aura = Frame
 
     [Script.OnEnter] = function(self)
         if GameTooltip:IsForbidden() then return end
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+        GameTooltip:SetOwner(self, 'ANCHOR_RIGHT');
         GameTooltip:SetUnitAura(self.unit, self.aura.index, self.filter);
     end,
     [Script.OnLeave] = function(self)

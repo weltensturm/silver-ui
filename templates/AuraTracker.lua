@@ -17,53 +17,30 @@ local function CheckUnitAuras(self, unit)
     local UPDATE = 3
     local REMOVE = 4
 
-    for _, v in pairs(self.trackedAuras) do
-        v[1] = REMOVE
+    for k, _ in pairs(self.aurasTracked) do
+        self.aurasTracked[k] = REMOVE
     end
     for _, filter in pairs { 'HELPFUL', 'HARMFUL' } do
         local i = 1 ---@type integer?
         while i do
-            local
-                name, icon, count, dispelType, duration, expirationTime, source, isStealable, nameplateShowPersonal,
-                spellId, canApplyAura, isBossDebuff, castByPlayer, nameplateShowAll, timeMod
-                    = UnitAura(unit, i, filter)
-            if name then
-                local instance = string.format('%s/%s/%s/%i/%s', unit, filter, name, icon, source or '')
-                if self.trackedAuras[instance] then
-                    local aura = self.trackedAuras[instance]
+            local info = C_UnitAuras.GetAuraDataByIndex(unit, i, filter)
+            if info then
+                if self.aurasTracked[info.auraInstanceID] then
+                    local current = self.aurasData[info.auraInstanceID]
                     if
-                        aura.icon ~= icon
-                        or aura.applications ~= (count or 0)
-                        or aura.duration ~= duration
-                        or aura.expirationTime ~= expirationTime
-                        or aura.index ~= i
+                        current.icon ~= info.icon
+                        or current.applications ~= (info.charges or 0)
+                        or current.duration ~= info.duration
+                        or current.expirationTime ~= info.expirationTime
                     then
-                        aura[1] = UPDATE
-                        aura.icon = icon
-                        aura.applications = count or 0
-                        aura.duration = duration
-                        aura.expirationTime = expirationTime
-                        aura.index=i
+                        self.aurasTracked[info.auraInstanceID] = UPDATE
+                        self.aurasData[info.auraInstanceID] = info
                     else
-                        aura[1] = KEEP
+                        self.aurasTracked[info.auraInstanceID] = KEEP
                     end
                 else
-                    self.trackedAuras[instance] = {
-                        ADD,
-                        auraInstanceID=instance,
-                        isHelpful=filter == 'HELPFUL',
-                        isHarmful=filter == 'HARMFUL',
-                        isStealable=isStealable,
-                        source=source,
-                        icon=icon,
-                        applications=count or 0,
-                        duration=duration,
-                        expirationTime=expirationTime,
-                        spellId=spellId,
-
-                        index=i,
-                        filter=filter,
-                    }
+                    self.aurasTracked[info.auraInstanceID] = ADD
+                    self.aurasData[info.auraInstanceID] = info
                 end
                 i = i+1
             else
@@ -71,27 +48,29 @@ local function CheckUnitAuras(self, unit)
             end
         end
     end
-    for k, v in pairs(self.trackedAuras) do
-        if v[1] == ADD then
-            self:AuraAdd(k, v)
-        elseif v[1] == UPDATE then
-            self:AuraUpdate(k, v)
-        elseif v[1] == REMOVE then
-            self:AuraRemove(k, v)
-            self.trackedAuras[k] = nil
+    for instance, action in pairs(self.aurasTracked) do
+        if action == ADD then
+            self:AuraAdd(instance, self.aurasData[instance])
+        elseif action == UPDATE then
+            self:AuraUpdate(instance, self.aurasData[instance])
+        elseif action == REMOVE then
+            self:AuraRemove(instance, self.aurasData[instance])
+            self.aurasTracked[instance] = nil
+            self.aurasData[instance] = nil
         end
     end
 end
 
 
 
-Addon.Templates.AuraTracker = Style {
+Addon.Templates.AuraTracker = Style { LQT.UnitEventBase } {
 
     AuraAdd = function(self, instance, aura) end,
     AuraUpdate = function(self, instance, aura) end,
     AuraRemove = function(self, instance) end,
 
-    trackedAuras = {},
+    aurasTracked = {},
+    aurasData = {},
 
     [UnitEvent.UNIT_AURA] = CheckUnitAuras,
     [Hook.SetEventUnit] = CheckUnitAuras

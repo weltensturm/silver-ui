@@ -39,15 +39,15 @@ local StyleTargetFrameRetail = Style {
         },
         ['.TargetFrameContentContextual'] = Style {
             ['.NumericalThreat'] = Style {
-                ['.FontString'] = Style:Alpha(0),
-                ['.Texture'] = Style:Alpha(0)
+                ['@FontString'] = Style:Alpha(0),
+                ['@Texture'] = Style:Alpha(0)
             },
             ['.BossIcon'] = Style
                 .LEFT:RIGHT(PARENT:GetParent().TargetFrameContentMain.LevelText)
         }
     },
     ['.totFrame'] = Style {
-        ['.Texture'] = Style:Hide(),
+        ['@Texture'] = Style:Hide(),
         ['.HealthBar'] = Style
             .TOPLEFT:TOPLEFT(0, -20)
             .BOTTOMRIGHT:TOPRIGHT(0, -22)
@@ -74,14 +74,14 @@ local StyleTargetFrameClassic = Style {
 Frame {
     [Event.PLAYER_ENTERING_WORLD] = function()
 
-        Style(TargetFrame)
+        Style
             :Size(100, 100)
             :HitRectInsets(0, 0, 0, 0)
         {
             StyleTargetFrameRetail,
             StyleTargetFrameClassic,
             ['.textureFrame'] = Style {
-                ['.Texture'] = Style:Texture '',
+                ['@Texture'] = Style:Texture '',
                 ['.texture'] = Style:Texture 'Interface/TARGETINGFRAME/UI-TARGETINGFRAME-MINUS',
                 ['.*LevelText'] = Style.BOTTOM:BOTTOM(0, 10),
                 ['.TargetFrameTextureFrameName'] = Style.TOP:TOP()
@@ -199,13 +199,13 @@ Frame {
                     :DrawLayer 'BORDER',
             }
 
-        }
+        }(TargetFrame)
 
         -- TargetFrame.nameBackground:SetColorTexture(0.2,0.2,0.2,1)
     end,
 
     [Event.PLAYER_TARGET_CHANGED] = function()
-        Style(TargetFrame) {
+        Style {
             StyleTargetFrameThreat,
             StyleTargetFrameRetail,
             StyleTargetFrameClassic,
@@ -222,7 +222,7 @@ Frame {
                 ['.TargetFrameDebuff#'] = Style:Alpha(0),
                 ['.TargetFrameBuff#'] = Style:Alpha(0),
             }
-        }
+        }(TargetFrame)
 
     end,
 

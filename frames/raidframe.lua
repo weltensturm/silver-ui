@@ -5,7 +5,7 @@ local LQT = Addon.LQT
 local Frame, Style, Texture, Cooldown = LQT.Frame, LQT.Style, LQT.Texture, LQT.Cooldown
 
 
-Style(CompactRaidFrameManager) {
+Style {
     ['.containerResizeFrame'] = Style:FrameStrata('HIGH'),
-    ['.Texture'] = Style:Texture '':Alpha(0)
-}
+    ['@Texture'] = Style:Texture '':Alpha(0)
+}(CompactRaidFrameManager)

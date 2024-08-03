@@ -539,12 +539,12 @@ FrameBigBag = Frame
         for container = 0, 4 do
             local bag = {}
             table.insert(self.bags, bag)
-            Style(self) {
+            Style {
                 ['Bag' .. container] = Frame
                     :FrameLevel(0)
                     :AllPoints(self)
                     :SetID(container)
-            }
+            }.apply(self)
             for slot = 1, 36 do
                 -- local button = _G['ContainerFrame' .. (container+1) .. 'Item' .. slot]
                 -- local button = CreateFrame('ItemButton', nil, self['Bag' .. container], 'ContainerFrameItemButtonTemplate')
@@ -706,14 +706,14 @@ FrameBigBag = Frame
         for row = 1, db.rows do
             if row == removeRow then
                 for column = 1, db.columns do
-                    local name = 'Slot' .. row .. '-' .. column
+                    local name = 'Slot' .. row .. '_' .. column
                     local slot = self.slots[name]
                     if slot.item and slot.item.hasItem then
                         return
                     end
                 end
                 for column = 1, db.columns do
-                    local name = 'Slot' .. row .. '-' .. column
+                    local name = 'Slot' .. row .. '_' .. column
                     local slot = self.slots[name]
                     if slot.item then
                         db.mapping[slot.item.name] = nil
@@ -722,7 +722,7 @@ FrameBigBag = Frame
                 end
             elseif row > removeRow then
                 for column = 1, db.columns do
-                    local slot = self.slots['Slot' .. row .. '-' .. column]
+                    local slot = self.slots['Slot' .. row .. '_' .. column]
                     local slotUp = self.slots['Slot' .. row-1 .. '-' .. column]
                     if slot.item then
                         self:BindToSlot(slot.item, slotUp)
@@ -733,7 +733,7 @@ FrameBigBag = Frame
         db.rows = db.rows - 1
         for row = db.rows+1, self.rowsCreated do
             for column = 1, db.columns do
-                local slot = self.slots['Slot' .. row .. '-' .. column]
+                local slot = self.slots['Slot' .. row .. '_' .. column]
                 slot:Hide()
             end
         end
@@ -747,30 +747,30 @@ FrameBigBag = Frame
             self.rowsCreated = self.rowsCreated + 1
             local row = db.rows
             for column = 1, db.columns do
-                local name = 'Slot' .. row .. '-' .. column
+                local name = 'Slot' .. row .. '_' .. column
                 local size = (self:GetWidth() - self.padding*2)/db.columns
-                Style(self.Items) {
+                Style {
                     [name] = FrameSlot
                         .TOPLEFT:TOPLEFT((column-1)*size + self.padding, -(row-1)*size - self.padding - 20)
                         .BOTTOMRIGHT:TOPLEFT(column*size + self.padding, -row*size - self.padding - 20)
-                }
+                }.apply(self.Items)
                 self.slots[name] = self.Items[name]
                 self.slots[name].name = name
                 table.insert(self.sortedSlots, self.slots[name])
             end
 
-            local rowFirstSlot = 'Slot' .. row .. '-1'
+            local rowFirstSlot = 'Slot' .. row .. '_1'
             local slot = self.slots[rowFirstSlot]
-            Style(self.SlotManager) {
-                ['Remover-' .. rowFirstSlot] = ButtonRemoveRow
+            Style {
+                ['Remover_' .. rowFirstSlot] = ButtonRemoveRow
                     .RIGHT:LEFT(slot, -4, 0)
                     :Show()
                     :Row(row),
-                ['Adder-' .. rowFirstSlot] = ButtonAddRow
+                ['Adder_' .. rowFirstSlot] = ButtonAddRow
                     .RIGHT:TOPLEFT(slot, -4, 0)
                     :Show()
                     :Row(row)
-            }
+            }.apply(self.SlotManager)
         else
             for column = 1, db.columns do
                 local slot = self.slots['Slot' .. db.rows .. '-' .. column]
@@ -780,7 +780,7 @@ FrameBigBag = Frame
         if where then
             for row = db.rows, where, -1 do
                 for column = 1, db.columns do
-                    local slot = self.slots['Slot' .. row .. '-' .. column]
+                    local slot = self.slots['Slot' .. row .. '_' .. column]
                     local slotDown = self.slots['Slot' .. row+1 .. '-' .. column]
                     if slot.item and slotDown then
                         self:BindToSlot(slot.item, slotDown)

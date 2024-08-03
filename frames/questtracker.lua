@@ -107,14 +107,14 @@ local SectionStyle = Style {
     ['.HeaderText'] = TextStyle,
     ['.HeaderButton'] = TextStyle:FrameLevel(3) { AlphaHooks },
     ['.Text'] = TextStyle,
-    ['.Frame'] = Style {
+    ['@Frame'] = Style {
         ['.Text'] = TextStyle,
         ['.Dash'] = Style:Text '',
         ['.Check'] = Style:Hide(),
 
         ['.Bar'] = Style.LEFT:LEFT() {
             ['.Label'] = Style.TOPLEFT:TOPLEFT(),
-            ['.Texture'] = Style:Texture ''
+            ['@Texture'] = Style:Texture ''
         }
 
         -- Style'.Bar' {
@@ -142,10 +142,10 @@ local StyleObjectiveTrackerFrame = Style {
         :AllPoints(ObjectiveTrackerFrame),
 
     ['.BlocksFrame'] = Style {
-        ['.Button'] = Style:Alpha(0) { AlphaHooks },
-        ['.ScrollFrame'] = Style {
+        ['@Button'] = Style:Alpha(0) { AlphaHooks },
+        ['@ScrollFrame'] = Style {
             ['.ScrollContents'] = SectionStyle {
-                ['.Frame'] = Style {
+                ['@Frame'] = Style {
                     ['.Icon'] = Style:Hide(),
                     ['.Bar'] = Style {
                         ['.Label'] = Style
@@ -154,18 +154,16 @@ local StyleObjectiveTrackerFrame = Style {
                 }
             }
         },
-        ['.Frame'] = Style {
+        ['@Frame'] = Style {
             SectionStyle,
-            -- Style:FitToChildren(),
         },
-        -- Style:FitToChildren()
     }
 }
 
 
 local function update_size(e)
-    frames_hide = query(ObjectiveTrackerFrame.BlocksFrame, '.Frame')
-    buttons_hide = query(ObjectiveTrackerFrame.BlocksFrame, '.Button')
+    frames_hide = query(ObjectiveTrackerFrame.BlocksFrame, '@Frame')
+    buttons_hide = query(ObjectiveTrackerFrame.BlocksFrame, '@Button')
     StyleObjectiveTrackerFrame(ObjectiveTrackerFrame)
 end
 
@@ -202,9 +200,9 @@ load = function()
         .new()
 
 
-    Style(ObjectiveTrackerFrame) {
+    Style {
         ['.HeaderMenu'] = Style {
-            ['.Button'] =  AlphaHooks,
+            ['@Button'] =  AlphaHooks,
             HoverFrame = Frame { AlphaHooks }
                 :FrameStrata('BACKGROUND', -1)
                 .TOPLEFT:TOPLEFT(ObjectiveTrackerFrame)
@@ -217,7 +215,7 @@ load = function()
         },
 
         ['.BlocksFrame'] = Style {
-            ['.Frame'] = Style
+            ['@Frame'] = Style
                 .filter(function(self) return self.MinimizeButton and self.Background end)
             {
                 ['.MinimizeButton'] = Style { AlphaHooks } {
@@ -235,6 +233,6 @@ load = function()
             }
         }
 
-    }
+    }(ObjectiveTrackerFrame)
 
 end

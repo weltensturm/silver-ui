@@ -13,9 +13,10 @@ local PARENT = LQT.PARENT
 local Frame = LQT.Frame
 local Texture = LQT.Texture
 local MaskTexture = LQT.MaskTexture
+local UnitEventBase = LQT.UnitEventBase
 
 
-Addon.Units.HealthBar = Frame {
+Addon.Units.HealthBar = Frame { UnitEventBase } {
     SetUnit = function(self, unit)
         self.unit = unit
         self:SetEventUnit(unit, true)

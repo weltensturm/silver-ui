@@ -22,6 +22,8 @@ local AnimationGroup = LQT.AnimationGroup
 local Animation = LQT.Animation
 local Button = LQT.Button
 
+local DataEvent = Addon.DataEvent
+
 
 local db
 local load
@@ -30,10 +32,16 @@ local load
 local IsRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 
 
+local CfgHealthBarTexture = DataEvent('Interface/AddOns/silver-ui/art/bar-shaded')
+local CfgPowerBarTexture = DataEvent('Interface/AddOns/silver-ui/art/bar-shaded')
+
+
 Addon:Storage {
     name = 'Player Frame',
     character = {
-        enabled = true
+        enabled = true,
+        healthBarTexture = CfgHealthBarTexture:Get(),
+        powerBarTexture = CfgPowerBarTexture:Get(),
     },
     onload = function(account, character)
         db = character
@@ -46,14 +54,14 @@ Addon:Storage {
 
 Addon:Settings 'Player Frame' {
 
-    Frame:Size(4, 4),
+    [1] = Frame:Size(4, 4),
 
-    FontString
+    [2] = FontString
         :Font('Fonts/FRIZQT__.ttf', 16, '')
         :TextColor(1, 0.8196, 0)
         :Text 'Player Frame',
 
-    CheckButton
+    [3] = CheckButton
         :Size(24, 24)
         :NormalTexture 'Interface/Buttons/UI-CheckBox-Up'
         :PushedTexture 'Interface/Buttons/UI-CheckBox-Down'
@@ -72,7 +80,7 @@ Addon:Settings 'Player Frame' {
             .LEFT:RIGHT()
             :Font('Fonts/FRIZQT__.ttf', 12, '')
             :Text 'Enable'
-    }
+    },
 
 }
 
@@ -117,6 +125,9 @@ local UnitPlayer = Addon.Templates.UnitButton { Addon.Templates.PixelAnchor }
             :ClearAllPoints()
             .TOPLEFT:TOPLEFT(0, 10)
             .BOTTOMRIGHT:BOTTOMRIGHT()
+        {
+            [CfgHealthBarTexture] = SELF.SetTexture
+        }
     },
 
     Shield = IsRetail and Addon.Units.Shield
@@ -128,7 +139,7 @@ local UnitPlayer = Addon.Templates.UnitButton { Addon.Templates.PixelAnchor }
         [Event.PLAYER_ENTERING_WORLD] = SELF.Update,
     },
 
-    PowerBar = Addon.Units.PowerBar
+    PowerBar = Addon.Units.PlayerPowerBar
         .CENTER:CENTER(0, 6.5)
         :Size(240, 8)
         -- .TOPLEFT:TOPLEFT(31.5, -26)
@@ -139,13 +150,16 @@ local UnitPlayer = Addon.Templates.UnitButton { Addon.Templates.PixelAnchor }
             :ClearAllPoints()
             .TOPLEFT:TOPLEFT()
             .BOTTOMRIGHT:BOTTOMRIGHT(0, -10)
+        {
+            [CfgPowerBarTexture] = SELF.SetTexture
+        }
     },
 
-    SecondaryPower = Addon.Units.SecondaryPower
+    SecondaryPower = Addon.Units.PlayerSecondaryPower
         :AllPoints(PARENT)
         :Unit 'player',
 
-    CastBar = Addon.Units.CastBar
+    CastBar = Addon.Units.PlayerCastBar
         .TOPLEFT:TOPLEFT(30, -40)
         .BOTTOMRIGHT:BOTTOMRIGHT(-30, 40)
         :FrameLevel(6)
@@ -156,11 +170,12 @@ local UnitPlayer = Addon.Templates.UnitButton { Addon.Templates.PixelAnchor }
         .BOTTOMRIGHT:BOTTOMRIGHT(-30, 35)
         :FrameLevel(11),
 
-    VehicleExit = Button
+    VehicleExit = Button { LQT.UnitEventBase }
         .TOPRIGHT:TOPRIGHT()
         :Size(32, 32)
         :RegisterForClicks('LeftButtonUp')
         :Hide()
+        :EventUnit 'player'
     {
         Bg = Texture
             :AllPoints()
@@ -178,7 +193,6 @@ local UnitPlayer = Addon.Templates.UnitButton { Addon.Templates.PixelAnchor }
             end
         end,
     }
-        :EventUnit 'player'
 }
 
 
@@ -186,7 +200,7 @@ load = function()
 
     Frame {
         HideBlizzard = function(self, frame)
-            Style(frame):Parent(self):UnregisterAllEvents()
+            Style:Parent(self):UnregisterAllEvents()(frame)
             query(frame, '.CheckButton'):UnregisterAllEvents():Hide()
         end,
     }

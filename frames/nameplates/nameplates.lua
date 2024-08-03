@@ -5,6 +5,7 @@ Addon.Nameplates = Addon.Nameplates or {}
 
 local LQT = Addon.LQT
 local query = LQT.query
+local Script = LQT.Script
 local Override = LQT.Override
 local Event = LQT.Event
 local SELF = LQT.SELF
@@ -63,7 +64,6 @@ SilverUI.Settings 'Nameplates' {
 }
 
 
-
 local StyleNameplate = Style {
 
     ['.UnitFrame'] = Style
@@ -85,7 +85,7 @@ local StyleNameplate = Style {
         SetEventUnit = function(self, unit)
             self.unit = unit
             self:UpdateAlpha()
-            for frame in query(self, '.Frame') do
+            for frame in query(self, '@Frame, .HealthContainer > @Frame') do
                 if frame.SetEventUnit then
                     frame:SetEventUnit(unit)
                 end
@@ -105,44 +105,71 @@ local StyleNameplate = Style {
         --     :AllPoints(PARENT)
         --     :ColorTexture(1, 0, 0, 0),
 
-        HealthBackground = Addon.Templates.BarShaped
-            :AllPoints(PARENT.Health)
-            :Texture 'Interface/RAIDFRAME/Raid-Bar-Hp-Fill'
-            :Value(1, 1)
-            :FrameLevel(0)
+        -- HealthDiamond = Addon.Templates.FrameHealthDiamond {},
+
+        HealthContainer = Frame
+            :AllPoints()
+            :FlattensRenderLayers(true)
+            :IsFrameBuffer(true)
+            -- :Hide()
         {
-            ['.Bar'] = Style
-                :VertexColor(0.1, 0.1, 0.1, 0.7)
+            [Script.OnUpdate] = function(self)
+                self:SetAlpha(self:GetParent():GetEffectiveAlpha())
+            end,
+
+            HealthBackground = Addon.Templates.BarShaped
+                :AllPoints(PARENT.Health)
+                :Texture 'Interface/RAIDFRAME/Raid-Bar-Hp-Fill'
+                :Value(1, 1)
+                :FrameLevel(0)
+            {
+                ['.Bar'] = Style
+                    :VertexColor(0.1, 0.1, 0.1, 0.7)
+            },
+            HealthLoss = Addon.Templates.HealthLoss
+                :AllPoints(PARENT.Health)
+                :FrameLevel(1),
+            Health = Addon.Templates.HealthBarScaled
+                -- :Alpha(0)
+                .BOTTOM:BOTTOM()
+                :Size(128, 8)
+                :FrameLevel(2),
+            Target = Addon.Nameplates.FrameTarget
+                .BOTTOMLEFT:TOPLEFT(PARENT.Health.Bar, 2, 0)
+                .BOTTOMRIGHT:TOPRIGHT(PARENT.Health.Bar, -2, 0)
+                :Height(24),
         },
 
-        HealthLoss = Addon.Nameplates.HealthLoss
-            :AllPoints(PARENT.Health)
-            :FrameLevel(1),
 
         -- Health = Addon.Nameplates.FrameHealthDiamond,
-        Health = Addon.Nameplates.HealthScaledBar
-            .BOTTOM:BOTTOM()
-            :Size(128, 8)
-            :FrameLevel(2),
 
-        Name = Addon.Nameplates.FrameUnitName
-            .BOTTOM:TOP(PARENT.Health, 0, 4)
-            :Size(200, 10),
+        Name = Addon.Templates.UnitName
+            .BOTTOM:TOP(PARENT.HealthContainer.Health, 0, 4)
+            :Size(300, 10)
+            -- :Hide()
+        {
+            [Event.PLAYER_TARGET_CHANGED] = function(self, target)
+                if self.unit and UnitIsUnit(self.unit, 'target') then
+                    self:SetAlpha(1)
+                else
+                    self:SetAlpha(0.85)
+                end
+            end,
+        },
 
-        Target = Addon.Nameplates.FrameTarget
-            .BOTTOMLEFT:TOPLEFT(PARENT.Health.Bar, 2, 0)
-            .BOTTOMRIGHT:TOPRIGHT(PARENT.Health.Bar, -2, 0)
-            :Height(24),
+        -- HealthText = Addon.Templates.HealthTextScaled
+        --     .TOP:BOTTOM(PARENT.Name)
+        --     :Size(2, 2),
 
-        CastBar = Addon.Nameplates.FrameCastBar
-            :AllPoints(PARENT.Health)
+        CastBar = Addon.Templates.CastSparkOnly
+            :AllPoints(PARENT.HealthContainer.Health)
             :FrameLevel(4),
 
         Auras = Addon.Nameplates.Auras
-            :AllPoints(PARENT.Health),
+            :AllPoints(PARENT.HealthContainer.Health),
 
         Absorb = IsRetail and Addon.Units.Shield
-            :AllPoints(PARENT.Health)
+            :AllPoints(PARENT.HealthContainer.Health)
             :FrameLevel(4),
 
         -- Bg = Texture
@@ -200,6 +227,6 @@ load = function()
         .new()
     end
 
-    
+
 end
 

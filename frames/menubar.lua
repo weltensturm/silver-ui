@@ -88,7 +88,7 @@ local MenuButton = Style { AlphaHooks }
         self.Hover.Bg:Hide()
     end,
 
-    ['.Texture'] = Style
+    ['@Texture'] = Style
         .CENTER:CENTER()
         :Size(ICON_SIZE, ICON_SIZE),
         -- :TexCoord(0.1, 0.9, 0.1, 0.9),
@@ -107,7 +107,7 @@ local MenuButton = Style { AlphaHooks }
     {
         function(self, parent)
             if parent then
-                query(parent, '.Texture'):AddMaskTexture(self)
+                query(parent, '@Texture'):AddMaskTexture(self)
             end
         end
     },
@@ -121,6 +121,7 @@ local LAYOUT_LEFT = {
     CharacterMicroButton,
     TalentMicroButton,
     SpellbookMicroButton,
+    PlayerSpellsMicroButton,
     SEPARATOR,
     AchievementMicroButton,
     CollectionsMicroButton,
@@ -175,11 +176,11 @@ end
 
 local style = function()
 
-    Style(MainMenuBar) {
+    Style {
         ['.MicroButtonAndBagsBar'] = Style:Hide()
-    }
+    }.apply(MainMenuBar)
 
-    AlphaHooks(QuestLogMicroButton)
+    AlphaHooks
         .TOPLEFT:TOPLEFT(TopMenu, 4, -2)
         :Height(26)
         -- :Width(QuestLogMicroButton.ButtonText:GetWidth() + ICON_SIZE)
@@ -188,80 +189,85 @@ local style = function()
         :HighlightTexture 'Interface/QUESTFRAME/AutoQuest'
         :PushedTexture 'Interface/QUESTFRAME/AutoQuest'
         :Parent(TopMenu)
-        {
-            ['.Texture'] = Style
-                .TOPLEFT:TOPLEFT(1, -1)
-                :Size(24, 28)
-                :SetTexCoord(0.1, 0.5, 0.05, 0.5),
-            ButtonText = FontString
-                .LEFT:LEFT(24, 0)
-                :Font('FONTS/FRIZQT__.ttf', 12)
-                :Text(PARENT.tooltipText),
-            function(self)
-                self:SetWidth(self.ButtonText:GetRight() - self:GetLeft() + 10)
-            end
-        }
+    {
+        ['@Texture'] = Style
+            .TOPLEFT:TOPLEFT(1, -1)
+            :Size(24, 28)
+            :SetTexCoord(0.1, 0.5, 0.05, 0.5),
+        ButtonText = FontString
+            .LEFT:LEFT(24, 0)
+            :Font('FONTS/FRIZQT__.ttf', 12)
+            :Text(PARENT.tooltipText),
+        function(self)
+            self:SetWidth(self.ButtonText:GetRight() - self:GetLeft() + 10)
+        end
+    }
+    .apply(QuestLogMicroButton)
 
-    MenuButton(CharacterMicroButton) {
+    MenuButton {
         BgLeft = Texture
             :ColorTexture(0.2, 0.2, 0.2)
             .TOPLEFT:TOPLEFT(-5, 0)
             .BOTTOMLEFT:BOTTOMLEFT(-5, 0)
             :Width(0.75/scale),
-    }
+    }.apply(CharacterMicroButton)
 
-    MenuButton(TalentMicroButton) {
-        ['.Texture'] = Style:SetTexCoord(0.1, 0.9, 0.4, 1)
-    }
+    MenuButton {
+        ['@Texture'] = Style:SetTexCoord(0.1, 0.9, 0.4, 1)
+    }.apply(PlayerSpellsMicroButton or TalentMicroButton)
 
-    MenuButton(SpellbookMicroButton)
+    if SpellbookMicroButton then
+        MenuButton.apply(SpellbookMicroButton)
+    end
 
     if AchievementMicroButton then
-        MenuButton(AchievementMicroButton) {
+        MenuButton {
             ['.BgLeft'] = Texture
                 :ColorTexture(0.2, 0.2, 0.2)
                 .TOPLEFT:TOPLEFT(-5, 0)
                 .BOTTOMLEFT:BOTTOMLEFT(-5, 0)
                 :Width(0.75/scale),
-        }
+        }(AchievementMicroButton)
     end
 
     if CollectionsMicroButton then
-        MenuButton(CollectionsMicroButton)
+        MenuButton {
+            -- ['@Texture'] = Style:Texture(CollectionsJournalPortrait.portrait:GetTexture())
+        }.apply(CollectionsMicroButton)
     end
 
     if EJMicroButton then
-        MenuButton(EJMicroButton) {
-            ['.Texture'] = Style:TexCoord(0.1, 0.9, 0.2, 0.8)
-        }
+        MenuButton {
+            ['@Texture'] = Style:TexCoord(0.1, 0.9, 0.2, 0.8)
+        }(EJMicroButton)
     end
 
     if LFDMicroButton then
-        MenuButton(LFDMicroButton) {
-            ['.Texture'] = Style:TexCoord(0.1, 0.9, 0.2, 0.8)
-        }
+        MenuButton {
+            ['@Texture'] = Style:TexCoord(0.1, 0.9, 0.2, 0.8)
+        }(LFDMicroButton)
     end
 
     if LFGMicroButton then
-        MenuButton(LFGMicroButton) {
-            ['.Texture'] = Style:SetTexCoord(0.1, 0.9, 0.45, 0.9)
-        }
+        MenuButton {
+            ['@Texture'] = Style:SetTexCoord(0.1, 0.9, 0.45, 0.9)
+        }(LFGMicroButton)
     end
 
     if GuildMicroButton then
-        MenuButton(GuildMicroButton) {
-            ['.Texture'] = Style:TexCoord(0.1, 0.9, 0.2, 0.8)
-        }
+        MenuButton {
+            ['@Texture'] = Style:TexCoord(0.1, 0.9, 0.2, 0.8)
+        }(GuildMicroButton)
     end
 
-    MenuButton(QuickJoinToastButton or SocialsMicroButton) {
-        ['.Texture'] = Style:TexCoord(0.1, 0.9, 0.1, 0.9):Texture(FriendsFrameIcon:GetTexture())
-    }
+    MenuButton {
+        ['@Texture'] = Style:TexCoord(0.1, 0.9, 0.1, 0.9):Texture(FriendsFrameIcon:GetTexture())
+    }(QuickJoinToastButton or SocialsMicroButton)
 
     if PVPMicroButton then
-        MenuButton(PVPMicroButton) {
-            ['.texture'] = Style:TexCoord(0.03,0.64,0,0.6)
-        }
+        MenuButton {
+            ['@texture'] = Style:TexCoord(0.03,0.64,0,0.6)
+        }(PVPMicroButton)
     end
 
     MenuButton(MainMenuMicroButton)
@@ -273,23 +279,22 @@ local style = function()
     end
 
     if StoreMicroButton then
-        Style(StoreMicroButton)
-            .BOTTOMLEFT:TOPLEFT(UIParent)
+        Style.BOTTOMLEFT:TOPLEFT(UIParent)(StoreMicroButton)
     end
 
-    MenuButton(MainMenuBarBackpackButton) {
-        ['.*NormalTexture'] = Style:Texture ''
-    }
+    MenuButton {
+        [':*NormalTexture'] = Style:Texture ''
+    }(MainMenuBarBackpackButton)
 
-    Style(MainMenuBarArtFrame or BagsBar) {
-        ['.CharacterBag#Slot, .CharacterReagentBag0Slot'] = MenuButton {
-            ['.NormalTexture, .*NormalTexture'] = Style
+    Style {
+        [':CharacterBag#Slot, :CharacterReagentBag0Slot'] = MenuButton {
+            [':NormalTexture, :*NormalTexture'] = Style
                 :Texture ''
                 :Hide()
                 :Alpha(0),
         },
-        ['.BagBarExpandToggle'] = Style:Hide()
-    }
+        [':BagBarExpandToggle'] = Style:Hide()
+    }(MainMenuBarArtFrame or BagsBar)
 
     layout()
 

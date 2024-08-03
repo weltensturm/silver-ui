@@ -54,7 +54,7 @@ SilverUI.Settings 'Tarrget Frame' {
 local UnitButton = Addon.Templates.UnitButton
 
 
-local UnitTarget = UnitButton
+local UnitTarget = UnitButton { LQT.UnitEventBase }
     :Size(300, 20)
     :Attribute('unit', 'target')
     :Alpha(0.75)
@@ -127,9 +127,9 @@ load = function()
         :Hide()
         .new()
 
-    Style(TargetFrame)
+    Style
         :UnregisterAllEvents()
-        :Parent(Hider)
+        :Parent(Hider)(TargetFrame)
 
     UnitTarget
         .TOP:BOTTOM(SilverUIPlayerFrame, 0, 25.85)

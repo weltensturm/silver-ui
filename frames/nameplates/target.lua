@@ -16,7 +16,7 @@ local PixelAnchor = Addon.Templates.PixelAnchor
 local PixelSizex2 = Addon.Templates.PixelSizex2
 
 
-Addon.Nameplates.FrameTarget = Frame { PixelAnchor, PixelSizex2 }
+Addon.Nameplates.FrameTarget = Frame { LQT.UnitEventBase, PixelAnchor, PixelSizex2 }
     :FrameLevel(0)
     :Alpha(0.8)
 {
